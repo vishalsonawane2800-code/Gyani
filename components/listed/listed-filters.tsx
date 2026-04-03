@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Download } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useListedFilters } from '@/hooks/use-listed-filters';
 
 export function ListedFilters() {
@@ -43,12 +43,7 @@ export function ListedFilters() {
           ))}
         </div>
         
-        <div className="ml-auto flex gap-2">
-          <button className="text-[11.5px] font-semibold px-3.5 py-1.5 rounded-lg border border-border bg-card text-ink3 hover:bg-secondary transition-colors flex items-center gap-1.5">
-            <Download className="w-3.5 h-3.5" />
-            Export CSV
-          </button>
-        </div>
+
       </div>
 
       {/* Filter Row */}

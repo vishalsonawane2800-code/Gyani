@@ -346,6 +346,108 @@ export const currentIPOs: IPO[] = [
   },
 ];
 
+// Upcoming IPOs (filtered from currentIPOs - mainboard and SME upcoming)
+export const upcomingIPOs = currentIPOs.filter(ipo => ipo.status === 'upcoming' || ipo.status === 'open' || ipo.status === 'lastday');
+
+// Shareholder Quota IPOs
+export interface ShareholderQuotaIPO {
+  id: number;
+  name: string;
+  slug: string;
+  abbr: string;
+  bgColor: string;
+  fgColor: string;
+  exchange: ExchangeType;
+  sector: string;
+  openDate: string;
+  closeDate: string;
+  allotmentDate: string;
+  listDate: string;
+  priceMin: number;
+  priceMax: number;
+  lotSize: number;
+  issueSize: string;
+  issueSizeCr: number;
+  gmp?: number;
+  gmpPercent?: number;
+  status: IPOStatus;
+  registrar: string;
+  leadManager: string;
+  aboutCompany: string;
+}
+
+export const shareholderQuotaIPOs: ShareholderQuotaIPO[] = [
+  {
+    id: 101,
+    name: 'TechVision Solutions',
+    slug: 'techvision-solutions-sq-ipo',
+    abbr: 'TV',
+    bgColor: '#f0f9ff',
+    fgColor: '#0369a1',
+    exchange: 'Mainboard',
+    sector: 'Technology / IT Services',
+    openDate: '2026-04-15',
+    closeDate: '2026-04-20',
+    allotmentDate: '2026-04-22',
+    listDate: '2026-04-25',
+    priceMin: 450,
+    priceMax: 475,
+    lotSize: 30,
+    issueSize: '850 Cr',
+    issueSizeCr: 850,
+    status: 'upcoming',
+    registrar: 'KFin Technologies',
+    leadManager: 'Goldman Sachs India',
+    aboutCompany: 'TechVision Solutions is a leading IT services company specializing in digital transformation and enterprise solutions for financial institutions.',
+  },
+  {
+    id: 102,
+    name: 'Global Logistics Ltd',
+    slug: 'global-logistics-sq-ipo',
+    abbr: 'GL',
+    bgColor: '#fef2f2',
+    fgColor: '#7c2d12',
+    exchange: 'Mainboard',
+    sector: 'Logistics / Supply Chain',
+    openDate: '2026-05-10',
+    closeDate: '2026-05-15',
+    allotmentDate: '2026-05-17',
+    listDate: '2026-05-20',
+    priceMin: 280,
+    priceMax: 310,
+    lotSize: 48,
+    issueSize: '620 Cr',
+    issueSizeCr: 620,
+    status: 'upcoming',
+    registrar: 'Link Intime India',
+    leadManager: 'Morgan Stanley',
+    aboutCompany: 'Global Logistics Ltd operates a comprehensive supply chain network across India with focus on cold chain and specialized logistics.',
+  },
+  {
+    id: 103,
+    name: 'Heritage Financial Services',
+    slug: 'heritage-financial-sq-ipo',
+    abbr: 'HF',
+    bgColor: '#fffbeb',
+    fgColor: '#92400e',
+    exchange: 'Mainboard',
+    sector: 'Financial Services / NBFC',
+    openDate: '2026-05-25',
+    closeDate: '2026-05-30',
+    allotmentDate: '2026-06-01',
+    listDate: '2026-06-04',
+    priceMin: 195,
+    priceMax: 215,
+    lotSize: 68,
+    issueSize: '480 Cr',
+    issueSizeCr: 480,
+    status: 'upcoming',
+    registrar: 'KFIN Technologies',
+    leadManager: 'ICICI Securities',
+    aboutCompany: 'Heritage Financial Services is a prominent NBFC providing retail lending, asset financing, and investment products to individual and corporate customers.',
+  },
+];
+
 // Listed IPOs (historical data)
 export const listedIPOs: ListedIPO[] = [
   { id: 1, name: 'Apsis Aerocom', abbr: 'AA', bgColor: '#f0fdf4', fgColor: '#14532d', exchange: 'NSE SME', sector: 'Aerospace', listDate: '2026-03-18', issuePrice: 110, listPrice: 153, gainPct: 39.1, subTimes: 129.41, gmpPeak: '+42', aiPred: '+36.4%', aiErr: 2.7, year: '2026', slug: 'apsis-aerocom-ipo' },
