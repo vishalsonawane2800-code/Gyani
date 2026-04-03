@@ -2,7 +2,7 @@ import { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Ticker } from "@/components/ticker"
 import { Footer } from "@/components/footer"
-import { shareholderQuotaIPOs } from "@/lib/data"
+import { shareholderQuotaIPOs, formatDate } from "@/lib/data"
 import { Users, TrendingUp } from "lucide-react"
 
 export const metadata: Metadata = {
@@ -92,11 +92,11 @@ export default function ShareholderQuotaPage() {
                 <div className="space-y-2 mb-4 text-[12px]">
                   <div>
                     <p className="text-ink3 mb-1">Open Date</p>
-                    <p className="font-semibold text-ink">{new Date(ipo.openDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</p>
+                    <p className="font-semibold text-ink">{formatDate(ipo.openDate)}</p>
                   </div>
                   <div>
                     <p className="text-ink3 mb-1">Close Date</p>
-                    <p className="font-semibold text-ink">{new Date(ipo.closeDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}</p>
+                    <p className="font-semibold text-ink">{formatDate(ipo.closeDate)}</p>
                   </div>
                 </div>
 
