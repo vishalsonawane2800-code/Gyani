@@ -164,12 +164,9 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </span>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <span className="flex-1 text-center py-1.5 rounded-lg text-[12px] font-semibold bg-secondary text-ink2 cursor-pointer transition-colors hover:bg-border">
-          View Details
-        </span>
-        <span className="flex-1 text-center py-1.5 rounded-lg text-[12px] font-bold bg-gradient-to-br from-primary to-cobalt text-white cursor-pointer transition-opacity hover:opacity-90">
+      {/* Action */}
+      <div className="flex">
+        <span className="flex-1 text-center py-2 rounded-lg text-[12px] font-bold bg-gradient-to-br from-primary to-cobalt text-white cursor-pointer transition-opacity hover:opacity-90">
           View Analysis
         </span>
       </div>
