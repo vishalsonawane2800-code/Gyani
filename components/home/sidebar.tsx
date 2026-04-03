@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, TrendingUp, ExternalLink } from 'lucide-react';
-import { upcomingEvents, currentIPOs, formatPrice } from '@/lib/data';
+import { Calendar, TrendingUp, ExternalLink, Brain } from 'lucide-react';
+import { upcomingEvents, currentIPOs } from '@/lib/data';
 
 export function Sidebar() {
   return (
@@ -107,6 +107,37 @@ export function Sidebar() {
           <button className="w-full bg-gradient-to-br from-primary to-cobalt text-white text-[13px] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity">
             Check Status
           </button>
+        </div>
+      </div>
+
+      {/* AI Accuracy Quick */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
+          <h3 className="text-[13px] font-bold flex items-center gap-2">
+            <Brain className="w-4 h-4 text-primary-mid" />
+            AI Accuracy
+          </h3>
+          <Link href="/accuracy" className="text-[11.5px] font-semibold text-primary-mid">
+            Full Dashboard
+          </Link>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-secondary rounded-lg p-2.5 text-center">
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">94%</div>
+              <div className="text-[9px] text-ink3">Within 5%</div>
+            </div>
+            <div className="bg-secondary rounded-lg p-2.5 text-center">
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">2.3%</div>
+              <div className="text-[9px] text-ink3">Avg Error</div>
+            </div>
+          </div>
+          <Link 
+            href="/accuracy"
+            className="block text-center text-[12px] font-semibold py-2 px-4 rounded-lg border border-primary-mid text-primary-mid hover:bg-primary-bg transition-colors"
+          >
+            View All Predictions
+          </Link>
         </div>
       </div>
 

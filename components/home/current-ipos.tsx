@@ -4,13 +4,29 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { IPOCard } from '@/components/ipo-card';
 import { currentIPOs } from '@/lib/data';
+import type { IPOStatus } from '@/lib/data';
 
 type FilterType = 'all' | 'main' | 'sme';
+
+// Priority order for IPO status (higher priority = more urgent)
+const statusPriority: Record<IPOStatus, number> = {
+  'listing': 5,
+  'allot': 4,
+  'lastday': 3,
+  'open': 2,
+  'upcoming': 1,
+  'closed': 0,
+};
 
 export function CurrentIPOs() {
   const [filter, setFilter] = useState<FilterType>('all');
 
-  const filteredIPOs = currentIPOs.filter((ipo) => {
+  // Sort IPOs by status priority (most urgent first)
+  const sortedIPOs = [...currentIPOs].sort((a, b) => {
+    return statusPriority[b.status] - statusPriority[a.status];
+  });
+
+  const filteredIPOs = sortedIPOs.filter((ipo) => {
     if (filter === 'all') return true;
     if (filter === 'main') return ipo.exchange === 'Mainboard' || ipo.exchange === 'REIT';
     if (filter === 'sme') return ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
@@ -54,11 +70,31 @@ export function CurrentIPOs() {
         </div>
       </div>
 
-      {/* IPO Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-3.5">
+      {/* IPO Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredIPOs.map((ipo) => (
           <IPOCard key={ipo.id} ipo={ipo} />
         ))}
+      </div>
+
+      {/* Status Legend */}
+      <div className="flex flex-wrap gap-3 mt-3 text-[10px]">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald"></span>
+          <span className="text-ink3">Listing Day</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-primary"></span>
+          <span className="text-ink3">Allotment Day</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-gold"></span>
+          <span className="text-ink3">Last Day</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-cobalt"></span>
+          <span className="text-ink3">Open</span>
+        </div>
       </div>
     </section>
   );

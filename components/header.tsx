@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { Menu, X, TrendingUp } from 'lucide-react';
+import { Menu, X, TrendingUp, Search } from 'lucide-react';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -17,6 +17,8 @@ const navLinks = [
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState('--:--');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
     const updateTime = () => {
@@ -70,13 +72,24 @@ export function Header() {
             <span>IST</span>
           </div>
 
-          {/* Buttons */}
-          <button className="hidden sm:block text-[12.5px] font-semibold px-4 py-1.5 rounded-lg border-[1.5px] border-border-secondary bg-card text-ink2 transition-colors hover:bg-background">
-            Login
-          </button>
-          <button className="text-[12.5px] font-bold px-4 py-1.5 rounded-lg bg-gradient-to-br from-primary to-cobalt text-white transition-opacity hover:opacity-90">
-            Pro
-          </button>
+          {/* Compact Search Bar */}
+          <div className={`hidden md:flex items-center bg-secondary rounded-lg border transition-all ${
+            isSearchFocused ? 'border-primary-mid shadow-sm w-56' : 'border-transparent w-44'
+          }`}>
+            <Search className="w-3.5 h-3.5 text-ink4 ml-2.5 shrink-0" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onFocus={() => setIsSearchFocused(true)}
+              onBlur={() => setIsSearchFocused(false)}
+              placeholder="Search IPO..."
+              className="flex-1 border-none outline-none py-1.5 px-2 text-[12px] text-foreground placeholder:text-ink4 bg-transparent"
+              maxLength={60}
+              autoComplete="off"
+              spellCheck="false"
+            />
+          </div>
 
           {/* Mobile Menu Button */}
           <button
@@ -92,6 +105,19 @@ export function Header() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="lg:hidden border-t border-border bg-card px-5 py-3">
+          {/* Mobile Search */}
+          <div className="flex items-center bg-secondary rounded-lg border border-border mb-3">
+            <Search className="w-4 h-4 text-ink4 ml-3 shrink-0" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search IPO..."
+              className="flex-1 border-none outline-none py-2 px-2.5 text-[13px] text-foreground placeholder:text-ink4 bg-transparent"
+              maxLength={60}
+            />
+          </div>
+          
           {navLinks.map((link) => (
             <Link
               key={link.href}

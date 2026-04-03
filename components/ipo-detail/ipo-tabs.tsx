@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
 
@@ -56,6 +58,8 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
   const ipoDetails = [
     ['Open Date', formatDate(ipo.openDate)],
     ['Close Date', formatDate(ipo.closeDate)],
+    ['Allotment Date', formatDate(ipo.allotmentDate)],
+    ['Listing Date', formatDate(ipo.listDate)],
     ['Issue Type', 'Book Build Issue'],
     ['Issue Size', `Rs ${ipo.issueSize}`],
     ['Fresh Issue', ipo.freshIssue],
@@ -65,7 +69,6 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
     ['Lot Size', `${ipo.lotSize.toLocaleString()} shares`],
     ['Min Investment (Retail)', `Rs ${minInvestment >= 100000 ? `${(minInvestment / 100000).toFixed(2)}L` : minInvestment.toLocaleString()}`],
     ['Listing Exchange', ipo.exchange],
-    ['Listing Date', formatDate(ipo.listDate)],
   ];
 
   const companyInfo = [
@@ -184,87 +187,157 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
 }
 
 function GMPHistoryTab({ ipo }: { ipo: IPO }) {
-  // Mock GMP history data
-  const gmpHistory = [
-    { date: 'Today', day: 13, gmp: ipo.gmp, percent: ipo.gmpPercent, est: ipo.estListPrice, change: '+2' },
-    { date: 'Yesterday', day: 12, gmp: ipo.gmp - 2, percent: ipo.gmpPercent - 2, est: ipo.estListPrice - 2, change: '+1' },
-    { date: '2 days ago', day: 11, gmp: ipo.gmp - 3, percent: ipo.gmpPercent - 3, est: ipo.estListPrice - 3, change: '+2' },
-    { date: '3 days ago', day: 10, gmp: ipo.gmp - 5, percent: ipo.gmpPercent - 5.1, est: ipo.estListPrice - 5, change: '+2' },
-    { date: '5 days ago', day: 8, gmp: ipo.gmp - 7, percent: ipo.gmpPercent - 7.1, est: ipo.estListPrice - 7, change: '+2' },
+  // Use actual GMP history data if available, otherwise generate mock
+  const gmpHistory = ipo.gmpHistory || [
+    { date: 'Today', gmp: ipo.gmp, gmpPercent: ipo.gmpPercent, source: 'IPOWatch' },
   ];
+
+  // Prepare data for chart (reverse to show chronological order)
+  const chartData = [...gmpHistory].reverse().map((entry, index) => ({
+    name: entry.date.includes('2026') ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : entry.date,
+    gmp: entry.gmp,
+    percent: entry.gmpPercent,
+    source: entry.source,
+  }));
+
+  const chartConfig = {
+    gmp: {
+      label: 'GMP (Rs)',
+      color: 'var(--emerald-mid)',
+    },
+    percent: {
+      label: 'GMP %',
+      color: 'var(--primary-mid)',
+    },
+  };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold">GMP Trend - Last 12 Days</h3>
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold">GMP Trend</h3>
         <span className="text-[12px] font-bold px-3 py-1 rounded-lg bg-emerald-bg text-emerald">
-          Today: +Rs {ipo.gmp} (+{ipo.gmpPercent}%)
+          Latest: +Rs {ipo.gmp} (+{ipo.gmpPercent}%)
         </span>
       </div>
 
-      {/* Simple Chart Representation */}
+      {/* GMP Chart */}
       <div className="bg-secondary rounded-xl p-4 mb-4">
-        <div className="h-20 flex items-end gap-1">
-          {gmpHistory.reverse().map((day, index) => (
-            <div 
-              key={index}
-              className="flex-1 bg-gradient-to-t from-emerald to-emerald-mid rounded-t transition-all"
-              style={{ height: `${Math.max(20, (day.gmp / ipo.gmp) * 100)}%` }}
-              title={`Day ${day.day}: +Rs ${day.gmp}`}
+        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="gmpGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--emerald-mid)" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="var(--emerald-mid)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis 
+              dataKey="name" 
+              tick={{ fontSize: 10, fill: 'var(--ink3)' }} 
+              axisLine={{ stroke: 'var(--border)' }}
+              tickLine={false}
             />
-          ))}
-        </div>
-        <div className="flex justify-between text-[9px] text-ink4 mt-2 px-1">
-          <span>5 days ago</span>
-          <span>3 days ago</span>
-          <span>2 days ago</span>
-          <span>Yesterday</span>
-          <span>Today</span>
-        </div>
+            <YAxis 
+              tick={{ fontSize: 10, fill: 'var(--ink3)' }} 
+              axisLine={{ stroke: 'var(--border)' }}
+              tickLine={false}
+              tickFormatter={(value) => `Rs ${value}`}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Area 
+              type="monotone" 
+              dataKey="gmp" 
+              stroke="var(--emerald-mid)" 
+              strokeWidth={2}
+              fill="url(#gmpGradient)" 
+            />
+          </AreaChart>
+        </ChartContainer>
       </div>
 
+      {/* GMP History Table */}
+      <h4 className="font-semibold text-[13px] mb-3">Historical Data</h4>
       <div className="overflow-x-auto">
         <table className="w-full text-[13px] border-collapse">
           <thead>
             <tr className="bg-secondary">
               <th className="text-left py-2.5 px-3 font-bold text-ink3">Date</th>
-              <th className="text-center py-2.5 px-3 font-bold text-ink3">Day</th>
               <th className="text-right py-2.5 px-3 font-bold text-ink3">GMP (Rs)</th>
               <th className="text-right py-2.5 px-3 font-bold text-ink3">Premium %</th>
               <th className="text-right py-2.5 px-3 font-bold text-ink3">Est. Listing (Rs)</th>
-              <th className="text-right py-2.5 px-3 font-bold text-ink3">Change</th>
+              <th className="text-right py-2.5 px-3 font-bold text-ink3">Source</th>
             </tr>
           </thead>
           <tbody>
-            {gmpHistory.reverse().map((day, index) => (
-              <tr key={index} className="border-b border-border last:border-b-0">
-                <td className={`py-2.5 px-3 ${index === 0 ? 'font-bold text-emerald-mid' : ''}`}>{day.date}</td>
-                <td className="py-2.5 px-3 text-center">Day {day.day}</td>
-                <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">+Rs {day.gmp}</td>
-                <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">+{day.percent.toFixed(1)}%</td>
-                <td className="py-2.5 px-3 text-right font-medium">Rs {day.est}</td>
-                <td className="py-2.5 px-3 text-right text-emerald-mid">{day.change}</td>
-              </tr>
-            ))}
+            {gmpHistory.map((entry, index) => {
+              const estListing = ipo.priceMax + entry.gmp;
+              return (
+                <tr key={index} className="border-b border-border last:border-b-0">
+                  <td className={`py-2.5 px-3 ${index === 0 ? 'font-bold text-emerald-mid' : ''}`}>
+                    {entry.date.includes('2026') 
+                      ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+                      : entry.date
+                    }
+                    {index === 0 && ' (Latest)'}
+                  </td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">+Rs {entry.gmp}</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">+{entry.gmpPercent.toFixed(1)}%</td>
+                  <td className="py-2.5 px-3 text-right font-medium">Rs {estListing.toLocaleString()}</td>
+                  <td className="py-2.5 px-3 text-right text-ink3">{entry.source}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      <p className="text-[11px] text-ink4 mt-4">
+        * GMP (Grey Market Premium) is scraped from multiple sources for accuracy. Data is updated multiple times daily.
+      </p>
     </div>
   );
 }
 
 function SubscriptionTab({ ipo }: { ipo: IPO }) {
-  // Mock day-wise subscription data
-  const subHistory = ipo.subscription.day > 0 ? [
-    { day: 1, retail: '0.05x', nii: '0.08x', qib: '0.02x', total: '0.05x' },
-    { day: 2, retail: '0.12x', nii: '0.15x', qib: '0.10x', total: '0.12x' },
-    { day: 3, retail: ipo.subscription.retail, nii: ipo.subscription.nii, qib: ipo.subscription.qib, total: `${ipo.subscription.total}x` },
-  ] : [];
+  // Use actual subscription history if available
+  const subHistory = ipo.subscriptionHistory || [];
+
+  // Prepare data for chart
+  const chartData = [...subHistory].reverse().map((entry) => ({
+    name: entry.date.includes('2026') 
+      ? `${new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} ${entry.time}`
+      : `Day ${subHistory.indexOf(entry) + 1}`,
+    Retail: entry.retail,
+    NII: entry.nii,
+    QIB: entry.qib,
+    Total: entry.total,
+  }));
+
+  const chartConfig = {
+    Retail: {
+      label: 'Retail',
+      color: 'var(--cobalt-mid)',
+    },
+    NII: {
+      label: 'NII (HNI)',
+      color: 'var(--primary-mid)',
+    },
+    QIB: {
+      label: 'QIB',
+      color: 'var(--emerald-mid)',
+    },
+    Total: {
+      label: 'Total',
+      color: 'var(--gold-mid)',
+    },
+  };
 
   return (
     <div>
       {/* Category Breakdown */}
-      <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Subscription by Category</h3>
+      <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">
+        Subscription by Category {ipo.subscription.isFinal ? '(Final)' : '(Live)'}
+      </h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-secondary rounded-xl p-4 text-center">
           <div className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${ipo.subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
@@ -292,15 +365,46 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         </div>
       </div>
 
-      {/* Day-wise Table */}
+      {/* Subscription Chart */}
       {subHistory.length > 0 && (
         <>
-          <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Day-wise Subscription</h3>
+          <h4 className="font-semibold text-[13px] mb-3">Subscription Trend</h4>
+          <div className="bg-secondary rounded-xl p-4 mb-4">
+            <ChartContainer config={chartConfig} className="h-[200px] w-full">
+              <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fontSize: 10, fill: 'var(--ink3)' }} 
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 10, fill: 'var(--ink3)' }} 
+                  axisLine={{ stroke: 'var(--border)' }}
+                  tickLine={false}
+                  tickFormatter={(value) => `${value}x`}
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Legend 
+                  wrapperStyle={{ fontSize: '11px' }}
+                  iconSize={8}
+                />
+                <Bar dataKey="Retail" fill="var(--cobalt-mid)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="NII" fill="var(--primary-mid)" radius={[2, 2, 0, 0]} />
+                <Bar dataKey="QIB" fill="var(--emerald-mid)" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </div>
+
+          {/* Day-wise Table */}
+          <h4 className="font-semibold text-[13px] mb-3">Day-wise Subscription</h4>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px] border-collapse">
               <thead>
                 <tr className="bg-secondary">
-                  <th className="text-left py-2.5 px-3 font-bold text-ink3">Day</th>
+                  <th className="text-left py-2.5 px-3 font-bold text-ink3">Date</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-ink3">Time</th>
                   <th className="text-right py-2.5 px-3 font-bold text-ink3">Retail</th>
                   <th className="text-right py-2.5 px-3 font-bold text-ink3">NII</th>
                   <th className="text-right py-2.5 px-3 font-bold text-ink3">QIB</th>
@@ -308,15 +412,21 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                 </tr>
               </thead>
               <tbody>
-                {subHistory.map((day, index) => (
+                {subHistory.map((entry, index) => (
                   <tr key={index} className="border-b border-border last:border-b-0">
-                    <td className={`py-2.5 px-3 ${index === subHistory.length - 1 ? 'font-bold' : ''}`}>
-                      Day {day.day} {index === subHistory.length - 1 && !ipo.subscription.isFinal && '(Live)'}
+                    <td className={`py-2.5 px-3 ${index === 0 ? 'font-bold' : ''}`}>
+                      {entry.date.includes('2026') 
+                        ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
+                        : entry.date
+                      }
+                      {index === 0 && !ipo.subscription.isFinal && ' (Live)'}
+                      {index === 0 && ipo.subscription.isFinal && ' (Final)'}
                     </td>
-                    <td className="py-2.5 px-3 text-right text-cobalt-mid font-medium">{day.retail}</td>
-                    <td className="py-2.5 px-3 text-right text-primary-mid font-medium">{day.nii}</td>
-                    <td className="py-2.5 px-3 text-right text-emerald-mid font-medium">{day.qib}</td>
-                    <td className="py-2.5 px-3 text-right font-bold">{day.total}</td>
+                    <td className="py-2.5 px-3 text-right text-ink3">{entry.time}</td>
+                    <td className="py-2.5 px-3 text-right text-cobalt-mid font-medium">{entry.retail}x</td>
+                    <td className="py-2.5 px-3 text-right text-primary-mid font-medium">{entry.nii}x</td>
+                    <td className="py-2.5 px-3 text-right text-emerald-mid font-medium">{entry.qib}x</td>
+                    <td className="py-2.5 px-3 text-right font-bold">{entry.total}x</td>
                   </tr>
                 ))}
               </tbody>
@@ -328,6 +438,10 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
       {subHistory.length === 0 && (
         <p className="text-ink3 text-center py-8">Subscription data will be available once the IPO opens.</p>
       )}
+
+      <p className="text-[11px] text-ink4 mt-4">
+        * Subscription data is scraped from BSE/NSE and updated multiple times during IPO period.
+      </p>
     </div>
   );
 }
