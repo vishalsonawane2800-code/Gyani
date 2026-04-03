@@ -1,3 +1,6 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Star, Clock } from 'lucide-react';
 import type { IPO } from '@/lib/data';
@@ -20,6 +23,15 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export function IPOCard({ ipo }: IPOCardProps) {
+  const [timeAgo, setTimeAgo] = useState<string>('');
+  
+  useEffect(() => {
+    setTimeAgo(formatTimeAgo(ipo.gmpLastUpdated));
+    const interval = setInterval(() => {
+      setTimeAgo(formatTimeAgo(ipo.gmpLastUpdated));
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [ipo.gmpLastUpdated]);
   const isPositiveGMP = ipo.gmp > 0;
   const isPositivePrediction = ipo.aiPrediction > 0;
 
@@ -130,7 +142,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </span>
         <div className="flex items-center gap-1 text-[10px] text-ink4 ml-auto">
           <Clock className="w-3 h-3" />
-          <span>{formatTimeAgo(ipo.gmpLastUpdated)}</span>
+          <span>{timeAgo || 'just now'}</span>
         </div>
       </div>
 

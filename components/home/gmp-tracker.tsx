@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Clock } from 'lucide-react';
 import { currentIPOs } from '@/lib/data';
@@ -17,6 +18,11 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export function GMPTracker() {
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const getExchangeBadge = (exchange: string) => {
     switch (exchange) {
       case 'Mainboard': return 'bg-cobalt-bg text-cobalt';
@@ -55,7 +61,7 @@ export function GMPTracker() {
           <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 text-[11px] text-ink3">
               <Clock className="w-3 h-3" />
-              <span>Updated: <strong className="text-foreground">{formatTimeAgo(latestUpdate.toISOString())}</strong></span>
+              <span>Updated: <strong className="text-foreground">{mounted ? formatTimeAgo(latestUpdate.toISOString()) : '--'}</strong></span>
             </div>
             <button className="text-[12.5px] font-semibold text-primary-mid flex items-center gap-1 hover:opacity-75 transition-opacity">
               <RefreshCw className="w-3 h-3" />
@@ -128,7 +134,7 @@ export function GMPTracker() {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-[11px] text-ink3">
-                      {formatTimeAgo(ipo.gmpLastUpdated)}
+                      {mounted ? formatTimeAgo(ipo.gmpLastUpdated) : '--'}
                     </td>
                   </tr>
                 );

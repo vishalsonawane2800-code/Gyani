@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { IPOCard } from '@/components/ipo-card';
 import { currentIPOs } from '@/lib/data';
 import type { IPOStatus } from '@/lib/data';
@@ -21,9 +20,6 @@ const statusPriority: Record<IPOStatus, number> = {
 
 export function CurrentIPOs() {
   const [filter, setFilter] = useState<FilterType>('all');
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [canScrollLeft, setCanScrollLeft] = useState(false);
-  const [canScrollRight, setCanScrollRight] = useState(true);
 
   // Sort IPOs by status priority (most urgent first)
   const sortedIPOs = [...currentIPOs].sort((a, b) => {
@@ -38,36 +34,6 @@ export function CurrentIPOs() {
   });
 
   const activeCount = currentIPOs.filter(ipo => ipo.status !== 'closed').length;
-
-  const checkScrollButtons = () => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      setCanScrollLeft(container.scrollLeft > 0);
-      setCanScrollRight(
-        container.scrollLeft < container.scrollWidth - container.clientWidth - 10
-      );
-    }
-  };
-
-  useEffect(() => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.addEventListener('scroll', checkScrollButtons);
-      checkScrollButtons();
-      return () => container.removeEventListener('scroll', checkScrollButtons);
-    }
-  }, [filteredIPOs]);
-
-  const scroll = (direction: 'left' | 'right') => {
-    const container = scrollContainerRef.current;
-    if (container) {
-      const scrollAmount = 340; // Card width + gap
-      container.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
-    }
-  };
 
   return (
     <section id="current" className="mb-7">
@@ -104,42 +70,11 @@ export function CurrentIPOs() {
         </div>
       </div>
 
-      {/* Scrollable IPO Cards - Auto scrolls with most urgent on top */}
-      <div className="relative">
-        {/* Left Scroll Button */}
-        {canScrollLeft && (
-          <button
-            onClick={() => scroll('left')}
-            className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-card border border-border rounded-full shadow-md flex items-center justify-center hover:bg-secondary transition-colors"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        )}
-
-        {/* Scrollable Container */}
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-3.5 overflow-x-auto pb-2 scrollbar-hide"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-        >
-          {filteredIPOs.map((ipo) => (
-            <div key={ipo.id} className="min-w-[320px] max-w-[320px]">
-              <IPOCard ipo={ipo} />
-            </div>
-          ))}
-        </div>
-
-        {/* Right Scroll Button */}
-        {canScrollRight && (
-          <button
-            onClick={() => scroll('right')}
-            className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-card border border-border rounded-full shadow-md flex items-center justify-center hover:bg-secondary transition-colors"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        )}
+      {/* IPO Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {filteredIPOs.map((ipo) => (
+          <IPOCard key={ipo.id} ipo={ipo} />
+        ))}
       </div>
 
       {/* Status Legend */}
