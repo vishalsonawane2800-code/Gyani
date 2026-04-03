@@ -8,6 +8,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/#current', label: 'Current IPO' },
   { href: '/#upcoming', label: 'Upcoming IPO' },
+  { href: '/shareholder-quota', label: 'Shareholder Quota' },
   { href: '/#gmp', label: 'GMP Tracker' },
   { href: '/listed', label: 'Listed IPO' },
   { href: '/accuracy', label: 'AI Accuracy', badge: '94%' },
