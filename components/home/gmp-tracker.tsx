@@ -1,24 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Clock } from 'lucide-react';
 import { currentIPOs } from '@/lib/data';
 
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
+}
+
 export function GMPTracker() {
-  const [gmpTimer, setGmpTimer] = useState('15:00');
-
-  useEffect(() => {
-    let seconds = 900;
-    const interval = setInterval(() => {
-      seconds = seconds > 0 ? seconds - 1 : 900;
-      const mins = Math.floor(seconds / 60);
-      const secs = seconds % 60;
-      setGmpTimer(`${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`);
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
   const getExchangeBadge = (exchange: string) => {
     switch (exchange) {
       case 'Mainboard': return 'bg-cobalt-bg text-cobalt';
@@ -31,13 +29,20 @@ export function GMPTracker() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case 'open': return { label: 'Open', className: 'bg-cobalt-bg text-cobalt' };
       case 'lastday': return { label: 'Last Day', className: 'bg-gold-bg text-gold' };
       case 'allot': return { label: 'Allotment', className: 'bg-primary-bg text-primary' };
-      case 'listing': return { label: 'Listing', className: 'bg-primary-bg text-primary-mid' };
-      case 'upcoming': return { label: 'Opening', className: 'bg-cobalt-bg text-cobalt' };
+      case 'listing': return { label: 'Listing', className: 'bg-emerald-bg text-emerald' };
+      case 'upcoming': return { label: 'Upcoming', className: 'bg-secondary text-ink3' };
       default: return { label: status, className: 'bg-secondary text-ink3' };
     }
   };
+
+  // Find the most recent GMP update
+  const latestUpdate = currentIPOs.reduce((latest, ipo) => {
+    const ipoDate = new Date(ipo.gmpLastUpdated);
+    return ipoDate > latest ? ipoDate : latest;
+  }, new Date(0));
 
   return (
     <section id="gmp" className="mb-7">
@@ -48,9 +53,10 @@ export function GMPTracker() {
             Live GMP Tracker
           </h2>
           <div className="flex items-center gap-2.5">
-            <span className="text-[11px] text-ink3">
-              Next update: <strong className="text-primary-mid">{gmpTimer}</strong>
-            </span>
+            <div className="flex items-center gap-1.5 text-[11px] text-ink3">
+              <Clock className="w-3 h-3" />
+              <span>Updated: <strong className="text-foreground">{formatTimeAgo(latestUpdate.toISOString())}</strong></span>
+            </div>
             <button className="text-[12.5px] font-semibold text-primary-mid flex items-center gap-1 hover:opacity-75 transition-opacity">
               <RefreshCw className="w-3 h-3" />
               Refresh
@@ -70,6 +76,7 @@ export function GMPTracker() {
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Est. Price</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">AI Pred.</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Status</th>
+                <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Updated</th>
               </tr>
             </thead>
             <tbody>
@@ -119,6 +126,9 @@ export function GMPTracker() {
                       <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${statusBadge.className}`}>
                         {statusBadge.label}
                       </span>
+                    </td>
+                    <td className="py-3 px-3 text-[11px] text-ink3">
+                      {formatTimeAgo(ipo.gmpLastUpdated)}
                     </td>
                   </tr>
                 );

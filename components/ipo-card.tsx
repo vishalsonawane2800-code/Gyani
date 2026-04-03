@@ -1,10 +1,22 @@
 import Link from 'next/link';
-import { Star } from 'lucide-react';
+import { Star, Clock } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDateRange, formatPrice } from '@/lib/data';
 
 interface IPOCardProps {
   ipo: IPO;
+}
+
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
 }
 
 export function IPOCard({ ipo }: IPOCardProps) {
@@ -13,16 +25,16 @@ export function IPOCard({ ipo }: IPOCardProps) {
 
   const getStatusBadge = () => {
     switch (ipo.status) {
-      case 'lastday':
-        return { label: 'Last Day', className: 'bg-gold-bg text-gold border-gold/20' };
-      case 'upcoming':
-        return { label: 'Opening Soon', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
-      case 'allot':
-        return { label: 'Allotment Today', className: 'bg-primary-bg text-primary border-primary/20' };
-      case 'listing':
-        return { label: 'Listing Today', className: 'bg-primary-bg text-primary-mid border-primary/20' };
       case 'open':
         return { label: 'Open', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
+      case 'lastday':
+        return { label: 'Last Day', className: 'bg-gold-bg text-gold border-gold/20' };
+      case 'allot':
+        return { label: 'Allotment Day', className: 'bg-primary-bg text-primary border-primary/20' };
+      case 'listing':
+        return { label: 'Listing Day', className: 'bg-emerald-bg text-emerald border-emerald/20' };
+      case 'upcoming':
+        return { label: 'Upcoming', className: 'bg-secondary text-ink3 border-border' };
       default:
         return { label: ipo.status, className: 'bg-muted text-muted-foreground' };
     }
@@ -116,9 +128,10 @@ export function IPOCard({ ipo }: IPOCardProps) {
         }`}>
           {isPositiveGMP ? '+' : ''}{ipo.gmpPercent}%
         </span>
-        <span className="text-[11px] text-ink3 ml-auto">
-          Est. {formatPrice(ipo.estListPrice)}
-        </span>
+        <div className="flex items-center gap-1 text-[10px] text-ink4 ml-auto">
+          <Clock className="w-3 h-3" />
+          <span>{formatTimeAgo(ipo.gmpLastUpdated)}</span>
+        </div>
       </div>
 
       {/* AI Prediction Row */}
@@ -145,7 +158,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
           View Details
         </span>
         <span className="flex-1 text-center py-1.5 rounded-lg text-[12px] font-bold bg-gradient-to-br from-primary to-cobalt text-white cursor-pointer transition-opacity hover:opacity-90">
-          {ipo.status === 'upcoming' ? 'Set Alert' : ipo.status === 'allot' || ipo.status === 'listing' ? 'Check Allotment' : 'Apply Now'}
+          View Analysis
         </span>
       </div>
     </Link>

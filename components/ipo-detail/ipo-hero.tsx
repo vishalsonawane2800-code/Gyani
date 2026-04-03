@@ -1,18 +1,31 @@
+import { Clock } from 'lucide-react';
 import type { IPO } from '@/lib/data';
-import { formatDateRange, formatPrice } from '@/lib/data';
+import { formatDateRange, formatPrice, formatDate } from '@/lib/data';
 
 interface IPOHeroProps {
   ipo: IPO;
 }
 
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
+}
+
 export function IPOHero({ ipo }: IPOHeroProps) {
   const getStatusBadge = () => {
     switch (ipo.status) {
-      case 'lastday': return { label: 'Live - Day 3', className: 'bg-gold-bg text-gold border-gold/20' };
-      case 'upcoming': return { label: 'Opening Soon', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
-      case 'allot': return { label: 'Allotment Today', className: 'bg-primary-bg text-primary border-primary/20' };
-      case 'listing': return { label: 'Listing Today', className: 'bg-emerald-bg text-emerald border-emerald/20' };
-      case 'open': return { label: 'Live - Open', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
+      case 'open': return { label: 'Open', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
+      case 'lastday': return { label: 'Last Day', className: 'bg-gold-bg text-gold border-gold/20' };
+      case 'allot': return { label: 'Allotment Day', className: 'bg-primary-bg text-primary border-primary/20' };
+      case 'listing': return { label: 'Listing Day', className: 'bg-emerald-bg text-emerald border-emerald/20' };
+      case 'upcoming': return { label: 'Upcoming', className: 'bg-secondary text-ink3 border-border' };
       default: return { label: ipo.status, className: 'bg-muted text-muted-foreground' };
     }
   };
@@ -69,10 +82,36 @@ export function IPOHero({ ipo }: IPOHeroProps) {
         </div>
       </div>
 
+      {/* Key Dates Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 p-3 bg-secondary rounded-xl">
+        <div className="text-center">
+          <p className="text-[10px] text-ink4 font-semibold">Open</p>
+          <p className="text-[12px] font-bold">{formatDate(ipo.openDate)}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] text-ink4 font-semibold">Last Day</p>
+          <p className="text-[12px] font-bold">{formatDate(ipo.closeDate)}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] text-ink4 font-semibold">Allotment</p>
+          <p className="text-[12px] font-bold">{formatDate(ipo.allotmentDate)}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] text-ink4 font-semibold">Listing</p>
+          <p className="text-[12px] font-bold">{formatDate(ipo.listDate)}</p>
+        </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-secondary rounded-xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">GMP Today</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-ink4">GMP Today</p>
+            <div className="flex items-center gap-1 text-[9px] text-ink4">
+              <Clock className="w-3 h-3" />
+              {formatTimeAgo(ipo.gmpLastUpdated)}
+            </div>
+          </div>
           <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${isPositiveGMP ? 'text-emerald-mid' : 'text-destructive'}`}>
             {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
           </p>
@@ -109,6 +148,16 @@ export function IPOHero({ ipo }: IPOHeroProps) {
           </p>
           <p className="text-[11px] text-ink3 mt-1">{ipo.sentimentLabel}</p>
         </div>
+      </div>
+
+      {/* View Analysis CTA */}
+      <div className="mt-5 flex gap-3">
+        <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold bg-gradient-to-br from-primary to-cobalt text-white transition-opacity hover:opacity-90">
+          View Full Analysis
+        </button>
+        <button className="px-6 py-2.5 rounded-xl text-[13px] font-semibold bg-secondary text-ink2 border border-border transition-colors hover:bg-border">
+          Check Allotment
+        </button>
       </div>
     </div>
   );

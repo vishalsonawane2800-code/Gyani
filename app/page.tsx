@@ -2,7 +2,6 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { StatusBar } from '@/components/status-bar';
 import { Footer } from '@/components/footer';
-import { SearchSection } from '@/components/home/search-section';
 import { MarketSentiment } from '@/components/home/market-sentiment';
 import { CurrentIPOs } from '@/components/home/current-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
@@ -18,8 +17,6 @@ export default function HomePage() {
       <StatusBar />
       
       <main className="max-w-[1440px] mx-auto px-5 py-6 pb-16">
-        <SearchSection />
-        
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div>

@@ -4,6 +4,44 @@ export type IPOStatus = 'open' | 'lastday' | 'allot' | 'listing' | 'upcoming' | 
 export type ExchangeType = 'BSE SME' | 'NSE SME' | 'Mainboard' | 'REIT';
 export type SentimentLabel = 'Bullish' | 'Neutral' | 'Bearish';
 
+export interface GMPHistoryEntry {
+  date: string;
+  gmp: number;
+  gmpPercent: number;
+  source: string;
+}
+
+export interface SubscriptionHistoryEntry {
+  date: string;
+  time: string;
+  retail: number;
+  nii: number;
+  qib: number;
+  total: number;
+}
+
+export interface ExpertReview {
+  id: string;
+  source: string;
+  sourceType: 'youtube' | 'analyst' | 'news' | 'firm';
+  author: string;
+  summary: string; // 2 line summary
+  sentiment: 'positive' | 'neutral' | 'negative';
+  url?: string;
+  logoUrl?: string;
+  createdAt: string;
+}
+
+export interface PeerCompany {
+  name: string;
+  marketCap: number; // in Cr
+  revenue: number; // in Cr
+  pat: number; // in Cr
+  peRatio: number;
+  pbRatio: number;
+  roe: number;
+}
+
 export interface IPO {
   id: number;
   name: string;
@@ -15,6 +53,7 @@ export interface IPO {
   sector: string;
   openDate: string;
   closeDate: string;
+  allotmentDate: string;
   listDate: string;
   priceMin: number;
   priceMax: number;
@@ -25,6 +64,7 @@ export interface IPO {
   ofs: string;
   gmp: number;
   gmpPercent: number;
+  gmpLastUpdated: string;
   estListPrice: number;
   subscription: {
     total: number;
@@ -52,6 +92,11 @@ export interface IPO {
     roce: number;
     debtEquity: number;
   };
+  // New fields for scraped data storage
+  gmpHistory?: GMPHistoryEntry[];
+  subscriptionHistory?: SubscriptionHistoryEntry[];
+  expertReviews?: ExpertReview[];
+  peerCompanies?: PeerCompany[];
 }
 
 export interface ListedIPO {
@@ -87,6 +132,7 @@ export const currentIPOs: IPO[] = [
     sector: 'Electronics / Semiconductor',
     openDate: '2026-03-27',
     closeDate: '2026-04-08',
+    allotmentDate: '2026-04-09',
     listDate: '2026-04-11',
     priceMin: 93,
     priceMax: 98,
@@ -97,6 +143,7 @@ export const currentIPOs: IPO[] = [
     ofs: 'Nil',
     gmp: 12,
     gmpPercent: 12.2,
+    gmpLastUpdated: '2026-04-03T14:30:00',
     estListPrice: 110,
     subscription: { total: 0.21, retail: '0.18x', nii: '0.24x', qib: '0.22x', day: 3, isFinal: false },
     aiPrediction: 14.2,
@@ -117,6 +164,29 @@ export const currentIPOs: IPO[] = [
       roce: 18.9,
       debtEquity: 0.42,
     },
+    gmpHistory: [
+      { date: '2026-04-03', gmp: 12, gmpPercent: 12.2, source: 'IPOWatch' },
+      { date: '2026-04-02', gmp: 10, gmpPercent: 10.2, source: 'IPOWatch' },
+      { date: '2026-04-01', gmp: 8, gmpPercent: 8.2, source: 'InvestorGain' },
+      { date: '2026-03-31', gmp: 6, gmpPercent: 6.1, source: 'IPOWatch' },
+      { date: '2026-03-30', gmp: 5, gmpPercent: 5.1, source: 'IPOWatch' },
+    ],
+    subscriptionHistory: [
+      { date: '2026-04-03', time: '17:00', retail: 0.18, nii: 0.24, qib: 0.22, total: 0.21 },
+      { date: '2026-04-02', time: '17:00', retail: 0.12, nii: 0.15, qib: 0.10, total: 0.12 },
+      { date: '2026-04-01', time: '17:00', retail: 0.05, nii: 0.08, qib: 0.04, total: 0.05 },
+    ],
+    expertReviews: [
+      { id: '1', source: 'PR Sundar', sourceType: 'youtube', author: 'PR Sundar', summary: 'Good IPO with decent valuations. Company has strong fundamentals in semiconductor space with growing revenue trajectory.', sentiment: 'positive', createdAt: '2026-04-02' },
+      { id: '2', source: 'CA Rachana Ranade', sourceType: 'youtube', author: 'CA Rachana Ranade', summary: 'Moderately priced IPO. Recommend subscribing for long-term investors. Short-term gains may be limited.', sentiment: 'neutral', createdAt: '2026-04-01' },
+      { id: '3', source: 'Moneycontrol', sourceType: 'news', author: 'Moneycontrol Research', summary: 'Emiac shows promise in IoT sector but faces stiff competition. Valuations are fair for the sector.', sentiment: 'neutral', createdAt: '2026-04-02' },
+      { id: '4', source: 'ICICI Direct', sourceType: 'firm', author: 'ICICI Direct Research', summary: 'Subscribe rating. Company has shown consistent growth. P/E is reasonable compared to peers.', sentiment: 'positive', createdAt: '2026-04-01' },
+    ],
+    peerCompanies: [
+      { name: 'Dixon Technologies', marketCap: 48500, revenue: 12400, pat: 320, peRatio: 85.2, pbRatio: 12.4, roe: 18.2 },
+      { name: 'Kaynes Technology', marketCap: 32200, revenue: 2100, pat: 145, peRatio: 112.5, pbRatio: 18.6, roe: 22.4 },
+      { name: 'Amber Enterprises', marketCap: 18500, revenue: 8200, pat: 180, peRatio: 68.4, pbRatio: 8.2, roe: 14.6 },
+    ],
   },
   {
     id: 2,
@@ -129,6 +199,7 @@ export const currentIPOs: IPO[] = [
     sector: 'Real Estate / REIT',
     openDate: '2026-04-10',
     closeDate: '2026-04-16',
+    allotmentDate: '2026-04-18',
     listDate: '2026-04-21',
     priceMin: 1000000,
     priceMax: 1050000,
@@ -139,6 +210,7 @@ export const currentIPOs: IPO[] = [
     ofs: 'Nil',
     gmp: 8200,
     gmpPercent: 0.9,
+    gmpLastUpdated: '2026-04-03T10:00:00',
     estListPrice: 1058200,
     subscription: { total: 0, retail: '-', nii: '-', qib: '-', day: 0, isFinal: false },
     aiPrediction: 0.9,
@@ -151,6 +223,11 @@ export const currentIPOs: IPO[] = [
     marketCap: '~850 Cr',
     peRatio: 0,
     aboutCompany: 'PropShare Celestia is a Real Estate Investment Trust focused on commercial office spaces in Tier-1 cities.',
+    peerCompanies: [
+      { name: 'Embassy REIT', marketCap: 32000, revenue: 3200, pat: 1200, peRatio: 0, pbRatio: 1.2, roe: 8.5 },
+      { name: 'Mindspace REIT', marketCap: 18500, revenue: 2100, pat: 850, peRatio: 0, pbRatio: 1.1, roe: 7.8 },
+      { name: 'Brookfield REIT', marketCap: 12200, revenue: 1450, pat: 580, peRatio: 0, pbRatio: 0.95, roe: 6.2 },
+    ],
   },
   {
     id: 3,
@@ -163,6 +240,7 @@ export const currentIPOs: IPO[] = [
     sector: 'Semiconductors',
     openDate: '2026-03-24',
     closeDate: '2026-03-27',
+    allotmentDate: '2026-03-28',
     listDate: '2026-03-31',
     priceMin: 114,
     priceMax: 120,
@@ -173,6 +251,7 @@ export const currentIPOs: IPO[] = [
     ofs: 'Nil',
     gmp: 17,
     gmpPercent: 14.2,
+    gmpLastUpdated: '2026-04-03T12:00:00',
     estListPrice: 137,
     subscription: { total: 193.99, retail: '245.2x', nii: '186.4x', qib: '142.8x', day: 4, isFinal: true },
     aiPrediction: 16.8,
@@ -185,6 +264,27 @@ export const currentIPOs: IPO[] = [
     marketCap: '~86 Cr',
     peRatio: 18.6,
     aboutCompany: 'Highness Microelectronics designs and manufactures semiconductor components for consumer electronics.',
+    gmpHistory: [
+      { date: '2026-04-03', gmp: 17, gmpPercent: 14.2, source: 'IPOWatch' },
+      { date: '2026-04-02', gmp: 18, gmpPercent: 15.0, source: 'IPOWatch' },
+      { date: '2026-04-01', gmp: 20, gmpPercent: 16.7, source: 'InvestorGain' },
+      { date: '2026-03-31', gmp: 22, gmpPercent: 18.3, source: 'IPOWatch' },
+      { date: '2026-03-30', gmp: 19, gmpPercent: 15.8, source: 'IPOWatch' },
+    ],
+    subscriptionHistory: [
+      { date: '2026-03-27', time: '17:00', retail: 245.2, nii: 186.4, qib: 142.8, total: 193.99 },
+      { date: '2026-03-26', time: '17:00', retail: 120.5, nii: 95.2, qib: 72.4, total: 98.2 },
+      { date: '2026-03-25', time: '17:00', retail: 45.2, nii: 32.1, qib: 28.5, total: 35.8 },
+      { date: '2026-03-24', time: '17:00', retail: 12.4, nii: 8.5, qib: 6.2, total: 9.2 },
+    ],
+    expertReviews: [
+      { id: '1', source: 'Akshat Shrivastava', sourceType: 'youtube', author: 'Akshat Shrivastava', summary: 'Excellent growth potential in semiconductor space. Subscribe for long term. High subscription expected.', sentiment: 'positive', createdAt: '2026-03-25' },
+      { id: '2', source: 'Economic Times', sourceType: 'news', author: 'ET Markets', summary: 'Strong retail interest expected. Company benefits from Make in India semiconductor push.', sentiment: 'positive', createdAt: '2026-03-24' },
+    ],
+    peerCompanies: [
+      { name: 'Vedanta Semiconductors', marketCap: 85000, revenue: 12000, pat: 2400, peRatio: 35.4, pbRatio: 4.2, roe: 12.8 },
+      { name: 'SPEL Semiconductor', marketCap: 2800, revenue: 180, pat: 25, peRatio: 112, pbRatio: 8.5, roe: 8.2 },
+    ],
   },
   {
     id: 4,
@@ -197,6 +297,7 @@ export const currentIPOs: IPO[] = [
     sector: 'Power / Energy',
     openDate: '2026-03-24',
     closeDate: '2026-03-27',
+    allotmentDate: '2026-03-28',
     listDate: '2026-04-01',
     priceMin: 375,
     priceMax: 395,
@@ -207,6 +308,7 @@ export const currentIPOs: IPO[] = [
     ofs: '300 Cr',
     gmp: 4,
     gmpPercent: 1.0,
+    gmpLastUpdated: '2026-04-03T16:00:00',
     estListPrice: 399,
     subscription: { total: 1.53, retail: '1.82x', nii: '1.24x', qib: '1.48x', day: 4, isFinal: true },
     aiPrediction: 2.1,
@@ -219,6 +321,28 @@ export const currentIPOs: IPO[] = [
     marketCap: '~4,200 Cr',
     peRatio: 28.4,
     aboutCompany: 'Powerica Limited is a leading power generation company with operations across thermal and renewable energy.',
+    gmpHistory: [
+      { date: '2026-04-03', gmp: 4, gmpPercent: 1.0, source: 'IPOWatch' },
+      { date: '2026-04-02', gmp: 6, gmpPercent: 1.5, source: 'IPOWatch' },
+      { date: '2026-04-01', gmp: 8, gmpPercent: 2.0, source: 'InvestorGain' },
+      { date: '2026-03-31', gmp: 10, gmpPercent: 2.5, source: 'IPOWatch' },
+      { date: '2026-03-30', gmp: 12, gmpPercent: 3.0, source: 'IPOWatch' },
+    ],
+    subscriptionHistory: [
+      { date: '2026-03-27', time: '17:00', retail: 1.82, nii: 1.24, qib: 1.48, total: 1.53 },
+      { date: '2026-03-26', time: '17:00', retail: 0.95, nii: 0.65, qib: 0.82, total: 0.81 },
+      { date: '2026-03-25', time: '17:00', retail: 0.42, nii: 0.28, qib: 0.35, total: 0.35 },
+      { date: '2026-03-24', time: '17:00', retail: 0.15, nii: 0.10, qib: 0.12, total: 0.12 },
+    ],
+    expertReviews: [
+      { id: '1', source: 'CNBC TV18', sourceType: 'news', author: 'CNBC Markets', summary: 'Fairly valued power sector IPO. Moderate returns expected. Good for conservative investors.', sentiment: 'neutral', createdAt: '2026-03-26' },
+      { id: '2', source: 'Motilal Oswal', sourceType: 'firm', author: 'MOSL Research', summary: 'Neutral rating. Power sector facing headwinds. Subscribe only for long term portfolio.', sentiment: 'neutral', createdAt: '2026-03-25' },
+    ],
+    peerCompanies: [
+      { name: 'NTPC Ltd', marketCap: 385000, revenue: 175000, pat: 18500, peRatio: 12.4, pbRatio: 1.8, roe: 14.2 },
+      { name: 'Power Grid Corp', marketCap: 295000, revenue: 46000, pat: 15800, peRatio: 11.2, pbRatio: 2.1, roe: 18.5 },
+      { name: 'Tata Power', marketCap: 142000, revenue: 58000, pat: 3200, peRatio: 28.6, pbRatio: 3.4, roe: 10.8 },
+    ],
   },
 ];
 
