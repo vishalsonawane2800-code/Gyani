@@ -10,8 +10,10 @@ interface AIPredictionProps {
 
 export function AIPrediction({ ipo }: AIPredictionProps) {
   const [refreshTimer, setRefreshTimer] = useState(858); // 14:18
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const interval = setInterval(() => {
       setRefreshTimer((prev) => (prev > 0 ? prev - 1 : 900));
     }, 1000);
@@ -96,8 +98,12 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
         <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
         Next refresh: <strong className="text-white/70">{formatTimer(refreshTimer)}</strong>
         <span className="mx-2">-</span>
-        Updated: {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST
-        <span className="mx-2">-</span>
+        {mounted ? (
+          <>
+            Updated: {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST
+            <span className="mx-2">-</span>
+          </>
+        ) : null}
         Model: IPOGyani v2.1
       </div>
     </div>
