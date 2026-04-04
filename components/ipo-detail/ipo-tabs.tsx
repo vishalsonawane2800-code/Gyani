@@ -24,11 +24,16 @@ export function IPOTabs({ ipo }: IPOTabsProps) {
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      {/* Hidden anchors for scroll navigation */}
+      <div id="gmp-history-section" className="scroll-mt-20" />
+      <div id="subscription-section" className="scroll-mt-20" />
+      
       {/* Tab Bar */}
       <div className="flex overflow-x-auto border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-3 text-[13px] font-semibold whitespace-nowrap transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
