@@ -11,6 +11,7 @@ import { IPOTabs } from '@/components/ipo-detail/ipo-tabs';
 import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
 import { PeerComparison } from '@/components/ipo-detail/peer-comparison';
 import { DetailSidebar } from '@/components/ipo-detail/detail-sidebar';
+import { PageFooter } from '@/components/ipo-detail/page-footer';
 import { currentIPOs, getIPOBySlug } from '@/lib/data';
 import type { Metadata } from 'next';
 
@@ -47,6 +48,11 @@ export default async function IPODetailPage({ params }: PageProps) {
     notFound();
   }
 
+  // Get related IPOs (same sector or exchange, excluding current)
+  const relatedIPOs = currentIPOs
+    .filter(i => i.id !== ipo.id && (i.sector === ipo.sector || i.exchange === ipo.exchange))
+    .slice(0, 3);
+
   return (
     <div className="min-h-screen bg-background">
       <Ticker />
@@ -75,7 +81,9 @@ export default async function IPODetailPage({ params }: PageProps) {
             <CompanyFinancials ipo={ipo} />
             
             {/* Expert Reviews Section */}
-            <ExpertReviews reviews={ipo.expertReviews} ipoName={ipo.name} />
+            <div id="expert-reviews-section">
+              <ExpertReviews reviews={ipo.expertReviews} ipoName={ipo.name} />
+            </div>
             
             {/* Peer Comparison */}
             <PeerComparison ipo={ipo} peers={ipo.peerCompanies} />
@@ -85,8 +93,11 @@ export default async function IPODetailPage({ params }: PageProps) {
           </div>
           
           {/* Sidebar */}
-          <DetailSidebar ipo={ipo} />
+          <DetailSidebar ipo={ipo} relatedIPOs={relatedIPOs} />
         </div>
+
+        {/* Page Footer - Disclaimer & Allotment */}
+        <PageFooter ipo={ipo} />
       </main>
       
       <Footer />
