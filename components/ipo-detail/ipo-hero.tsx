@@ -147,7 +147,7 @@ export function IPOHero({ ipo }: IPOHeroProps) {
       </div>
 
       {/* Quick Action Buttons */}
-      <ScrollButtons ipoName={ipo.name} ipoSlug={ipo.slug} />
+      <ScrollButtons />
     </div>
   );
 }
