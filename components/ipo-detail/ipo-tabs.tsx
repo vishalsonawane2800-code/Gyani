@@ -45,8 +45,12 @@ export function IPOTabs({ ipo }: IPOTabsProps) {
       <div className="p-6">
         {activeTab === 'overview' && <OverviewTab ipo={ipo} />}
         {activeTab === 'financials' && <FinancialsTab ipo={ipo} />}
-        {activeTab === 'gmp' && <GMPHistoryTab ipo={ipo} />}
-        {activeTab === 'subscription' && <SubscriptionTab ipo={ipo} />}
+        <div id="gmp-section">
+          {activeTab === 'gmp' && <GMPHistoryTab ipo={ipo} />}
+        </div>
+        <div id="subscription-section">
+          {activeTab === 'subscription' && <SubscriptionTab ipo={ipo} />}
+        </div>
       </div>
     </div>
   );
@@ -60,11 +64,6 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
     ['Close Date', formatDate(ipo.closeDate)],
     ['Allotment Date', formatDate(ipo.allotmentDate)],
     ['Listing Date', formatDate(ipo.listDate)],
-    ['Issue Type', 'Book Build Issue'],
-    ['Issue Size', `Rs ${ipo.issueSize}`],
-    ['Fresh Issue', ipo.freshIssue],
-    ['OFS', ipo.ofs],
-    ['Face Value', 'Rs 10 per share'],
     ['Price Band', `Rs ${ipo.priceMin} - ${ipo.priceMax}`],
     ['Lot Size', `${ipo.lotSize.toLocaleString()} shares`],
     ['Min Investment (Retail)', `Rs ${minInvestment >= 100000 ? `${(minInvestment / 100000).toFixed(2)}L` : minInvestment.toLocaleString()}`],
@@ -81,35 +80,133 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
   ];
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <div>
-        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">IPO Details</h3>
-        <table className="w-full text-[13px]">
-          <tbody>
-            {ipoDetails.map(([label, value], index) => (
-              <tr key={index} className="border-b border-border last:border-b-0">
-                <td className="py-2.5 text-ink3">{label}</td>
-                <td className="py-2.5 font-medium text-right">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      
-      <div>
-        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Company Information</h3>
-        <table className="w-full text-[13px]">
-          <tbody>
-            {companyInfo.map(([label, value], index) => (
-              <tr key={index} className="border-b border-border last:border-b-0">
-                <td className="py-2.5 text-ink3">{label}</td>
-                <td className="py-2.5 font-medium text-right">{value}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <div className="space-y-6">
+      {/* IPO Details & Company Info Grid */}
+      <div className="grid md:grid-cols-2 gap-6">
+        <div>
+          <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">IPO Details</h3>
+          <table className="w-full text-[13px]">
+            <tbody>
+              {ipoDetails.map(([label, value], index) => (
+                <tr key={index} className="border-b border-border last:border-b-0">
+                  <td className="py-2.5 text-ink3">{label}</td>
+                  <td className="py-2.5 font-medium text-right">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         
-        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mt-6 mb-3">About the Company</h3>
+        <div>
+          <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Company Information</h3>
+          <table className="w-full text-[13px]">
+            <tbody>
+              {companyInfo.map(([label, value], index) => (
+                <tr key={index} className="border-b border-border last:border-b-0">
+                  <td className="py-2.5 text-ink3">{label}</td>
+                  <td className="py-2.5 font-medium text-right">{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Issue Details Section */}
+      <div className="border-t border-border pt-6">
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Issue Details</h3>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div>
+            <table className="w-full text-[13px]">
+              <tbody>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 text-ink3">Issue Type</td>
+                  <td className="py-2.5 font-medium text-right">Book Build Issue</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 text-ink3">Total Issue Size</td>
+                  <td className="py-2.5 font-medium text-right">Rs {ipo.issueSize}</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 text-ink3">Fresh Issue</td>
+                  <td className="py-2.5 font-medium text-right">{ipo.freshIssue}</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 text-ink3">OFS (Offer for Sale)</td>
+                  <td className="py-2.5 font-medium text-right">{ipo.ofs}</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 text-ink3">Face Value</td>
+                  <td className="py-2.5 font-medium text-right">Rs 10 per share</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 text-ink3">Retail %</td>
+                  <td className="py-2.5 font-medium text-right">35%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <div>
+            <h4 className="font-semibold text-[13px] mb-3">IPO Objectives</h4>
+            <ul className="space-y-2 text-[13px] text-ink2">
+              <li className="flex gap-2">
+                <span className="text-primary-mid font-bold">•</span>
+                <span>Capital Raising for Business Expansion</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary-mid font-bold">•</span>
+                <span>Debt Repayment & Balance Sheet Strengthening</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary-mid font-bold">•</span>
+                <span>Promote Public Shareholding</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary-mid font-bold">•</span>
+                <span>Increase Brand Value & Market Credibility</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Company Financials Section */}
+      <div className="border-t border-border pt-6">
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">Company Financials (3 Years)</h3>
+        {ipo.financials && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-[13px] border-collapse">
+              <thead>
+                <tr className="bg-secondary">
+                  <th className="text-left py-2.5 px-3 font-bold text-ink3">Metric</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-ink3">FY23</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-ink3">FY24</th>
+                  <th className="text-right py-2.5 px-3 font-bold text-ink3">FY25</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 px-3 font-medium">Revenue</td>
+                  <td className="py-2.5 px-3 text-right">Rs {ipo.financials.revenue.fy23} Cr</td>
+                  <td className="py-2.5 px-3 text-right">Rs {ipo.financials.revenue.fy24} Cr</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">Rs {ipo.financials.revenue.fy25} Cr</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="py-2.5 px-3 font-medium">Net Profit (PAT)</td>
+                  <td className="py-2.5 px-3 text-right">Rs {ipo.financials.pat.fy23} Cr</td>
+                  <td className="py-2.5 px-3 text-right">Rs {ipo.financials.pat.fy24} Cr</td>
+                  <td className="py-2.5 px-3 text-right font-bold text-emerald-mid">Rs {ipo.financials.pat.fy25} Cr</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* About Company Section */}
+      <div className="border-t border-border pt-6">
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-3">About the Company</h3>
         <p className="text-[13px] text-ink2 leading-relaxed">
           {ipo.aboutCompany}
         </p>
