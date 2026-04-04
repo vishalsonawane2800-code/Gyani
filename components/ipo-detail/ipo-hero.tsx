@@ -1,6 +1,33 @@
-import { Clock } from 'lucide-react';
+'use client';
+
+import { Clock, TrendingUp, BarChart3 } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDateRange, formatPrice, formatDate } from '@/lib/data';
+
+function scrollToSection(sectionId: string) {
+  // Map section IDs to tab IDs
+  const tabMap: Record<string, string> = {
+    'gmp-history-section': 'tab-gmp',
+    'subscription-section': 'tab-subscription',
+  };
+  
+  // Click the corresponding tab first
+  const tabId = tabMap[sectionId];
+  if (tabId) {
+    const tabButton = document.getElementById(tabId);
+    if (tabButton) {
+      tabButton.click();
+    }
+  }
+  
+  // Then scroll to the section
+  setTimeout(() => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, 100);
+}
 
 interface IPOHeroProps {
   ipo: IPO;
@@ -33,6 +60,11 @@ export function IPOHero({ ipo }: IPOHeroProps) {
   const statusBadge = getStatusBadge();
   const isPositiveGMP = ipo.gmp > 0;
   const minInvestment = ipo.priceMax * ipo.lotSize;
+  
+  // Dynamic calculations
+  const estimatedListingPrice = ipo.priceMax + ipo.gmp;
+  const estimatedProfit = ipo.gmp * ipo.lotSize;
+  const estimatedProfitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1);
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
@@ -116,14 +148,41 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
           </p>
           <p className="text-[11px] text-ink3 mt-1">{isPositiveGMP ? '+' : ''}{ipo.gmpPercent}% premium</p>
+          {/* Graph Buttons */}
+          <div className="flex gap-2 mt-3">
+            <button 
+              onClick={() => scrollToSection('gmp-history-section')}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-bg text-emerald border border-emerald/20 hover:bg-emerald/10 transition-colors"
+            >
+              <TrendingUp className="w-3 h-3" />
+              GMP Graph
+            </button>
+            <button 
+              onClick={() => scrollToSection('subscription-section')}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-cobalt-bg text-cobalt border border-cobalt/20 hover:bg-cobalt/10 transition-colors"
+            >
+              <BarChart3 className="w-3 h-3" />
+              Sub. Graph
+            </button>
+          </div>
         </div>
         
         <div className="bg-secondary rounded-xl p-4">
           <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Est. Listing Price</p>
           <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">
-            Rs {ipo.estListPrice >= 100000 ? `${(ipo.estListPrice / 100000).toFixed(2)}L` : ipo.estListPrice.toLocaleString()}
+            Rs {estimatedListingPrice >= 100000 ? `${(estimatedListingPrice / 100000).toFixed(2)}L` : estimatedListingPrice.toLocaleString()}
           </p>
-          <p className="text-[11px] text-ink3 mt-1">GMP + issue price</p>
+          <p className="text-[11px] text-ink3 mt-1">Issue Price + GMP (Dynamic)</p>
+        </div>
+        
+        <div className="bg-secondary rounded-xl p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Est. Profit (1 Lot)</p>
+          <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${estimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
+            {estimatedProfit >= 0 ? '+' : ''}Rs {Math.abs(estimatedProfit).toLocaleString()}
+          </p>
+          <p className="text-[11px] text-ink3 mt-1">
+            {estimatedProfit >= 0 ? '+' : ''}{estimatedProfitPercent}% ({ipo.lotSize} shares)
+          </p>
         </div>
         
         <div className="bg-secondary rounded-xl p-4">
@@ -137,26 +196,12 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             {ipo.subscription.isFinal ? 'Final' : ipo.subscription.day > 0 ? `Day ${ipo.subscription.day} - Live` : 'Not open'}
           </p>
         </div>
-        
-        <div className="bg-secondary rounded-xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Market Sentiment</p>
-          <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${
-            ipo.sentimentScore >= 70 ? 'text-emerald-mid' : ipo.sentimentScore >= 50 ? 'text-gold-mid' : 'text-destructive'
-          }`}>
-            {ipo.sentimentScore}
-            <span className="text-[13px] text-ink4 font-normal">/100</span>
-          </p>
-          <p className="text-[11px] text-ink3 mt-1">{ipo.sentimentLabel}</p>
-        </div>
       </div>
 
       {/* View Analysis CTA */}
       <div className="mt-5 flex gap-3">
         <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold bg-gradient-to-br from-primary to-cobalt text-white transition-opacity hover:opacity-90">
           View Full Analysis
-        </button>
-        <button className="px-6 py-2.5 rounded-xl text-[13px] font-semibold bg-secondary text-ink2 border border-border transition-colors hover:bg-border">
-          Check Allotment
         </button>
       </div>
     </div>

@@ -10,10 +10,15 @@ interface AIPredictionProps {
 
 export function AIPrediction({ ipo }: AIPredictionProps) {
   const [refreshTimer, setRefreshTimer] = useState(858); // 14:18
+  const [currentTime, setCurrentTime] = useState<string | null>(null);
 
   useEffect(() => {
+    // Set initial time on client only to avoid hydration mismatch
+    setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
+    
     const interval = setInterval(() => {
       setRefreshTimer((prev) => (prev > 0 ? prev - 1 : 900));
+      setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
     }, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -96,7 +101,7 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
         <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
         Next refresh: <strong className="text-white/70">{formatTimer(refreshTimer)}</strong>
         <span className="mx-2">-</span>
-        Updated: {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} IST
+        Updated: {currentTime ?? '--:--'} IST
         <span className="mx-2">-</span>
         Model: IPOGyani v2.1
       </div>
