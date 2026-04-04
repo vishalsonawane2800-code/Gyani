@@ -5,6 +5,7 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { IPOHero } from '@/components/ipo-detail/ipo-hero';
 import { AIPrediction } from '@/components/ipo-detail/ai-prediction';
+import { IssueDetails } from '@/components/ipo-detail/issue-details';
 import { CompanyFinancials } from '@/components/ipo-detail/company-financials';
 import { IPOTabs } from '@/components/ipo-detail/ipo-tabs';
 import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
@@ -66,6 +67,9 @@ export default async function IPODetailPage({ params }: PageProps) {
           <div>
             <IPOHero ipo={ipo} />
             <AIPrediction ipo={ipo} />
+            
+            {/* Issue Details Section */}
+            <IssueDetails ipo={ipo} />
             
             {/* Company Financials Section */}
             <CompanyFinancials ipo={ipo} />

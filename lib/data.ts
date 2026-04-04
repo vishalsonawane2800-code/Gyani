@@ -42,6 +42,20 @@ export interface PeerCompany {
   roe: number;
 }
 
+export interface IssueDetails {
+  totalIssueSizeCr: number;
+  freshIssueCr: number;
+  freshIssuePercent: number;
+  ofsCr: number;
+  ofsPercent: number;
+  retailQuotaPercent: number;
+  niiQuotaPercent: number;
+  qibQuotaPercent: number;
+  employeeQuotaPercent?: number;
+  shareholderQuotaPercent?: number;
+  ipoObjectives: string[]; // Reasons for IPO from DRHP
+}
+
 export interface IPO {
   id: number;
   name: string;
@@ -92,6 +106,7 @@ export interface IPO {
     roce: number;
     debtEquity: number;
   };
+  issueDetails?: IssueDetails;
   // New fields for scraped data storage
   gmpHistory?: GMPHistoryEntry[];
   subscriptionHistory?: SubscriptionHistoryEntry[];
@@ -164,6 +179,22 @@ export const currentIPOs: IPO[] = [
       roce: 18.9,
       debtEquity: 0.42,
     },
+    issueDetails: {
+      totalIssueSizeCr: 31.75,
+      freshIssueCr: 31.75,
+      freshIssuePercent: 100,
+      ofsCr: 0,
+      ofsPercent: 0,
+      retailQuotaPercent: 35,
+      niiQuotaPercent: 15,
+      qibQuotaPercent: 50,
+      ipoObjectives: [
+        'Funding working capital requirements',
+        'Setting up new manufacturing facility in Pune',
+        'Investment in R&D for IoT product development',
+        'General corporate purposes'
+      ]
+    },
     gmpHistory: [
       { date: '2026-04-03', gmp: 12, gmpPercent: 12.2, source: 'IPOWatch' },
       { date: '2026-04-02', gmp: 10, gmpPercent: 10.2, source: 'IPOWatch' },
@@ -223,6 +254,21 @@ export const currentIPOs: IPO[] = [
     marketCap: '~850 Cr',
     peRatio: 0,
     aboutCompany: 'PropShare Celestia is a Real Estate Investment Trust focused on commercial office spaces in Tier-1 cities.',
+    issueDetails: {
+      totalIssueSizeCr: 245,
+      freshIssueCr: 245,
+      freshIssuePercent: 100,
+      ofsCr: 0,
+      ofsPercent: 0,
+      retailQuotaPercent: 25,
+      niiQuotaPercent: 25,
+      qibQuotaPercent: 50,
+      ipoObjectives: [
+        'Acquisition of income-generating commercial properties',
+        'Repayment of existing debt facilities',
+        'General corporate purposes and REIT expenses'
+      ]
+    },
     peerCompanies: [
       { name: 'Embassy REIT', marketCap: 32000, revenue: 3200, pat: 1200, peRatio: 0, pbRatio: 1.2, roe: 8.5 },
       { name: 'Mindspace REIT', marketCap: 18500, revenue: 2100, pat: 850, peRatio: 0, pbRatio: 1.1, roe: 7.8 },
@@ -264,6 +310,30 @@ export const currentIPOs: IPO[] = [
     marketCap: '~86 Cr',
     peRatio: 18.6,
     aboutCompany: 'Highness Microelectronics designs and manufactures semiconductor components for consumer electronics.',
+    financials: {
+      revenue: { fy23: 12.8, fy24: 18.5, fy25: 24.2 },
+      pat: { fy23: 1.4, fy24: 2.2, fy25: 3.1 },
+      ebitda: { fy23: 2.1, fy24: 3.2, fy25: 4.4 },
+      roe: 19.8,
+      roce: 17.2,
+      debtEquity: 0.35,
+    },
+    issueDetails: {
+      totalIssueSizeCr: 21.67,
+      freshIssueCr: 21.67,
+      freshIssuePercent: 100,
+      ofsCr: 0,
+      ofsPercent: 0,
+      retailQuotaPercent: 35,
+      niiQuotaPercent: 15,
+      qibQuotaPercent: 50,
+      ipoObjectives: [
+        'Expanding semiconductor manufacturing capacity',
+        'Investment in advanced chip design capabilities',
+        'Working capital requirements',
+        'General corporate purposes'
+      ]
+    },
     gmpHistory: [
       { date: '2026-04-03', gmp: 17, gmpPercent: 14.2, source: 'IPOWatch' },
       { date: '2026-04-02', gmp: 18, gmpPercent: 15.0, source: 'IPOWatch' },
@@ -321,6 +391,30 @@ export const currentIPOs: IPO[] = [
     marketCap: '~4,200 Cr',
     peRatio: 28.4,
     aboutCompany: 'Powerica Limited is a leading power generation company with operations across thermal and renewable energy.',
+    financials: {
+      revenue: { fy23: 820, fy24: 1050, fy25: 1280 },
+      pat: { fy23: 85, fy24: 112, fy25: 148 },
+      ebitda: { fy23: 145, fy24: 185, fy25: 235 },
+      roe: 16.5,
+      roce: 14.8,
+      debtEquity: 0.72,
+    },
+    issueDetails: {
+      totalIssueSizeCr: 1100,
+      freshIssueCr: 800,
+      freshIssuePercent: 72.73,
+      ofsCr: 300,
+      ofsPercent: 27.27,
+      retailQuotaPercent: 35,
+      niiQuotaPercent: 15,
+      qibQuotaPercent: 50,
+      ipoObjectives: [
+        'Expansion of renewable energy capacity (500 MW solar)',
+        'Repayment of outstanding borrowings',
+        'Funding capital expenditure for thermal plants upgrade',
+        'General corporate purposes'
+      ]
+    },
     gmpHistory: [
       { date: '2026-04-03', gmp: 4, gmpPercent: 1.0, source: 'IPOWatch' },
       { date: '2026-04-02', gmp: 6, gmpPercent: 1.5, source: 'IPOWatch' },

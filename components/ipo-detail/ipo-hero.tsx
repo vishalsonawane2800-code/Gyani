@@ -148,21 +148,14 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
           </p>
           <p className="text-[11px] text-ink3 mt-1">{isPositiveGMP ? '+' : ''}{ipo.gmpPercent}% premium</p>
-          {/* Graph Buttons */}
-          <div className="flex gap-2 mt-3">
+          {/* GMP Graph Button */}
+          <div className="mt-3">
             <button 
               onClick={() => scrollToSection('gmp-history-section')}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-bg text-emerald border border-emerald/20 hover:bg-emerald/10 transition-colors"
+              className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-bg text-emerald border border-emerald/20 hover:bg-emerald/10 transition-colors"
             >
               <TrendingUp className="w-3 h-3" />
               GMP Graph
-            </button>
-            <button 
-              onClick={() => scrollToSection('subscription-section')}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-cobalt-bg text-cobalt border border-cobalt/20 hover:bg-cobalt/10 transition-colors"
-            >
-              <BarChart3 className="w-3 h-3" />
-              Sub. Graph
             </button>
           </div>
         </div>
@@ -195,14 +188,17 @@ export function IPOHero({ ipo }: IPOHeroProps) {
           <p className="text-[11px] text-ink3 mt-1">
             {ipo.subscription.isFinal ? 'Final' : ipo.subscription.day > 0 ? `Day ${ipo.subscription.day} - Live` : 'Not open'}
           </p>
+          {/* Subscription Graph Button */}
+          <div className="mt-3">
+            <button 
+              onClick={() => scrollToSection('subscription-section')}
+              className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-cobalt-bg text-cobalt border border-cobalt/20 hover:bg-cobalt/10 transition-colors"
+            >
+              <BarChart3 className="w-3 h-3" />
+              Sub. Graph
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* View Analysis CTA */}
-      <div className="mt-5 flex gap-3">
-        <button className="flex-1 py-2.5 rounded-xl text-[13px] font-bold bg-gradient-to-br from-primary to-cobalt text-white transition-opacity hover:opacity-90">
-          View Full Analysis
-        </button>
       </div>
     </div>
   );
