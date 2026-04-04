@@ -48,11 +48,6 @@ export default async function IPODetailPage({ params }: PageProps) {
     notFound();
   }
 
-  // Get related IPOs (same sector or exchange, excluding current)
-  const relatedIPOs = currentIPOs
-    .filter(i => i.id !== ipo.id && (i.sector === ipo.sector || i.exchange === ipo.exchange))
-    .slice(0, 3);
-
   return (
     <div className="min-h-screen bg-background">
       <Ticker />
@@ -93,7 +88,7 @@ export default async function IPODetailPage({ params }: PageProps) {
           </div>
           
           {/* Sidebar */}
-          <DetailSidebar ipo={ipo} relatedIPOs={relatedIPOs} />
+          <DetailSidebar ipo={ipo} />
         </div>
 
         {/* Page Footer - Disclaimer & Allotment */}

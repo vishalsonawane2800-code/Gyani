@@ -1,44 +1,12 @@
-'use client';
-
-import { TrendingUp, Users, Building2, Calendar, IndianRupee, Percent, BarChart3, Target, ThumbsUp, ThumbsDown, Minus, Youtube, Newspaper, ExternalLink } from 'lucide-react';
-import type { IPO, ExpertReview } from '@/lib/data';
+import { Users, Building2, IndianRupee, Percent, BarChart3, Target, FileText } from 'lucide-react';
+import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
-import Link from 'next/link';
 
 interface DetailSidebarProps {
   ipo: IPO;
-  relatedIPOs?: IPO[];
 }
 
-export function DetailSidebar({ ipo, relatedIPOs = [] }: DetailSidebarProps) {
-  const reviews = ipo.expertReviews || [];
-  const positiveCount = reviews.filter(r => r.sentiment === 'positive').length;
-  const neutralCount = reviews.filter(r => r.sentiment === 'neutral').length;
-  const negativeCount = reviews.filter(r => r.sentiment === 'negative').length;
-  const topReviews = reviews.slice(0, 2);
-
-  const getSentimentIcon = (sentiment: ExpertReview['sentiment']) => {
-    switch (sentiment) {
-      case 'positive':
-        return { icon: ThumbsUp, className: 'text-emerald' };
-      case 'negative':
-        return { icon: ThumbsDown, className: 'text-destructive' };
-      default:
-        return { icon: Minus, className: 'text-gold' };
-    }
-  };
-
-  const getSourceIcon = (sourceType: ExpertReview['sourceType']) => {
-    switch (sourceType) {
-      case 'youtube':
-        return { icon: Youtube, className: 'bg-destructive/10 text-destructive' };
-      case 'news':
-        return { icon: Newspaper, className: 'bg-primary/10 text-primary' };
-      default:
-        return { icon: Building2, className: 'bg-cobalt/10 text-cobalt' };
-    }
-  };
-
+export function DetailSidebar({ ipo }: DetailSidebarProps) {
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
       {/* Quick Info Card */}
@@ -145,105 +113,88 @@ export function DetailSidebar({ ipo, relatedIPOs = [] }: DetailSidebarProps) {
         </div>
       </div>
 
-      {/* Expert Reviews Summary */}
-      {reviews.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="p-3 border-b border-border bg-secondary">
-            <h3 className="text-[13px] font-bold">Expert Reviews</h3>
+      {/* Company Overview */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-3 border-b border-border bg-secondary">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-primary" />
+            <h3 className="text-[13px] font-bold">Company Overview</h3>
           </div>
-          <div className="p-4">
-            {/* Sentiment Pills */}
-            <div className="flex gap-2 mb-3">
-              <div className="flex-1 bg-emerald-bg/50 rounded-lg py-1.5 text-center">
-                <span className="font-bold text-[13px] text-emerald-mid">{positiveCount}</span>
-                <span className="text-[10px] text-emerald ml-1">Positive</span>
+        </div>
+        <div className="p-4">
+          <p className="text-[12px] text-ink2 leading-relaxed">
+            {ipo.aboutCompany}
+          </p>
+          
+          {/* Business Highlights */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <h4 className="text-[11px] font-bold text-ink3 uppercase tracking-wide mb-3">Business Highlights</h4>
+            <div className="space-y-2.5">
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                <p className="text-[11px] text-ink3 leading-relaxed">
+                  Operating in the <span className="font-semibold text-foreground">{ipo.sector}</span> sector
+                </p>
               </div>
-              <div className="flex-1 bg-gold-bg/50 rounded-lg py-1.5 text-center">
-                <span className="font-bold text-[13px] text-gold-mid">{neutralCount}</span>
-                <span className="text-[10px] text-gold ml-1">Neutral</span>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                <p className="text-[11px] text-ink3 leading-relaxed">
+                  Listed on <span className="font-semibold text-foreground">{ipo.exchange}</span>
+                </p>
               </div>
-              <div className="flex-1 bg-destructive-bg/50 rounded-lg py-1.5 text-center">
-                <span className="font-bold text-[13px] text-destructive">{negativeCount}</span>
-                <span className="text-[10px] text-destructive ml-1">Avoid</span>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                <p className="text-[11px] text-ink3 leading-relaxed">
+                  Market cap of <span className="font-semibold text-foreground">{ipo.marketCap}</span> at upper band
+                </p>
               </div>
-            </div>
-
-            {/* Top 2 Reviews */}
-            <div className="space-y-2">
-              {topReviews.map((review) => {
-                const sentimentInfo = getSentimentIcon(review.sentiment);
-                const sourceInfo = getSourceIcon(review.sourceType);
-                const SentimentIcon = sentimentInfo.icon;
-                const SourceIcon = sourceInfo.icon;
-
-                return (
-                  <div key={review.id} className="bg-secondary rounded-lg p-2.5">
-                    <div className="flex items-start gap-2">
-                      <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${sourceInfo.className}`}>
-                        <SourceIcon className="w-3 h-3" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="font-semibold text-[11px] truncate">{review.source}</span>
-                          <SentimentIcon className={`w-3 h-3 shrink-0 ${sentimentInfo.className}`} />
-                        </div>
-                        <p className="text-[10px] text-ink3 line-clamp-2 leading-relaxed">
-                          {review.summary}
-                        </p>
-                      </div>
-                    </div>
+              {ipo.financials && (
+                <>
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald mt-1.5 shrink-0" />
+                    <p className="text-[11px] text-ink3 leading-relaxed">
+                      FY25 Revenue: <span className="font-semibold text-foreground">Rs {ipo.financials.revenue.fy25 >= 100 ? `${(ipo.financials.revenue.fy25).toFixed(0)} Cr` : `${ipo.financials.revenue.fy25.toFixed(1)} Cr`}</span>
+                    </p>
                   </div>
-                );
-              })}
+                  <div className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald mt-1.5 shrink-0" />
+                    <p className="text-[11px] text-ink3 leading-relaxed">
+                      ROE: <span className="font-semibold text-foreground">{ipo.financials.roe}%</span> | ROCE: <span className="font-semibold text-foreground">{ipo.financials.roce}%</span>
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
+          </div>
 
-            {reviews.length > 2 && (
-              <button 
-                onClick={() => {
-                  const element = document.getElementById('expert-reviews-section');
-                  if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-                className="w-full mt-3 py-2 text-[11px] font-semibold text-primary-mid flex items-center justify-center gap-1 hover:bg-primary-bg rounded-lg transition-colors"
-              >
-                View all {reviews.length} reviews
-                <ExternalLink className="w-3 h-3" />
-              </button>
-            )}
+          {/* Key Metrics */}
+          <div className="mt-4 pt-4 border-t border-border">
+            <h4 className="text-[11px] font-bold text-ink3 uppercase tracking-wide mb-3">Valuation</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="bg-secondary rounded-lg p-2.5 text-center">
+                <p className="text-[10px] text-ink4 mb-0.5">P/E Ratio</p>
+                <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.peRatio}x</p>
+              </div>
+              <div className="bg-secondary rounded-lg p-2.5 text-center">
+                <p className="text-[10px] text-ink4 mb-0.5">Issue Size</p>
+                <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.issueSize}</p>
+              </div>
+              {ipo.financials && (
+                <>
+                  <div className="bg-secondary rounded-lg p-2.5 text-center">
+                    <p className="text-[10px] text-ink4 mb-0.5">Debt/Equity</p>
+                    <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.financials.debtEquity}</p>
+                  </div>
+                  <div className="bg-secondary rounded-lg p-2.5 text-center">
+                    <p className="text-[10px] text-ink4 mb-0.5">ROE</p>
+                    <p className="font-[family-name:var(--font-sora)] text-sm font-bold text-emerald-mid">{ipo.financials.roe}%</p>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
-      )}
-
-      {/* Related IPOs */}
-      {relatedIPOs.length > 0 && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="p-3 border-b border-border bg-secondary">
-            <h3 className="text-[13px] font-bold">Related IPOs</h3>
-          </div>
-          <div className="p-3 space-y-2">
-            {relatedIPOs.slice(0, 3).map((relatedIPO) => (
-              <Link
-                key={relatedIPO.id}
-                href={`/ipo/${relatedIPO.slug}`}
-                className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary transition-colors"
-              >
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center font-[family-name:var(--font-sora)] font-bold text-xs shrink-0"
-                  style={{ backgroundColor: relatedIPO.bgColor, color: relatedIPO.fgColor }}
-                >
-                  {relatedIPO.abbr}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-semibold truncate">{relatedIPO.name}</p>
-                  <p className="text-[10px] text-ink3">{relatedIPO.exchange}</p>
-                </div>
-                <div className={`text-[11px] font-bold ${relatedIPO.gmp >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
-                  {relatedIPO.gmp >= 0 ? '+' : ''}Rs {relatedIPO.gmp}
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
     </aside>
   );
 }
