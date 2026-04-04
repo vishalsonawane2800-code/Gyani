@@ -1,6 +1,7 @@
 'use client';
 
-import { Clock, TrendingUp, BarChart3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Clock, TrendingUp, BarChart3, RefreshCw } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDateRange, formatPrice, formatDate } from '@/lib/data';
 
@@ -46,6 +47,21 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export function IPOHero({ ipo }: IPOHeroProps) {
+  const [refreshTimer, setRefreshTimer] = useState(300); // 5 minutes in seconds
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRefreshTimer((prev) => (prev > 0 ? prev - 1 : 300));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const getStatusBadge = () => {
     switch (ipo.status) {
       case 'open': return { label: 'Open', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
@@ -148,8 +164,13 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
           </p>
           <p className="text-[11px] text-ink3 mt-1">{isPositiveGMP ? '+' : ''}{ipo.gmpPercent}% premium</p>
+          {/* Refresh Timer */}
+          <div className="flex items-center gap-1 mt-2 text-[9px] text-ink4">
+            <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
+            <span>Refresh in {formatTimer(refreshTimer)}</span>
+          </div>
           {/* GMP Graph Button */}
-          <div className="mt-3">
+          <div className="mt-2">
             <button 
               onClick={() => scrollToSection('gmp-history-section')}
               className="w-full flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[10px] font-semibold bg-emerald-bg text-emerald border border-emerald/20 hover:bg-emerald/10 transition-colors"
