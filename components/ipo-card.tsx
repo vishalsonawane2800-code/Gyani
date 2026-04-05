@@ -34,8 +34,6 @@ export function IPOCard({ ipo }: IPOCardProps) {
   }, [ipo.gmpLastUpdated]);
   const isPositiveGMP = ipo.gmp > 0;
   const isZeroGMP = ipo.gmp === 0;
-  const isPositivePrediction = ipo.aiPrediction > 0;
-  const isZeroPrediction = ipo.aiPrediction === 0;
 
   const getStatusBadge = () => {
     switch (ipo.status) {
@@ -95,9 +93,6 @@ export function IPOCard({ ipo }: IPOCardProps) {
             <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge()}`}>
               {ipo.exchange}
             </span>
-            <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-xl bg-primary text-white">
-              AI
-            </span>
           </div>
         </div>
       </div>
@@ -150,21 +145,22 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </div>
       </div>
 
-      {/* AI Prediction Row */}
+      {/* Market Sentiment Score */}
       <div className="flex items-center gap-2 py-2 px-2.5 border border-border rounded-lg mb-2.5 text-[12px]">
-        <Star className="w-3 h-3 text-primary" fill="currentColor" />
-        <span className="text-[10px] text-ink3 font-semibold shrink-0">AI Prediction</span>
-        <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+        <Star className="w-3 h-3 text-gold" fill="currentColor" />
+        <span className="text-[10px] text-ink3 font-semibold shrink-0">Market Sentiment</span>
+        <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
           <div 
-            className="h-full bg-primary rounded-full"
+            className={`h-full rounded-full ${
+              ipo.aiConfidence >= 70 ? 'bg-emerald' : ipo.aiConfidence >= 40 ? 'bg-gold' : 'bg-destructive'
+            }`}
             style={{ width: `${ipo.aiConfidence}%` }}
           />
         </div>
-        <span className="text-[10px] text-ink3 shrink-0">{ipo.aiConfidence}%</span>
         <span className={`font-extrabold font-[family-name:var(--font-sora)] text-sm shrink-0 ${
-          isZeroPrediction ? 'text-ink3' : isPositivePrediction ? 'text-emerald-mid' : 'text-destructive'
+          ipo.aiConfidence >= 70 ? 'text-emerald' : ipo.aiConfidence >= 40 ? 'text-gold' : 'text-destructive'
         }`}>
-          {isZeroPrediction ? '0%' : isPositivePrediction ? `+${ipo.aiPrediction}%` : `${ipo.aiPrediction}%`}
+          {ipo.aiConfidence}/100
         </span>
       </div>
 
