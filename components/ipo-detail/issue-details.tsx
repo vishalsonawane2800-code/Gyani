@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Target, FileText } from 'lucide-react';
 import type { IPO } from '@/lib/data';
@@ -9,6 +10,11 @@ interface IssueDetailsProps {
 }
 
 export function IssueDetails({ ipo }: IssueDetailsProps) {
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const issueDetails = ipo.issueDetails;
   
   if (!issueDetails) {
@@ -59,27 +65,33 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
           <p className="text-[11px] font-semibold text-ink3 mb-3">Fresh Issue vs OFS</p>
           <div className="flex items-center gap-4">
             <div className="w-[100px] h-[100px]">
-              <PieChart width={100} height={100}>
-                <Pie
-                  data={issueTypeData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={25}
-                  outerRadius={45}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {issueTypeData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={issueTypeColors[index]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
-                    `Rs ${props.payload.amount} Cr (${value}%)`, 
-                    name
-                  ]}
-                />
-              </PieChart>
+              {isMounted ? (
+                <PieChart width={100} height={100}>
+                  <Pie
+                    data={issueTypeData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={25}
+                    outerRadius={45}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {issueTypeData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={issueTypeColors[index]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
+                      `Rs ${props.payload.amount} Cr (${value}%)`, 
+                      name
+                    ]}
+                  />
+                </PieChart>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-[90px] h-[90px] rounded-full border-8 border-secondary animate-pulse" />
+                </div>
+              )}
             </div>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
