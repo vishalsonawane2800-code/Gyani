@@ -1,10 +1,11 @@
 import { currentIPOs } from '@/lib/data';
+import { Calendar, Clock, CheckCircle2, TrendingUp } from 'lucide-react';
 
 const statusNodes = [
-  { id: 'open', label: 'Open Soon', sub: 'Next 3 days', dotClass: 'bg-cobalt-mid shadow-[0_0_0_3px_rgba(59,130,246,.2)]' },
-  { id: 'lastday', label: 'Last Day', sub: 'Closes today', dotClass: 'bg-gold-mid shadow-[0_0_0_3px_rgba(245,158,11,.2)] animate-pulse' },
-  { id: 'allot', label: 'Allotment', sub: 'Today', dotClass: 'bg-primary shadow-[0_0_0_3px_rgba(79,70,229,.15)]' },
-  { id: 'listing', label: 'Listing', sub: 'Today', dotClass: 'bg-emerald-mid shadow-[0_0_0_3px_rgba(0,179,119,.2)] animate-pulse' },
+  { id: 'open', label: 'Open Soon', sub: 'Next 3 days', icon: Calendar, accentClass: 'text-cobalt-mid' },
+  { id: 'lastday', label: 'Last Day', sub: 'Closes today', icon: Clock, accentClass: 'text-gold-mid' },
+  { id: 'allot', label: 'Allotment', sub: 'Today', icon: CheckCircle2, accentClass: 'text-primary' },
+  { id: 'listing', label: 'Listing', sub: 'Today', icon: TrendingUp, accentClass: 'text-emerald-mid' },
 ];
 
 const getCounts = () => {
@@ -20,28 +21,48 @@ export function StatusBar() {
   const counts = getCounts();
 
   return (
-    <div className="bg-card border-b-2 border-border px-5">
-      <div className="max-w-[1440px] mx-auto flex items-center min-h-[72px] py-2">
-        {/* Label */}
-        <span className="text-[10.5px] font-extrabold tracking-wider uppercase text-ink4 whitespace-nowrap pr-5 border-r-[1.5px] border-border shrink-0 hidden sm:block">
-          IPO Status
-        </span>
-
-        {/* Status Track */}
-        <div className="flex items-stretch flex-1 overflow-x-auto">
-          {statusNodes.map((node) => (
-            <button
-              key={node.id}
-              className="flex flex-col items-center justify-center px-4 md:px-6 py-2 cursor-pointer transition-colors border-r border-border last:border-r-0 hover:bg-background shrink-0 gap-0.5"
-            >
-              <div className={`w-3 h-3 rounded-full ${node.dotClass}`} />
-              <div className="font-[family-name:var(--font-sora)] text-lg font-extrabold leading-none mt-1">
-                {counts[node.id] || 0}
-              </div>
-              <div className="text-[10px] font-semibold text-ink3 tracking-tight">{node.label}</div>
-              <div className="text-[9px] text-ink4 font-medium">{node.sub}</div>
-            </button>
-          ))}
+    <div className="bg-card border-b border-border px-4 sm:px-5">
+      <div className="max-w-[1440px] mx-auto">
+        {/* Stats Row */}
+        <div className="flex items-center justify-center py-3">
+          <div className="flex items-center gap-0">
+            {statusNodes.map((node, index) => {
+              const Icon = node.icon;
+              const count = counts[node.id] || 0;
+              
+              return (
+                <button
+                  key={node.id}
+                  className="group flex items-center gap-3 px-4 sm:px-6 py-2 cursor-pointer transition-all hover:bg-secondary/50 rounded-lg"
+                >
+                  {/* Icon */}
+                  <div className={`${node.accentClass} opacity-70 group-hover:opacity-100 transition-opacity`}>
+                    <Icon className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={1.75} />
+                  </div>
+                  
+                  {/* Content */}
+                  <div className="flex flex-col items-start">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`font-[family-name:var(--font-sora)] text-xl sm:text-2xl font-extrabold leading-none ${node.accentClass}`}>
+                        {count}
+                      </span>
+                      <span className="text-[11px] sm:text-[12px] font-semibold text-ink2">
+                        {node.label}
+                      </span>
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] text-ink4 font-medium">
+                      {node.sub}
+                    </span>
+                  </div>
+                  
+                  {/* Divider */}
+                  {index < statusNodes.length - 1 && (
+                    <div className="hidden sm:block w-px h-8 bg-border ml-4" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
