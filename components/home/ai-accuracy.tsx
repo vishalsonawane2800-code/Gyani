@@ -26,11 +26,11 @@ export function AIAccuracy() {
               <div className="text-[10px] text-ink3 mt-1">Total Predictions</div>
             </div>
             <div className="bg-secondary rounded-xl p-3 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-emerald">94%</div>
+              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-emerald">95%</div>
               <div className="text-[10px] text-ink3 mt-1">Within +/-5%</div>
             </div>
             <div className="bg-secondary rounded-xl p-3 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-gold-mid">2.3%</div>
+              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-emerald">2.1%</div>
               <div className="text-[10px] text-ink3 mt-1">Avg Error</div>
             </div>
             <div className="bg-secondary rounded-xl p-3 text-center">

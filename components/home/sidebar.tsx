@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, TrendingUp, ExternalLink, Brain } from 'lucide-react';
-import { upcomingEvents, currentIPOs } from '@/lib/data';
+import { Calendar, ExternalLink, Brain } from 'lucide-react';
+import { upcomingEvents } from '@/lib/data';
 
 export function Sidebar() {
   return (
@@ -50,67 +50,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Quick GMP */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-mid" />
-            Quick GMP
-          </h3>
-          <Link href="/#gmp" className="text-[11.5px] font-semibold text-primary">
-            View All
-          </Link>
-        </div>
-        <div className="p-4">
-          {currentIPOs.slice(0, 4).map((ipo, index) => {
-            const isPositive = ipo.gmp > 0;
-            const isZero = ipo.gmp === 0;
-            return (
-              <div 
-                key={ipo.id}
-                className={`flex items-center gap-2 py-2 text-[12.5px] ${
-                  index !== Math.min(currentIPOs.length - 1, 3) ? 'border-b border-border' : ''
-                }`}
-              >
-                <span className="font-medium flex-1 truncate">{ipo.name}</span>
-                <span className={`font-bold ${isZero ? 'text-ink3' : isPositive ? 'text-emerald-mid' : 'text-destructive'}`}>
-                  {isZero ? 'Rs 0' : isPositive ? `+Rs ${ipo.gmp.toLocaleString()}` : `-Rs ${Math.abs(ipo.gmp).toLocaleString()}`}
-                </span>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
-                  isZero ? 'bg-secondary text-ink3' : isPositive ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
-                }`}>
-                  {isZero ? '0%' : isPositive ? `+${ipo.gmpPercent}%` : `${ipo.gmpPercent}%`}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Allotment Check */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold">Check Allotment</h3>
-        </div>
-        <div className="p-4">
-          <select className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground">
-            <option value="">Select IPO</option>
-            {currentIPOs.filter(ipo => ipo.status === 'allot' || ipo.status === 'listing').map(ipo => (
-              <option key={ipo.id} value={ipo.slug}>{ipo.name}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Enter PAN Number"
-            className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground placeholder:text-ink4"
-            maxLength={10}
-          />
-          <button className="w-full bg-primary text-white text-[13px] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity">
-            Check Status
-          </button>
-        </div>
-      </div>
-
       {/* AI Accuracy Quick */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
@@ -125,11 +64,11 @@ export function Sidebar() {
         <div className="p-4">
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">72%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">95%</div>
               <div className="text-[9px] text-ink3">Within 5%</div>
             </div>
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">4.8%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">2.1%</div>
               <div className="text-[9px] text-ink3">Avg Error</div>
             </div>
           </div>
