@@ -182,7 +182,10 @@ export function IPOHero({ ipo }: IPOHeroProps) {
         </div>
         
         <div className="bg-secondary rounded-xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Est. Listing Price</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-ink4">Est. Listing Price</p>
+            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-emerald-bg text-emerald">GMP Based</span>
+          </div>
           <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">
             Rs {estimatedListingPrice >= 100000 ? `${(estimatedListingPrice / 100000).toFixed(2)}L` : estimatedListingPrice.toLocaleString()}
           </p>
@@ -190,7 +193,10 @@ export function IPOHero({ ipo }: IPOHeroProps) {
         </div>
         
         <div className="bg-secondary rounded-xl p-4">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Est. Profit (1 Lot)</p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-ink4">Est. Profit (1 Lot)</p>
+            <span className="text-[8px] font-semibold px-1.5 py-0.5 rounded bg-emerald-bg text-emerald">GMP Based</span>
+          </div>
           <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${estimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
             {estimatedProfit >= 0 ? '+' : ''}Rs {Math.abs(estimatedProfit).toLocaleString()}
           </p>
