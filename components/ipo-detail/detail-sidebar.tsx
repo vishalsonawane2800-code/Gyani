@@ -60,16 +60,14 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           </div>
         </div>
         
-        {/* GMP Based Listing Price */}
+        {/* Est. Listing Price */}
         <div className="bg-background/60 rounded-xl p-3 mb-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[10px] text-ink4 font-semibold">EST. LISTING PRICE</span>
-            <span className="text-[9px] text-ink4 bg-secondary px-1.5 py-0.5 rounded">GMP Based</span>
           </div>
           <div className="flex items-baseline gap-1">
             <span className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">Rs {gmpBasedListingPrice.toLocaleString()}</span>
           </div>
-          <p className="text-[10px] text-ink4 mt-1">Issue Price + GMP (Dynamic)</p>
         </div>
 
         {/* Estimated Profit */}
@@ -86,7 +84,6 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           <p className="text-[11px] text-ink3 mt-1">
             {estimatedProfit >= 0 ? '+' : ''}{profitPercent}% ({ipo.lotSize} shares)
           </p>
-          <p className="text-[10px] text-ink4 mt-0.5">Based on GMP of Rs {ipo.gmp}</p>
         </div>
 
         {/* AI Prediction & Market Sentiment */}
