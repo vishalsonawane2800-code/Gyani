@@ -1,10 +1,13 @@
 export function MarketSentiment() {
   return (
-    <div className="bg-card border border-border rounded-xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden shadow-sm">
+    <div className="bg-gradient-to-br from-[#F8FAFF] via-[#F0F4FF] to-[#EEF2FF] border border-primary/15 rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden shadow-[0_4px_20px_rgba(79,70,229,0.08)]">
+      
+      {/* Subtle decorative glow */}
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       
       {/* Left content */}
       <div className="relative flex-1 min-w-[200px]">
-        <div className="text-[10.5px] font-extrabold tracking-wider text-primary uppercase mb-2">
+        <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold tracking-wider text-primary uppercase mb-2 bg-primary/10 px-2.5 py-1 rounded-full">
           IPOGyani AI - Market Pulse
         </div>
         <h2 className="font-[family-name:var(--font-sora)] text-lg font-extrabold text-foreground mb-1">
@@ -34,20 +37,20 @@ export function MarketSentiment() {
       </div>
 
       {/* Score Breakdown */}
-      <div className="flex gap-4 shrink-0 relative">
-        <div className="text-center bg-secondary rounded-lg px-3 py-2">
+      <div className="flex gap-3 shrink-0 relative">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-3.5 py-2.5 shadow-sm border border-white/50">
           <div className="font-[family-name:var(--font-sora)] text-[22px] font-black leading-none text-destructive">32</div>
           <div className="text-[9.5px] text-ink3 mt-1">Finfluencers</div>
         </div>
-        <div className="text-center bg-secondary rounded-lg px-3 py-2">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-3.5 py-2.5 shadow-sm border border-white/50">
           <div className="font-[family-name:var(--font-sora)] text-[22px] font-black leading-none text-gold-mid">41</div>
           <div className="text-[9.5px] text-ink3 mt-1">News & Media</div>
         </div>
-        <div className="text-center bg-secondary rounded-lg px-3 py-2">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-3.5 py-2.5 shadow-sm border border-white/50">
           <div className="font-[family-name:var(--font-sora)] text-[22px] font-black leading-none text-destructive">35</div>
           <div className="text-[9.5px] text-ink3 mt-1">Big Firms</div>
         </div>
-        <div className="text-center bg-secondary rounded-lg px-3 py-2">
+        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-3.5 py-2.5 shadow-sm border border-white/50">
           <div className="font-[family-name:var(--font-sora)] text-[22px] font-black leading-none text-destructive">28</div>
           <div className="text-[9.5px] text-ink3 mt-1">Retail Mood</div>
         </div>
