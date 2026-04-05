@@ -1,4 +1,7 @@
-import { Calendar, IndianRupee, BarChart3, Layers, Building2, Users, TrendingUp, Sparkles } from 'lucide-react';
+'use client';
+
+import { useState, useEffect } from 'react';
+import { Calendar, IndianRupee, BarChart3, Layers, Building2, Users, TrendingUp, Sparkles, RefreshCw, Clock } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
 
@@ -7,27 +10,72 @@ interface DetailSidebarProps {
 }
 
 export function DetailSidebar({ ipo }: DetailSidebarProps) {
-  // Calculate AI predicted profit for 1 lot
-  const estimatedProfit = ipo.gmp * ipo.lotSize;
-  const minInvestment = ipo.priceMax * ipo.lotSize;
-  const profitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1);
+  // Countdown timer state (5 minutes = 300 seconds)
+  const [countdown, setCountdown] = useState(300);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          // Reset to 5 minutes when timer reaches 0
+          return 300;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format countdown as M:SS
+  const formatCountdown = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // All calculations based on GMP - when GMP changes, everything updates automatically
+  const gmpBasedListingPrice = ipo.priceMax + ipo.gmp; // Est. Listing Price = Issue Price + GMP
+  const estimatedProfit = ipo.gmp * ipo.lotSize; // Est. Profit = GMP × Lot Size
+  const minInvestment = ipo.priceMax * ipo.lotSize; // Investment = Issue Price × Lot Size
+  const profitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1); // Profit % = (GMP / Issue Price) × 100
 
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
-      {/* AI Predicted Profit for 1 Lot */}
+      {/* AI Predicted Profit for 1 Lot - GMP Based */}
       <div className="bg-gradient-to-br from-primary/10 via-cobalt/5 to-emerald/10 border border-primary/20 rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cobalt flex items-center justify-center">
-            <Sparkles className="w-4.5 h-4.5 text-white" />
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cobalt flex items-center justify-center">
+              <Sparkles className="w-4.5 h-4.5 text-white" />
+            </div>
+            <div>
+              <p className="text-[12px] font-bold">AI Predicted Profit</p>
+              <p className="text-[10px] text-ink3">For 1 Lot ({ipo.lotSize} shares)</p>
+            </div>
           </div>
-          <div>
-            <p className="text-[12px] font-bold">AI Predicted Profit</p>
-            <p className="text-[10px] text-ink3">For 1 Lot ({ipo.lotSize} shares)</p>
+          <div className="flex items-center gap-1 text-[10px] text-ink4">
+            <RefreshCw className="w-3 h-3" />
+            <span>{formatCountdown(countdown)}</span>
           </div>
         </div>
+        
+        {/* GMP Based Listing Price */}
+        <div className="bg-background/60 rounded-xl p-3 mb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] text-ink4 font-semibold">EST. LISTING PRICE</span>
+            <span className="text-[9px] text-ink4 bg-secondary px-1.5 py-0.5 rounded">GMP Based</span>
+          </div>
+          <div className="flex items-baseline gap-1">
+            <span className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">Rs {gmpBasedListingPrice.toLocaleString()}</span>
+          </div>
+          <p className="text-[10px] text-ink4 mt-1">Issue Price + GMP (Dynamic)</p>
+        </div>
+
+        {/* Estimated Profit */}
         <div className="bg-background/60 rounded-xl p-3 mb-3">
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-[10px] text-ink4 font-semibold">Expected Profit</span>
+            <span className="text-[10px] text-ink4 font-semibold">EST. PROFIT (1 LOT)</span>
             <span className="text-[10px] text-ink4">{ipo.aiConfidence}% confidence</span>
           </div>
           <div className="flex items-baseline gap-2">
@@ -36,9 +84,12 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
             </span>
           </div>
           <p className="text-[11px] text-ink3 mt-1">
-            {estimatedProfit >= 0 ? '+' : ''}{profitPercent}% on Rs {minInvestment.toLocaleString()} investment
+            {estimatedProfit >= 0 ? '+' : ''}{profitPercent}% ({ipo.lotSize} shares)
           </p>
+          <p className="text-[10px] text-ink4 mt-0.5">Based on GMP of Rs {ipo.gmp}</p>
         </div>
+
+        {/* AI Prediction & Market Sentiment */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-primary" />
@@ -57,6 +108,13 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           }`}>
             {ipo.sentimentLabel}
           </div>
+        </div>
+        
+        {/* Refresh countdown */}
+        <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-border/50">
+          <Clock className="w-3 h-3 text-emerald" />
+          <span className="text-[10px] text-ink3">Refresh in</span>
+          <span className="text-[11px] font-bold text-emerald">{formatCountdown(countdown)}</span>
         </div>
       </div>
 

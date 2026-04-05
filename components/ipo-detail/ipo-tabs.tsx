@@ -307,6 +307,11 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
   // Use actual subscription history if available
   const subHistory = ipo.subscriptionHistory || [];
 
+  // Get last updated time from subscription history or use current time
+  const lastUpdated = subHistory.length > 0 
+    ? `${new Date(subHistory[0].date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} ${subHistory[0].time}`
+    : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
   // Prepare data for chart
   const chartData = [...subHistory].reverse().map((entry) => ({
     name: entry.date.includes('2026') 
@@ -340,9 +345,17 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
   return (
     <div>
       {/* Category Breakdown */}
-      <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold mb-4">
-        Subscription by Category {ipo.subscription.isFinal ? '(Final)' : '(Live)'}
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold">
+          Subscription by Category {ipo.subscription.isFinal ? '(Final)' : '(Live)'}
+        </h3>
+        <div className="flex items-center gap-1.5 text-[11px] text-ink3 bg-secondary px-2.5 py-1 rounded-lg">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Last Updated: <span className="font-semibold text-foreground">{lastUpdated}</span></span>
+        </div>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-secondary rounded-xl p-4 text-center">
           <div className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${ipo.subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
