@@ -7,11 +7,13 @@ import type { ExpertReview } from '@/lib/data';
 interface ExpertReviewsProps {
   reviews?: ExpertReview[];
   ipoName: string;
+  sentimentScore?: number; // -100 to +100
+  sentimentLabel?: string;
 }
 
 type FilterType = 'all' | 'youtube' | 'analyst' | 'news' | 'firm';
 
-export function ExpertReviews({ reviews = [], ipoName }: ExpertReviewsProps) {
+export function ExpertReviews({ reviews = [], ipoName, sentimentScore = 0, sentimentLabel = 'Neutral' }: ExpertReviewsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
 
   const filteredReviews = reviews.filter((review) => {
@@ -76,21 +78,156 @@ export function ExpertReviews({ reviews = [], ipoName }: ExpertReviewsProps) {
     }
   };
 
-  if (reviews.length === 0) {
-    return (
-      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
-        <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold mb-4">
-          Expert Reviews & Opinions
-        </h2>
-        <div className="text-center py-8">
-          <p className="text-ink3 text-[13px]">Expert reviews for {ipoName} IPO will appear here once available.</p>
-          <p className="text-[11px] text-ink4 mt-2">Reviews are summarized from YouTubers, analysts, news channels, and brokerage firms using AI.</p>
+  // Calculate needle rotation: -100 = -90deg, 0 = 0deg, +100 = 90deg
+  const needleRotation = (sentimentScore / 100) * 90;
+
+  // Speedometer component
+  const SentimentSpeedometer = () => (
+    <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-6 mb-6">
+      <div className="text-center mb-4">
+        <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold text-white">
+          Market Sentiment Score for {ipoName} IPO
+        </h3>
+      </div>
+      
+      {/* Speedometer */}
+      <div className="relative flex justify-center">
+        <div className="relative w-[200px] h-[110px]">
+          {/* Speedometer Arc Background */}
+          <svg viewBox="0 0 200 110" className="w-full h-full">
+            {/* Gradient definitions */}
+            <defs>
+              <linearGradient id="speedometerGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#ef4444" />
+                <stop offset="25%" stopColor="#f97316" />
+                <stop offset="50%" stopColor="#eab308" />
+                <stop offset="75%" stopColor="#22c55e" />
+                <stop offset="100%" stopColor="#10b981" />
+              </linearGradient>
+            </defs>
+            
+            {/* Arc Background */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="12"
+              strokeLinecap="round"
+            />
+            
+            {/* Colored Arc */}
+            <path
+              d="M 20 100 A 80 80 0 0 1 180 100"
+              fill="none"
+              stroke="url(#speedometerGradient)"
+              strokeWidth="12"
+              strokeLinecap="round"
+            />
+            
+            {/* Tick marks */}
+            {[-90, -67.5, -45, -22.5, 0, 22.5, 45, 67.5, 90].map((angle, i) => {
+              const radian = (angle * Math.PI) / 180;
+              const x1 = 100 + 65 * Math.cos(radian - Math.PI);
+              const y1 = 100 + 65 * Math.sin(radian - Math.PI);
+              const x2 = 100 + 75 * Math.cos(radian - Math.PI);
+              const y2 = 100 + 75 * Math.sin(radian - Math.PI);
+              return (
+                <line
+                  key={i}
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
+                  stroke="rgba(255,255,255,0.5)"
+                  strokeWidth="2"
+                />
+              );
+            })}
+            
+            {/* Labels */}
+            <text x="25" y="108" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">-100</text>
+            <text x="92" y="30" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">0</text>
+            <text x="165" y="108" fill="rgba(255,255,255,0.7)" fontSize="10" fontWeight="600">+100</text>
+          </svg>
+          
+          {/* Needle */}
+          <div 
+            className="absolute bottom-[10px] left-1/2 origin-bottom transition-transform duration-500"
+            style={{ 
+              transform: `translateX(-50%) rotate(${needleRotation}deg)`,
+              width: '4px',
+              height: '60px'
+            }}
+          >
+            <div className="w-full h-full bg-gradient-to-t from-white to-white/80 rounded-full shadow-lg" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-md" />
+          </div>
+          
+          {/* Center circle */}
+          <div className="absolute bottom-[4px] left-1/2 -translate-x-1/2 w-5 h-5 bg-slate-700 border-2 border-slate-500 rounded-full" />
         </div>
       </div>
+      
+      {/* Score Display */}
+      <div className="text-center mt-4">
+        <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl ${
+          sentimentScore >= 30 ? 'bg-emerald-500/20' : 
+          sentimentScore >= -30 ? 'bg-gold-500/20' : 'bg-destructive/20'
+        }`}>
+          <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${
+            sentimentScore >= 30 ? 'text-emerald-400' : 
+            sentimentScore >= -30 ? 'text-yellow-400' : 'text-red-400'
+          }`}>
+            {sentimentScore >= 0 ? '+' : ''}{sentimentScore}
+          </span>
+        </div>
+        <div className={`mt-2 inline-block px-3 py-1 rounded-lg text-[11px] font-bold ${
+          sentimentLabel === 'Bullish' ? 'bg-emerald-500/20 text-emerald-400' :
+          sentimentLabel === 'Bearish' ? 'bg-red-500/20 text-red-400' :
+          'bg-yellow-500/20 text-yellow-400'
+        }`}>
+          {sentimentLabel}
+        </div>
+      </div>
+      
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 mt-4 text-[10px]">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-red-500" />
+          <span className="text-slate-400">Bearish</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-yellow-500" />
+          <span className="text-slate-400">Neutral</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span className="text-slate-400">Bullish</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (reviews.length === 0) {
+    return (
+      <>
+        <SentimentSpeedometer />
+        <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+          <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold mb-4">
+            Expert Reviews & Opinions
+          </h2>
+          <div className="text-center py-8">
+            <p className="text-ink3 text-[13px]">Expert reviews for {ipoName} IPO will appear here once available.</p>
+            <p className="text-[11px] text-ink4 mt-2">Reviews are summarized from YouTubers, analysts, news channels, and brokerage firms using AI.</p>
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
+    <>
+    <SentimentSpeedometer />
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold">

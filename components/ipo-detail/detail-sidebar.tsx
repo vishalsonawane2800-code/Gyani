@@ -74,7 +74,13 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
         <div className="bg-background/60 rounded-xl p-3 mb-3">
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-[10px] text-ink4 font-semibold">AI EST. PROFIT (1 LOT)</span>
-            <span className="text-[10px] text-ink4">{ipo.aiConfidence}% confidence</span>
+            <div className={`px-2 py-0.5 rounded-lg text-[9px] font-bold ${
+              ipo.sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
+              ipo.sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
+              'bg-gold-bg text-gold'
+            }`}>
+              {ipo.sentimentLabel}
+            </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${aiEstimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
@@ -86,7 +92,7 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           </p>
         </div>
 
-        {/* AI Prediction & Market Sentiment */}
+        {/* AI Prediction */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-3.5 h-3.5 text-primary" />
@@ -95,43 +101,6 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           <span className={`font-[family-name:var(--font-sora)] text-[14px] font-bold ${ipo.aiPrediction >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
             {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
           </span>
-        </div>
-        
-        {/* Market Sentiment Score (-100 to +100) */}
-        <div className="bg-background/60 rounded-xl p-3 mt-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-ink4 font-semibold">MARKET SENTIMENT SCORE</span>
-            <div className={`px-2 py-0.5 rounded-lg text-[9px] font-bold ${
-              ipo.sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
-              ipo.sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
-              'bg-gold-bg text-gold'
-            }`}>
-              {ipo.sentimentLabel}
-            </div>
-          </div>
-          {/* Sentiment Score Bar */}
-          <div className="relative h-2 bg-gradient-to-r from-destructive via-gold to-emerald rounded-full mb-2">
-            <div 
-              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-foreground rounded-full shadow-md"
-              style={{ 
-                left: `${((ipo.aiPrediction + 100) / 200) * 100}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-            />
-          </div>
-          <div className="flex items-center justify-between text-[9px] text-ink4">
-            <span>-100</span>
-            <span>0</span>
-            <span>+100</span>
-          </div>
-          <div className="text-center mt-2">
-            <span className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${
-              ipo.aiPrediction >= 30 ? 'text-emerald-mid' : 
-              ipo.aiPrediction >= -30 ? 'text-gold-mid' : 'text-destructive'
-            }`}>
-              {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}
-            </span>
-          </div>
         </div>
         
         {/* Refresh countdown */}
