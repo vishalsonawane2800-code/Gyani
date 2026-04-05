@@ -221,7 +221,7 @@ export function GMPTracker() {
                         </span>
                       </td>
                       <td className="py-3 px-3 font-semibold">
-                        Rs {ipo.priceMin >= 100000 ? `${(ipo.priceMin / 100000).toFixed(1)}L` : ipo.priceMin.toLocaleString()} - {ipo.priceMax >= 100000 ? `${(ipo.priceMax / 100000).toFixed(1)}L` : ipo.priceMax.toLocaleString()}
+                        Rs {ipo.priceMin.toLocaleString('en-IN')} - {ipo.priceMax.toLocaleString('en-IN')}
                       </td>
                       <td className="py-3 px-3 text-ink3">
                         {ipo.issueSize}
