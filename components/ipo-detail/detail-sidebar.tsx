@@ -96,14 +96,41 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
             {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
           </span>
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-[10px] text-ink3">Market Sentiment</span>
-          <div className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
-            ipo.sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
-            ipo.sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
-            'bg-gold-bg text-gold'
-          }`}>
-            {ipo.sentimentLabel}
+        
+        {/* Market Sentiment Score (-100 to +100) */}
+        <div className="bg-background/60 rounded-xl p-3 mt-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] text-ink4 font-semibold">MARKET SENTIMENT SCORE</span>
+            <div className={`px-2 py-0.5 rounded-lg text-[9px] font-bold ${
+              ipo.sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
+              ipo.sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
+              'bg-gold-bg text-gold'
+            }`}>
+              {ipo.sentimentLabel}
+            </div>
+          </div>
+          {/* Sentiment Score Bar */}
+          <div className="relative h-2 bg-gradient-to-r from-destructive via-gold to-emerald rounded-full mb-2">
+            <div 
+              className="absolute top-1/2 -translate-y-1/2 w-3 h-3 bg-white border-2 border-foreground rounded-full shadow-md"
+              style={{ 
+                left: `${((ipo.aiPrediction + 100) / 200) * 100}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[9px] text-ink4">
+            <span>-100</span>
+            <span>0</span>
+            <span>+100</span>
+          </div>
+          <div className="text-center mt-2">
+            <span className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${
+              ipo.aiPrediction >= 30 ? 'text-emerald-mid' : 
+              ipo.aiPrediction >= -30 ? 'text-gold-mid' : 'text-destructive'
+            }`}>
+              {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}
+            </span>
           </div>
         </div>
         

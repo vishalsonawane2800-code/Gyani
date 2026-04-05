@@ -1,7 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import { Target, Users, Building2, Briefcase, FileText } from 'lucide-react';
+import { Target, FileText } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 
 interface IssueDetailsProps {
@@ -25,15 +25,6 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
     { name: 'Fresh Issue', value: issueDetails.freshIssuePercent, amount: issueDetails.freshIssueCr },
     { name: 'OFS', value: issueDetails.ofsPercent, amount: issueDetails.ofsCr },
   ].filter(item => item.value > 0);
-
-  // Quota allocation data
-  const quotaData = [
-    { name: 'QIB', value: issueDetails.qibQuotaPercent, color: 'var(--cobalt-mid)' },
-    { name: 'Retail', value: issueDetails.retailQuotaPercent, color: 'var(--emerald-mid)' },
-    { name: 'NII', value: issueDetails.niiQuotaPercent, color: 'var(--gold-mid)' },
-    ...(issueDetails.employeeQuotaPercent ? [{ name: 'Employee', value: issueDetails.employeeQuotaPercent, color: 'var(--primary-mid)' }] : []),
-    ...(issueDetails.shareholderQuotaPercent ? [{ name: 'Shareholder', value: issueDetails.shareholderQuotaPercent, color: 'var(--ink3)' }] : []),
-  ];
 
   const issueTypeColors = ['var(--cobalt-mid)', 'var(--gold-mid)'];
 
@@ -117,62 +108,6 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
           </div>
         </div>
 
-        {/* Quota Allocation */}
-        <div className="bg-secondary rounded-xl p-4">
-          <p className="text-[11px] font-semibold text-ink3 mb-3">Reservation Quota</p>
-          <div className="flex items-center gap-4">
-            <div className="w-[100px] h-[100px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={quotaData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={45}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {quotaData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number, name: string) => [`${value}%`, name]} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex-1 space-y-1.5">
-              {quotaData.map((item, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
-                    <span className="text-[12px]">{item.name}</span>
-                  </div>
-                  <span className="text-[12px] font-semibold">{item.value}%</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quota Details Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="bg-cobalt-bg border border-cobalt/20 rounded-xl p-3 text-center">
-          <Building2 className="w-4 h-4 text-cobalt mx-auto mb-1" />
-          <p className="text-[10px] text-ink4 font-semibold">QIB</p>
-          <p className="text-[16px] font-extrabold text-cobalt">{issueDetails.qibQuotaPercent}%</p>
-        </div>
-        <div className="bg-emerald-bg border border-emerald/20 rounded-xl p-3 text-center">
-          <Users className="w-4 h-4 text-emerald mx-auto mb-1" />
-          <p className="text-[10px] text-ink4 font-semibold">Retail</p>
-          <p className="text-[16px] font-extrabold text-emerald">{issueDetails.retailQuotaPercent}%</p>
-        </div>
-        <div className="bg-gold-bg border border-gold/20 rounded-xl p-3 text-center">
-          <Briefcase className="w-4 h-4 text-gold mx-auto mb-1" />
-          <p className="text-[10px] text-ink4 font-semibold">NII</p>
-          <p className="text-[16px] font-extrabold text-gold">{issueDetails.niiQuotaPercent}%</p>
-        </div>
       </div>
 
       {/* IPO Objectives */}
