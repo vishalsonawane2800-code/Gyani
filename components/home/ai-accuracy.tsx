@@ -44,7 +44,7 @@ export function AIAccuracy() {
             <table className="w-full text-[12.5px] border-collapse">
               <thead>
                 <tr>
-                  <th className="text-left bg-secondary text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2 px-3">IPO Name</th>
+                  <th className="text-left bg-secondary text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2 px-3 sticky left-0 z-10 min-w-[140px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">IPO Name</th>
                   <th className="text-left bg-secondary text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2 px-3">Predicted</th>
                   <th className="text-left bg-secondary text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2 px-3">Actual</th>
                   <th className="text-left bg-secondary text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2 px-3">Error</th>
@@ -59,8 +59,8 @@ export function AIAccuracy() {
                   const accuracy = Math.max(0, 100 - ipo.aiErr * 10);
                   
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0">
-                      <td className="py-2.5 px-3">
+                    <tr key={ipo.id} className="border-b border-border last:border-b-0 group/row">
+                      <td className="py-2.5 px-3 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[140px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
                         <span 
                           className="inline-block w-1.5 h-1.5 rounded-full mr-2 align-middle"
                           style={{ backgroundColor: isPositive ? 'var(--emerald-mid)' : 'var(--destructive)' }}

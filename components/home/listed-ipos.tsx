@@ -42,7 +42,7 @@ export function ListedIPOs() {
           <table className="w-full">
             <thead>
               <tr className="bg-secondary/50 border-b border-border">
-                <th className="text-left text-[11px] font-semibold text-ink3 py-3 px-4">IPO Name</th>
+                <th className="text-left text-[11px] font-semibold text-ink3 py-3 px-4 sticky left-0 bg-secondary/50 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">IPO Name</th>
                 <th className="text-center text-[11px] font-semibold text-ink3 py-3 px-4">List Date</th>
                 <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">Issue Price</th>
                 <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">List Price</th>
@@ -60,11 +60,11 @@ export function ListedIPOs() {
                 return (
                   <tr 
                     key={ipo.id} 
-                    className={`hover:bg-secondary/30 transition-colors ${
+                    className={`hover:bg-secondary/30 transition-colors group/row ${
                       idx !== closedIPOs.length - 1 ? 'border-b border-border' : ''
                     }`}
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
                       <Link href={`/ipo/${ipo.slug}`} className="flex items-center gap-2.5 group">
                         <div 
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
