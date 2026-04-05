@@ -227,7 +227,7 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
 
       {/* GMP Chart */}
       <div className="bg-secondary rounded-xl p-4 mb-4">
-        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+        <ChartContainer config={chartConfig} className="h-[200px] min-h-[200px] w-full">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="gmpGradient" x1="0" y1="0" x2="0" y2="1">
@@ -388,7 +388,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         <>
           <h4 className="font-semibold text-[13px] mb-3">Subscription Trend</h4>
           <div className="bg-secondary rounded-xl p-4 mb-4">
-            <ChartContainer config={chartConfig} className="h-[200px] w-full">
+            <ChartContainer config={chartConfig} className="h-[200px] min-h-[200px] w-full">
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis 

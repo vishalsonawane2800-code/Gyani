@@ -1,6 +1,6 @@
 'use client';
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { Target, FileText } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 
@@ -59,29 +59,27 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
           <p className="text-[11px] font-semibold text-ink3 mb-3">Fresh Issue vs OFS</p>
           <div className="flex items-center gap-4">
             <div className="w-[100px] h-[100px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={issueTypeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={25}
-                    outerRadius={45}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {issueTypeData.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={issueTypeColors[index]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
-                      `Rs ${props.payload.amount} Cr (${value}%)`, 
-                      name
-                    ]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <PieChart width={100} height={100}>
+                <Pie
+                  data={issueTypeData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={25}
+                  outerRadius={45}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {issueTypeData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={issueTypeColors[index]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value: number, name: string, props: { payload: { amount: number } }) => [
+                    `Rs ${props.payload.amount} Cr (${value}%)`, 
+                    name
+                  ]}
+                />
+              </PieChart>
             </div>
             <div className="flex-1 space-y-2">
               <div className="flex items-center justify-between">
