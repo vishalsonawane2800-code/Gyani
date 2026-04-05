@@ -64,7 +64,7 @@ export default function GMPPage() {
             <table className="w-full">
               <thead className="bg-secondary">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-ink2">IPO Name</th>
+                  <th className="text-left p-4 text-sm font-medium text-ink2 sticky left-0 bg-secondary z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">IPO Name</th>
                   <th className="text-center p-4 text-sm font-medium text-ink2">Type</th>
                   <th className="text-right p-4 text-sm font-medium text-ink2">Price Band</th>
                   <th className="text-right p-4 text-sm font-medium text-ink2">GMP</th>
@@ -83,8 +83,8 @@ export default function GMPPage() {
                     : `₹${ipo.priceMin} - ₹${ipo.priceMax}`
                   
                   return (
-                    <tr key={ipo.slug} className={idx !== allIPOs.length - 1 ? "border-b border-border" : ""}>
-                      <td className="p-4">
+                    <tr key={ipo.slug} className={`${idx !== allIPOs.length - 1 ? "border-b border-border" : ""} group/row`}>
+                      <td className="p-4 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
                         <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
                           {ipo.name}
                         </Link>
