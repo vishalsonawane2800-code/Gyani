@@ -1,8 +1,6 @@
 export function MarketSentiment() {
   return (
-    <div className="bg-[#5b21b6] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
-      {/* Background glow - cobalt blue */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(59,130,246,.25)_0%,transparent_65%)] pointer-events-none" />
+    <div className="bg-[#3d1878] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
       
       {/* Left content */}
       <div className="relative flex-1 min-w-[200px]">
