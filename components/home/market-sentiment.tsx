@@ -1,12 +1,12 @@
 export function MarketSentiment() {
   return (
-    <div className="bg-gradient-to-br from-[#1e1040] to-[#0f172a] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(91,33,182,.3)_0%,transparent_65%)] pointer-events-none" />
+    <div className="bg-gradient-to-br from-[#0c1929] to-[#0f172a] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
+      {/* Background glow - cobalt blue */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(59,130,246,.25)_0%,transparent_65%)] pointer-events-none" />
       
       {/* Left content */}
       <div className="relative flex-1 min-w-[200px]">
-        <div className="text-[10.5px] font-extrabold tracking-wider text-[#a78bfa] uppercase mb-2">
+        <div className="text-[10.5px] font-extrabold tracking-wider text-[#60a5fa] uppercase mb-2">
           IPOGyani AI - Market Pulse
         </div>
         <h2 className="font-[family-name:var(--font-sora)] text-lg font-extrabold text-white mb-1">
@@ -29,8 +29,8 @@ export function MarketSentiment() {
           />
           <defs>
             <linearGradient id="sentGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#60a5fa"/>
-              <stop offset="100%" stopColor="#a78bfa"/>
+              <stop offset="0%" stopColor="#3b82f6"/>
+              <stop offset="100%" stopColor="#06b6d4"/>
             </linearGradient>
           </defs>
           <text x="53" y="48" textAnchor="middle" fill="#fff" fontFamily="var(--font-sora)" fontSize="25" fontWeight="800">38</text>
