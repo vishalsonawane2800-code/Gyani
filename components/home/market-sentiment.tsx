@@ -6,11 +6,11 @@ export function MarketSentiment() {
       <div className="absolute -top-20 -right-20 w-40 h-40 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       
       {/* Main 2-column layout: Score on left, Content on right */}
-      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 relative">
+      <div className="flex flex-row items-center gap-4 sm:gap-6 relative">
         
         {/* LEFT: Score Circle */}
         <div className="shrink-0 flex flex-col items-center">
-          <svg width="90" height="90" viewBox="0 0 106 106" aria-label="Market sentiment score: 38 out of 100">
+          <svg width="72" height="72" viewBox="0 0 106 106" aria-label="Market sentiment score: 38 out of 100" className="sm:w-[90px] sm:h-[90px]">
             <circle cx="53" cy="53" r="42" fill="none" stroke="#E5E7EB" strokeWidth="10"/>
             <circle 
               cx="53" cy="53" r="42" fill="none" 
@@ -21,20 +21,20 @@ export function MarketSentiment() {
             <text x="53" y="48" textAnchor="middle" fill="#111827" fontFamily="var(--font-sora)" fontSize="25" fontWeight="800">38</text>
             <text x="53" y="63" textAnchor="middle" fill="#6B7280" fontFamily="var(--font-dm-sans)" fontSize="11">/100</text>
           </svg>
-          <div className="text-center text-[11px] font-extrabold text-gold-mid tracking-wide mt-1">
+          <div className="text-center text-[10px] sm:text-[11px] font-extrabold text-gold-mid tracking-wide mt-1">
             CAUTIOUS
           </div>
         </div>
 
         {/* RIGHT: Text content */}
-        <div className="flex-1 text-center sm:text-left">
-          <div className="inline-flex items-center gap-1.5 text-[10.5px] font-extrabold tracking-wider text-primary uppercase mb-2 bg-primary/10 px-2.5 py-1 rounded-full">
+        <div className="flex-1 min-w-0 text-left">
+          <div className="inline-flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10.5px] font-extrabold tracking-wider text-primary uppercase mb-1.5 sm:mb-2 bg-primary/10 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full">
             IPOGyani AI - Market Pulse
           </div>
-          <h2 className="font-[family-name:var(--font-sora)] text-lg font-extrabold text-foreground mb-1">
+          <h2 className="font-[family-name:var(--font-sora)] text-base sm:text-lg font-extrabold text-foreground mb-0.5 sm:mb-1">
             Overall Market Sentiment
           </h2>
-          <p className="text-[11.5px] text-ink3 max-w-[320px] leading-relaxed mx-auto sm:mx-0">
+          <p className="text-[10.5px] sm:text-[11.5px] text-ink3 leading-relaxed line-clamp-3 sm:line-clamp-none">
             FY26 IPO returns disappoint - investors lost money in 2 out of 3 issues. Retail applications down 40%. Exercise caution.
           </p>
         </div>
