@@ -108,7 +108,7 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             <span className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-cobalt-bg text-cobalt">
               {ipo.exchange}
             </span>
-            <span className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-gradient-to-r from-primary to-cobalt text-white">
+            <span className="text-[10px] font-bold px-2.5 py-1 rounded-xl bg-primary text-white">
               AI Tracked
             </span>
             <span className="text-[12px] text-ink3 font-medium self-center">

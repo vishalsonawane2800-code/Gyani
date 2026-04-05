@@ -42,10 +42,10 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
       {/* AI Predicted Profit for 1 Lot */}
-      <div className="bg-gradient-to-br from-primary/10 via-cobalt/5 to-emerald/10 border border-primary/20 rounded-2xl p-4">
+      <div className="bg-primary-bg border border-primary/20 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cobalt flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
               <Sparkles className="w-4.5 h-4.5 text-white" />
             </div>
             <div>

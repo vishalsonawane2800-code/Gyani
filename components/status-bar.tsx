@@ -3,7 +3,7 @@ import { currentIPOs } from '@/lib/data';
 const statusNodes = [
   { id: 'open', label: 'Open Soon', sub: 'Next 3 days', dotClass: 'bg-cobalt-mid shadow-[0_0_0_3px_rgba(59,130,246,.2)]' },
   { id: 'lastday', label: 'Last Day', sub: 'Closes today', dotClass: 'bg-gold-mid shadow-[0_0_0_3px_rgba(245,158,11,.2)] animate-pulse' },
-  { id: 'allot', label: 'Allotment', sub: 'Today', dotClass: 'bg-primary-mid shadow-[0_0_0_3px_rgba(124,58,237,.2)]' },
+  { id: 'allot', label: 'Allotment', sub: 'Today', dotClass: 'bg-primary shadow-[0_0_0_3px_rgba(79,70,229,.15)]' },
   { id: 'listing', label: 'Listing', sub: 'Today', dotClass: 'bg-emerald-mid shadow-[0_0_0_3px_rgba(0,179,119,.2)] animate-pulse' },
 ];
 

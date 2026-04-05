@@ -83,7 +83,7 @@ export function GMPTracker() {
               <Clock className="w-3 h-3" />
               <span>Updated: <strong className="text-foreground">{mounted ? formatTimeAgo(latestUpdate.toISOString()) : '--'}</strong></span>
             </div>
-            <button className="text-[12.5px] font-semibold text-primary-mid flex items-center gap-1 hover:opacity-75 transition-opacity">
+            <button className="text-[12.5px] font-semibold text-primary flex items-center gap-1 hover:opacity-75 transition-opacity">
               <RefreshCw className="w-3 h-3" />
               Refresh
             </button>
@@ -128,7 +128,7 @@ export function GMPTracker() {
                             {ipo.abbr}
                           </div>
                           <div>
-                            <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary-mid hover:underline">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
                               {ipo.name}
                             </Link>
                             <div className="text-[10.5px] text-ink3">{ipo.sector}</div>
@@ -186,7 +186,7 @@ export function GMPTracker() {
                 {upcomingIPOs.length} Scheduled
               </span>
             </div>
-            <Link href="/upcoming" className="text-[12.5px] font-semibold text-primary-mid hover:opacity-75 transition-opacity">
+            <Link href="/upcoming" className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity">
               View All
             </Link>
           </div>
@@ -218,7 +218,7 @@ export function GMPTracker() {
                             {ipo.abbr}
                           </div>
                           <div>
-                            <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary-mid hover:underline">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
                               {ipo.name}
                             </Link>
                             <div className="text-[10.5px] text-ink3">{ipo.sector}</div>

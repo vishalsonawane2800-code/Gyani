@@ -38,11 +38,11 @@ export function Header() {
       <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 mr-5 shrink-0">
-          <div className="w-[34px] h-[34px] bg-gradient-to-br from-primary to-cobalt rounded-[9px] flex items-center justify-center">
+          <div className="w-[34px] h-[34px] bg-primary rounded-lg flex items-center justify-center">
             <TrendingUp className="w-[18px] h-[18px] text-white" strokeWidth={2} />
           </div>
-          <span className="font-[family-name:var(--font-sora)] font-black text-xl tracking-tight">
-            IPO<span className="text-primary-mid">Gyani</span>
+          <span className="font-[family-name:var(--font-sora)] font-black text-xl tracking-tight text-foreground">
+            IPO<span className="text-primary">Gyani</span>
           </span>
         </Link>
 
@@ -75,7 +75,7 @@ export function Header() {
 
           {/* Compact Search Bar */}
           <div className={`hidden md:flex items-center bg-secondary rounded-lg border transition-all ${
-            isSearchFocused ? 'border-primary-mid shadow-sm w-56' : 'border-transparent w-44'
+            isSearchFocused ? 'border-primary shadow-sm w-56' : 'border-transparent w-44'
           }`}>
             <Search className="w-3.5 h-3.5 text-ink4 ml-2.5 shrink-0" />
             <input

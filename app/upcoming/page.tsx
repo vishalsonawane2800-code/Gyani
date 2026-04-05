@@ -64,7 +64,7 @@ export default function UpcomingPage() {
             SME
           </button>
           <div className="ml-auto">
-            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-mid transition-colors">
+            <button className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity">
               <Bell className="w-4 h-4" />
               Set All Reminders
             </button>
@@ -87,7 +87,7 @@ export default function UpcomingPage() {
         )}
 
         {/* Notification CTA */}
-        <div className="mt-12 bg-gradient-to-r from-primary to-cobalt rounded-2xl p-8 text-center text-white">
+        <div className="mt-12 bg-foreground rounded-2xl p-8 text-center text-white">
           <Bell className="w-10 h-10 mx-auto mb-4 opacity-90" />
           <h2 className="font-heading text-2xl font-bold mb-2">Never Miss an IPO</h2>
           <p className="text-white/80 mb-6 max-w-md mx-auto">

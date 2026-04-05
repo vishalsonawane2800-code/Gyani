@@ -59,7 +59,7 @@ export default function AboutPage() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="font-[family-name:var(--font-sora)] text-3xl md:text-4xl font-bold text-ink mb-4">
-            About <span className="text-primary-mid">IPOGyani</span>
+            About <span className="text-primary">IPOGyani</span>
           </h1>
           <p className="text-ink3 text-lg max-w-2xl mx-auto leading-relaxed">
             India&apos;s most intelligent IPO research platform, helping investors make informed decisions with data-driven insights and AI-powered predictions.
@@ -70,7 +70,7 @@ export default function AboutPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
           {stats.map((stat) => (
             <div key={stat.label} className="bg-card border border-border rounded-xl p-6 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-2xl md:text-3xl font-bold text-primary-mid mb-1">
+              <div className="font-[family-name:var(--font-sora)] text-2xl md:text-3xl font-bold text-primary mb-1">
                 {stat.value}
               </div>
               <div className="text-ink3 text-sm">{stat.label}</div>
@@ -98,7 +98,7 @@ export default function AboutPage() {
           {features.map((feature) => (
             <div key={feature.title} className="bg-card border border-border rounded-xl p-6">
               <div className="w-10 h-10 rounded-lg bg-primary-bg flex items-center justify-center mb-4">
-                <feature.icon className="w-5 h-5 text-primary-mid" />
+                <feature.icon className="w-5 h-5 text-primary" />
               </div>
               <h3 className="font-semibold text-ink mb-2">{feature.title}</h3>
               <p className="text-ink3 text-sm leading-relaxed">{feature.description}</p>
@@ -107,7 +107,7 @@ export default function AboutPage() {
         </div>
 
         {/* Team */}
-        <div className="bg-gradient-to-br from-primary-bg to-cobalt-bg rounded-2xl p-8 text-center">
+        <div className="bg-secondary border border-border rounded-2xl p-8 text-center">
           <h2 className="font-[family-name:var(--font-sora)] text-xl font-bold text-ink mb-4">Built by Investors, for Investors</h2>
           <p className="text-ink2 leading-relaxed max-w-2xl mx-auto">
             Our team combines expertise in quantitative finance, machine learning, and software engineering. We are retail investors ourselves and understand the challenges of navigating the IPO market. Every feature we build is designed to solve real problems we&apos;ve faced.

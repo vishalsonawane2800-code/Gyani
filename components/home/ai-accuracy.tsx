@@ -13,7 +13,7 @@ export function AIAccuracy() {
           <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold">
             AI Prediction Accuracy
           </h2>
-          <Link href="/accuracy" className="text-[12.5px] font-semibold text-primary-mid hover:opacity-75 transition-opacity">
+          <Link href="/accuracy" className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity">
             Full Dashboard
           </Link>
         </div>
@@ -34,7 +34,7 @@ export function AIAccuracy() {
               <div className="text-[10px] text-ink3 mt-1">Avg Error</div>
             </div>
             <div className="bg-secondary rounded-xl p-3 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-primary-mid">88%</div>
+              <div className="font-[family-name:var(--font-sora)] text-xl font-black text-primary">88%</div>
               <div className="text-[10px] text-ink3 mt-1">Direction</div>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function AIAccuracy() {
           <div className="text-center mt-4">
             <Link 
               href="/accuracy" 
-              className="inline-block bg-gradient-to-br from-primary to-cobalt text-white text-[13px] font-bold py-2.5 px-7 rounded-lg hover:opacity-90 transition-opacity"
+              className="inline-block bg-primary text-white text-[13px] font-bold py-2.5 px-7 rounded-lg hover:opacity-90 transition-opacity"
             >
               View Full AI Accuracy Dashboard
             </Link>
