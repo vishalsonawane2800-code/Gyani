@@ -114,7 +114,7 @@ export default function AccuracyPage() {
             <table className="w-full text-[13px] border-collapse">
               <thead>
                 <tr className="bg-secondary">
-                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">IPO Name</th>
+                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4 sticky left-0 bg-secondary z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">IPO Name</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">List Date</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Exchange</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Predicted</th>
@@ -131,8 +131,8 @@ export default function AccuracyPage() {
                   const accuracy = Math.max(0, 100 - ipo.aiErr * 10);
                   
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50">
-                      <td className="py-3 px-4">
+                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 group/row">
+                      <td className="py-3 px-4 sticky left-0 bg-card group-hover/row:bg-secondary/50 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
                         <div className="flex items-center gap-2">
                           <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"

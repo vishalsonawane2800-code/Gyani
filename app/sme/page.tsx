@@ -118,7 +118,7 @@ export default function SMEPage() {
             <table className="w-full">
               <thead className="bg-secondary">
                 <tr>
-                  <th className="text-left p-4 text-sm font-medium text-ink2">Company</th>
+                  <th className="text-left p-4 text-sm font-medium text-ink2 sticky left-0 bg-secondary z-10 min-w-[160px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Company</th>
                   <th className="text-center p-4 text-sm font-medium text-ink2 hidden md:table-cell">Exchange</th>
                   <th className="text-right p-4 text-sm font-medium text-ink2">Issue Price</th>
                   <th className="text-right p-4 text-sm font-medium text-ink2">Listing Gain</th>
@@ -126,8 +126,8 @@ export default function SMEPage() {
               </thead>
               <tbody>
                 {smeListedIPOs.map((ipo, idx) => (
-                  <tr key={ipo.slug} className={idx !== smeListedIPOs.length - 1 ? "border-b border-border" : ""}>
-                    <td className="p-4">
+                  <tr key={ipo.slug} className={`${idx !== smeListedIPOs.length - 1 ? "border-b border-border" : ""} group/row`}>
+                    <td className="p-4 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[160px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
                       <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
                         {ipo.name}
                       </Link>
