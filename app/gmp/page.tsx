@@ -75,10 +75,12 @@ export default function GMPPage() {
               </thead>
               <tbody>
                 {allIPOs.map((ipo, idx) => {
-                  const upperPrice = ipo.priceRange.split(" - ")[1]?.replace("₹", "") || ipo.priceRange.replace("₹", "")
-                  const priceNum = parseInt(upperPrice.replace(/,/g, ""))
+                  const priceNum = ipo.priceMax
                   const expectedListing = priceNum + (ipo.gmp || 0)
                   const estGain = priceNum > 0 ? ((ipo.gmp || 0) / priceNum * 100).toFixed(1) : "0"
+                  const priceRange = ipo.priceMin === ipo.priceMax 
+                    ? `₹${ipo.priceMax}` 
+                    : `₹${ipo.priceMin} - ₹${ipo.priceMax}`
                   
                   return (
                     <tr key={ipo.slug} className={idx !== allIPOs.length - 1 ? "border-b border-border" : ""}>
@@ -90,15 +92,15 @@ export default function GMPPage() {
                       </td>
                       <td className="text-center p-4">
                         <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          ipo.type === "Mainboard" 
+                          ipo.exchange === "Mainboard" 
                             ? "bg-primary-bg text-primary" 
                             : "bg-gold-bg text-gold"
                         }`}>
-                          {ipo.type}
+                          {ipo.exchange}
                         </span>
                       </td>
                       <td className="text-right p-4 font-medium text-ink">
-                        {ipo.priceRange}
+                        {priceRange}
                       </td>
                       <td className="text-right p-4">
                         <span className={`font-bold ${(ipo.gmp || 0) >= 0 ? "text-emerald" : "text-destructive"}`}>
