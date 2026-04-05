@@ -1,4 +1,4 @@
-import { Users, Building2, IndianRupee, Percent, BarChart3, Target, FileText } from 'lucide-react';
+import { Calendar, IndianRupee, BarChart3, Layers, Building2, Users, TrendingUp, Sparkles } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
 
@@ -7,191 +7,201 @@ interface DetailSidebarProps {
 }
 
 export function DetailSidebar({ ipo }: DetailSidebarProps) {
+  // Calculate AI predicted profit for 1 lot
+  const estimatedProfit = ipo.gmp * ipo.lotSize;
+  const minInvestment = ipo.priceMax * ipo.lotSize;
+  const profitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1);
+
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
-      {/* Quick Info Card */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold">Quick Info</h3>
-        </div>
-        <div className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-ink3">
-              <IndianRupee className="w-3.5 h-3.5" />
-              Issue Size
-            </div>
-            <span className="text-[12px] font-semibold">{ipo.issueSize}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-ink3">
-              <Target className="w-3.5 h-3.5" />
-              Market Cap
-            </div>
-            <span className="text-[12px] font-semibold">{ipo.marketCap}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-ink3">
-              <Percent className="w-3.5 h-3.5" />
-              P/E Ratio
-            </div>
-            <span className="text-[12px] font-semibold">{ipo.peRatio}x</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-ink3">
-              <Building2 className="w-3.5 h-3.5" />
-              Lead Manager
-            </div>
-            <span className="text-[12px] font-semibold truncate max-w-[140px]">{ipo.leadManager}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-[12px] text-ink3">
-              <Users className="w-3.5 h-3.5" />
-              Registrar
-            </div>
-            <span className="text-[12px] font-semibold">{ipo.registrar}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Key Dates */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold">Key Dates</h3>
-        </div>
-        <div className="p-4">
-          <div className="relative pl-4 border-l-2 border-primary/30 space-y-4">
-            <div className="relative">
-              <div className="absolute -left-[21px] w-3 h-3 rounded-full bg-emerald border-2 border-background" />
-              <p className="text-[10px] text-ink4 font-semibold">Open</p>
-              <p className="text-[12px] font-bold">{formatDate(ipo.openDate)}</p>
-            </div>
-            <div className="relative">
-              <div className={`absolute -left-[21px] w-3 h-3 rounded-full border-2 border-background ${ipo.status === 'lastday' ? 'bg-gold animate-pulse' : 'bg-emerald'}`} />
-              <p className="text-[10px] text-ink4 font-semibold">Close</p>
-              <p className="text-[12px] font-bold">{formatDate(ipo.closeDate)}</p>
-            </div>
-            <div className="relative">
-              <div className={`absolute -left-[21px] w-3 h-3 rounded-full border-2 border-background ${ipo.status === 'allot' ? 'bg-gold animate-pulse' : ipo.status === 'listing' ? 'bg-emerald' : 'bg-ink4'}`} />
-              <p className="text-[10px] text-ink4 font-semibold">Allotment</p>
-              <p className="text-[12px] font-bold">{formatDate(ipo.allotmentDate)}</p>
-            </div>
-            <div className="relative">
-              <div className={`absolute -left-[21px] w-3 h-3 rounded-full border-2 border-background ${ipo.status === 'listing' ? 'bg-gold animate-pulse' : 'bg-ink4'}`} />
-              <p className="text-[10px] text-ink4 font-semibold">Listing</p>
-              <p className="text-[12px] font-bold">{formatDate(ipo.listDate)}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* AI Sentiment Summary */}
-      <div className="bg-gradient-to-br from-primary/5 to-cobalt/5 border border-primary/20 rounded-2xl p-4">
+      {/* AI Predicted Profit for 1 Lot */}
+      <div className="bg-gradient-to-br from-primary/10 via-cobalt/5 to-emerald/10 border border-primary/20 rounded-2xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-cobalt flex items-center justify-center">
-            <BarChart3 className="w-4 h-4 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-cobalt flex items-center justify-center">
+            <Sparkles className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
-            <p className="text-[11px] font-bold">AI Prediction</p>
-            <p className="text-[10px] text-ink3">{ipo.aiConfidence}% confidence</p>
+            <p className="text-[12px] font-bold">AI Predicted Profit</p>
+            <p className="text-[10px] text-ink3">For 1 Lot ({ipo.lotSize} shares)</p>
           </div>
         </div>
-        <div className="flex items-baseline gap-1">
-          <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${ipo.aiPrediction >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
+        <div className="bg-background/60 rounded-xl p-3 mb-3">
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-[10px] text-ink4 font-semibold">Expected Profit</span>
+            <span className="text-[10px] text-ink4">{ipo.aiConfidence}% confidence</span>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${estimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
+              {estimatedProfit >= 0 ? '+' : '-'}Rs {Math.abs(estimatedProfit).toLocaleString()}
+            </span>
+          </div>
+          <p className="text-[11px] text-ink3 mt-1">
+            {estimatedProfit >= 0 ? '+' : ''}{profitPercent}% on Rs {minInvestment.toLocaleString()} investment
+          </p>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[11px] font-semibold">AI Prediction</span>
+          </div>
+          <span className={`font-[family-name:var(--font-sora)] text-[14px] font-bold ${ipo.aiPrediction >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
             {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
           </span>
-          <span className="text-[11px] text-ink3">expected listing gain</span>
         </div>
-        <div className="mt-3 flex items-center gap-2">
-          <div className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
+        <div className="flex items-center justify-between mt-2">
+          <span className="text-[10px] text-ink3">Market Sentiment</span>
+          <div className={`px-2 py-0.5 rounded-lg text-[10px] font-bold ${
             ipo.sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
             ipo.sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
             'bg-gold-bg text-gold'
           }`}>
             {ipo.sentimentLabel}
           </div>
-          <span className="text-[10px] text-ink3">Market sentiment</span>
         </div>
       </div>
 
-      {/* Company Overview */}
+      {/* Basic Details */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="p-3 border-b border-border bg-secondary">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-primary" />
-            <h3 className="text-[13px] font-bold">Company Overview</h3>
+          <h3 className="text-[13px] font-bold">Basic Details</h3>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <Calendar className="w-3.5 h-3.5" />
+              IPO Date
+            </div>
+            <span className="text-[12px] font-semibold">{formatDate(ipo.openDate)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <Calendar className="w-3.5 h-3.5" />
+              Listing Date
+            </div>
+            <span className="text-[12px] font-semibold">{formatDate(ipo.listDate)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <IndianRupee className="w-3.5 h-3.5" />
+              Face Value
+            </div>
+            <span className="text-[12px] font-semibold">Rs 10</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <BarChart3 className="w-3.5 h-3.5" />
+              Price Band
+            </div>
+            <span className="text-[12px] font-semibold">Rs {ipo.priceMin} - {ipo.priceMax}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <Layers className="w-3.5 h-3.5" />
+              Lot Size
+            </div>
+            <span className="text-[12px] font-semibold">{ipo.lotSize} Shares</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <Building2 className="w-3.5 h-3.5" />
+              Sale Type
+            </div>
+            <span className="text-[12px] font-semibold">Book Building</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <Users className="w-3.5 h-3.5" />
+              Issue Type
+            </div>
+            <span className="text-[12px] font-semibold">
+              {ipo.issueDetails?.ofsPercent && ipo.issueDetails.ofsPercent > 0 ? 'Fresh + OFS' : 'Fresh Issue'}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[12px] text-ink3">
+              <TrendingUp className="w-3.5 h-3.5" />
+              Listing At
+            </div>
+            <span className="text-[12px] font-semibold">{ipo.exchange}</span>
           </div>
         </div>
-        <div className="p-4">
-          <p className="text-[12px] text-ink2 leading-relaxed">
-            {ipo.aboutCompany}
-          </p>
-          
-          {/* Business Highlights */}
-          <div className="mt-4 pt-4 border-t border-border">
-            <h4 className="text-[11px] font-bold text-ink3 uppercase tracking-wide mb-3">Business Highlights</h4>
-            <div className="space-y-2.5">
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                <p className="text-[11px] text-ink3 leading-relaxed">
-                  Operating in the <span className="font-semibold text-foreground">{ipo.sector}</span> sector
+      </div>
+
+      {/* Issue Details */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-3 border-b border-border bg-secondary">
+          <h3 className="text-[13px] font-bold">Issue Details</h3>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-ink3">Total Issue Size</span>
+            <div className="text-right">
+              <span className="text-[12px] font-semibold">{ipo.issueSize}</span>
+              {ipo.issueDetails && (
+                <p className="text-[10px] text-ink4">
+                  {((ipo.issueDetails.totalIssueSizeCr * 10000000) / ipo.priceMax).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} shares
                 </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                <p className="text-[11px] text-ink3 leading-relaxed">
-                  Listed on <span className="font-semibold text-foreground">{ipo.exchange}</span>
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                <p className="text-[11px] text-ink3 leading-relaxed">
-                  Market cap of <span className="font-semibold text-foreground">{ipo.marketCap}</span> at upper band
-                </p>
-              </div>
-              {ipo.financials && (
-                <>
-                  <div className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald mt-1.5 shrink-0" />
-                    <p className="text-[11px] text-ink3 leading-relaxed">
-                      FY25 Revenue: <span className="font-semibold text-foreground">Rs {ipo.financials.revenue.fy25 >= 100 ? `${(ipo.financials.revenue.fy25).toFixed(0)} Cr` : `${ipo.financials.revenue.fy25.toFixed(1)} Cr`}</span>
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald mt-1.5 shrink-0" />
-                    <p className="text-[11px] text-ink3 leading-relaxed">
-                      ROE: <span className="font-semibold text-foreground">{ipo.financials.roe}%</span> | ROCE: <span className="font-semibold text-foreground">{ipo.financials.roce}%</span>
-                    </p>
-                  </div>
-                </>
               )}
             </div>
           </div>
-
-          {/* Key Metrics */}
-          <div className="mt-4 pt-4 border-t border-border">
-            <h4 className="text-[11px] font-bold text-ink3 uppercase tracking-wide mb-3">Valuation</h4>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="bg-secondary rounded-lg p-2.5 text-center">
-                <p className="text-[10px] text-ink4 mb-0.5">P/E Ratio</p>
-                <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.peRatio}x</p>
-              </div>
-              <div className="bg-secondary rounded-lg p-2.5 text-center">
-                <p className="text-[10px] text-ink4 mb-0.5">Issue Size</p>
-                <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.issueSize}</p>
-              </div>
-              {ipo.financials && (
-                <>
-                  <div className="bg-secondary rounded-lg p-2.5 text-center">
-                    <p className="text-[10px] text-ink4 mb-0.5">Debt/Equity</p>
-                    <p className="font-[family-name:var(--font-sora)] text-sm font-bold">{ipo.financials.debtEquity}</p>
-                  </div>
-                  <div className="bg-secondary rounded-lg p-2.5 text-center">
-                    <p className="text-[10px] text-ink4 mb-0.5">ROE</p>
-                    <p className="font-[family-name:var(--font-sora)] text-sm font-bold text-emerald-mid">{ipo.financials.roe}%</p>
-                  </div>
-                </>
+          
+          {ipo.leadManager && (
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-ink3">Lead Manager</span>
+              <span className="text-[12px] font-semibold truncate max-w-[140px]">{ipo.leadManager}</span>
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-ink3">Fresh Issue</span>
+            <div className="text-right">
+              <span className="text-[12px] font-semibold">Rs {ipo.issueDetails?.freshIssueCr || '-'} Cr</span>
+              {ipo.issueDetails && (
+                <p className="text-[10px] text-ink4">({ipo.issueDetails.freshIssuePercent.toFixed(0)}%)</p>
               )}
             </div>
+          </div>
+          
+          {ipo.issueDetails?.ofsCr && ipo.issueDetails.ofsCr > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-ink3">OFS</span>
+              <div className="text-right">
+                <span className="text-[12px] font-semibold">Rs {ipo.issueDetails.ofsCr} Cr</span>
+                <p className="text-[10px] text-ink4">({ipo.issueDetails.ofsPercent.toFixed(0)}%)</p>
+              </div>
+            </div>
+          )}
+          
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-ink3">Net Offered to Public</span>
+            <span className="text-[12px] font-semibold">{ipo.issueSize}</span>
+          </div>
+          
+          <div className="pt-2 border-t border-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-ink4 font-semibold">Reservation Quota</span>
+            </div>
+            {ipo.issueDetails && (
+              <div className="grid grid-cols-3 gap-2">
+                <div className="bg-cobalt-bg border border-cobalt/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink4">QIB</p>
+                  <p className="text-[12px] font-bold text-cobalt">{ipo.issueDetails.qibQuotaPercent}%</p>
+                </div>
+                <div className="bg-emerald-bg border border-emerald/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink4">Retail</p>
+                  <p className="text-[12px] font-bold text-emerald">{ipo.issueDetails.retailQuotaPercent}%</p>
+                </div>
+                <div className="bg-gold-bg border border-gold/20 rounded-lg p-2 text-center">
+                  <p className="text-[10px] text-ink4">NII</p>
+                  <p className="text-[12px] font-bold text-gold">{ipo.issueDetails.niiQuotaPercent}%</p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-ink3">Registrar</span>
+            <span className="text-[12px] font-semibold">{ipo.registrar}</span>
           </div>
         </div>
       </div>
