@@ -4,6 +4,7 @@ import { StatusBar } from '@/components/status-bar';
 import { Footer } from '@/components/footer';
 import { MarketSentiment } from '@/components/home/market-sentiment';
 import { CurrentIPOs } from '@/components/home/current-ipos';
+import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
@@ -21,6 +22,7 @@ export default function HomePage() {
           <div className="min-w-0">
             <MarketSentiment />
             <CurrentIPOs />
+            <ListedIPOs />
             <GMPTracker />
             <NewsSection />
           </div>

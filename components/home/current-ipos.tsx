@@ -18,11 +18,15 @@ const statusPriority: Record<IPOStatus, number> = {
   'closed': 0,
 };
 
+// Only show open IPOs (open, lastday, allot, listing) - not closed or upcoming
+const openStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
+
 export function CurrentIPOs() {
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Sort IPOs by status priority (most urgent first)
-  const sortedIPOs = [...currentIPOs].sort((a, b) => {
+  // Filter only open IPOs and sort by status priority (most urgent first)
+  const openIPOs = currentIPOs.filter(ipo => openStatuses.includes(ipo.status));
+  const sortedIPOs = [...openIPOs].sort((a, b) => {
     return statusPriority[b.status] - statusPriority[a.status];
   });
 
@@ -33,7 +37,7 @@ export function CurrentIPOs() {
     return true;
   });
 
-  const activeCount = currentIPOs.filter(ipo => ipo.status !== 'closed').length;
+  const activeCount = openIPOs.length;
 
   return (
     <section id="current" className="mb-7">
