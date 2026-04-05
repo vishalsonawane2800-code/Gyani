@@ -15,7 +15,7 @@ export function Ticker() {
             className="inline-flex items-center gap-2 px-6 border-r border-white/10 text-[11.5px]"
           >
             <span className="text-white/50 font-medium">{item.name}</span>
-            <span className="font-bold text-emerald-mid">+{item.gmp}</span>
+            <span className={`font-bold ${item.isZero ? 'text-white/40' : 'text-emerald-mid'}`}>{item.gmp}</span>
             <span
               className="text-[9.5px] font-bold px-2 py-0.5 rounded-full"
               style={{ 

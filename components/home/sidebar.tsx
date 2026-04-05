@@ -64,6 +64,7 @@ export function Sidebar() {
         <div className="p-4">
           {currentIPOs.slice(0, 4).map((ipo, index) => {
             const isPositive = ipo.gmp > 0;
+            const isZero = ipo.gmp === 0;
             return (
               <div 
                 key={ipo.id}
@@ -72,13 +73,13 @@ export function Sidebar() {
                 }`}
               >
                 <span className="font-medium flex-1 truncate">{ipo.name}</span>
-                <span className={`font-bold ${isPositive ? 'text-emerald-mid' : 'text-destructive'}`}>
-                  {isPositive ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
+                <span className={`font-bold ${isZero ? 'text-ink3' : isPositive ? 'text-emerald-mid' : 'text-destructive'}`}>
+                  {isZero ? 'Rs 0' : isPositive ? `+Rs ${ipo.gmp.toLocaleString()}` : `-Rs ${Math.abs(ipo.gmp).toLocaleString()}`}
                 </span>
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-lg ${
-                  isPositive ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
+                  isZero ? 'bg-secondary text-ink3' : isPositive ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
                 }`}>
-                  {isPositive ? '+' : ''}{ipo.gmpPercent}%
+                  {isZero ? '0%' : isPositive ? `+${ipo.gmpPercent}%` : `${ipo.gmpPercent}%`}
                 </span>
               </div>
             );
@@ -124,11 +125,11 @@ export function Sidebar() {
         <div className="p-4">
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">94%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">72%</div>
               <div className="text-[9px] text-ink3">Within 5%</div>
             </div>
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">2.3%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">4.8%</div>
               <div className="text-[9px] text-ink3">Avg Error</div>
             </div>
           </div>

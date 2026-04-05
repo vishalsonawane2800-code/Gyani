@@ -74,8 +74,8 @@ export function StatusBar() {
           <div className="w-px h-7 bg-border" />
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wide text-ink4">AI Accuracy</div>
-            <div className="font-[family-name:var(--font-sora)] text-base font-extrabold text-emerald">
-              94%
+            <div className="font-[family-name:var(--font-sora)] text-base font-extrabold text-gold-mid">
+              72%
             </div>
           </div>
         </div>

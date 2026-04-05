@@ -33,7 +33,9 @@ export function IPOCard({ ipo }: IPOCardProps) {
     return () => clearInterval(interval);
   }, [ipo.gmpLastUpdated]);
   const isPositiveGMP = ipo.gmp > 0;
+  const isZeroGMP = ipo.gmp === 0;
   const isPositivePrediction = ipo.aiPrediction > 0;
+  const isZeroPrediction = ipo.aiPrediction === 0;
 
   const getStatusBadge = () => {
     switch (ipo.status) {
@@ -132,13 +134,15 @@ export function IPOCard({ ipo }: IPOCardProps) {
       {/* GMP Row */}
       <div className="flex items-center gap-2 py-2 px-2.5 bg-secondary rounded-lg mb-2 text-[12.5px]">
         <span className="text-[9.5px] font-extrabold text-ink4 tracking-wide">GMP</span>
-        <span className={`font-extrabold font-[family-name:var(--font-sora)] text-sm ${isPositiveGMP ? 'text-emerald-mid' : 'text-destructive'}`}>
-          {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
+        <span className={`font-extrabold font-[family-name:var(--font-sora)] text-sm ${
+          isZeroGMP ? 'text-ink3' : isPositiveGMP ? 'text-emerald-mid' : 'text-destructive'
+        }`}>
+          {isZeroGMP ? 'Rs 0' : isPositiveGMP ? `+Rs ${ipo.gmp.toLocaleString()}` : `-Rs ${Math.abs(ipo.gmp).toLocaleString()}`}
         </span>
         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-xl ${
-          isPositiveGMP ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
+          isZeroGMP ? 'bg-secondary text-ink3 border border-border' : isPositiveGMP ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
         }`}>
-          {isPositiveGMP ? '+' : ''}{ipo.gmpPercent}%
+          {isZeroGMP ? '0%' : isPositiveGMP ? `+${ipo.gmpPercent}%` : `${ipo.gmpPercent}%`}
         </span>
         <div className="flex items-center gap-1 text-[10px] text-ink4 ml-auto">
           <Clock className="w-3 h-3" />
@@ -158,9 +162,9 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </div>
         <span className="text-[10px] text-ink3 shrink-0">{ipo.aiConfidence}%</span>
         <span className={`font-extrabold font-[family-name:var(--font-sora)] text-sm shrink-0 ${
-          isPositivePrediction ? 'text-emerald-mid' : 'text-destructive'
+          isZeroPrediction ? 'text-ink3' : isPositivePrediction ? 'text-emerald-mid' : 'text-destructive'
         }`}>
-          {isPositivePrediction ? '+' : ''}{ipo.aiPrediction}%
+          {isZeroPrediction ? '0%' : isPositivePrediction ? `+${ipo.aiPrediction}%` : `${ipo.aiPrediction}%`}
         </span>
       </div>
 
