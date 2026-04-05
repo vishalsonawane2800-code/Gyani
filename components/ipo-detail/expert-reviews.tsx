@@ -7,11 +7,13 @@ import type { ExpertReview } from '@/lib/data';
 interface ExpertReviewsProps {
   reviews?: ExpertReview[];
   ipoName: string;
+  sentimentScore?: number;
+  sentimentLabel?: string;
 }
 
 type FilterType = 'all' | 'youtube' | 'analyst' | 'news' | 'firm';
 
-export function ExpertReviews({ reviews = [], ipoName }: ExpertReviewsProps) {
+export function ExpertReviews({ reviews = [], ipoName, sentimentScore = 0, sentimentLabel = 'Neutral' }: ExpertReviewsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
 
   const filteredReviews = reviews.filter((review) => {
@@ -79,6 +81,116 @@ export function ExpertReviews({ reviews = [], ipoName }: ExpertReviewsProps) {
   if (reviews.length === 0) {
     return (
       <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+        {/* Market Sentiment Score - Speedometer */}
+        <div className="mb-6 pb-6 border-b border-border">
+          <h3 className="text-[12px] font-semibold text-ink3 mb-4 text-center">MARKET SENTIMENT SCORE</h3>
+          
+          {/* Speedometer SVG */}
+          <div className="flex flex-col items-center">
+            <div className="relative w-[200px] h-[110px]">
+              <svg viewBox="0 0 200 110" className="w-full h-full">
+                {/* Background arc */}
+                <path
+                  d="M 20 100 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  className="text-secondary"
+                />
+                
+                {/* Gradient arc sections */}
+                {/* Red section (-100 to -33) */}
+                <path
+                  d="M 20 100 A 80 80 0 0 1 53.2 35.2"
+                  fill="none"
+                  stroke="#ef4444"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  opacity="0.8"
+                />
+                {/* Orange section (-33 to 0) */}
+                <path
+                  d="M 53.2 35.2 A 80 80 0 0 1 100 20"
+                  fill="none"
+                  stroke="#f97316"
+                  strokeWidth="12"
+                  opacity="0.8"
+                />
+                {/* Yellow section (0 to 33) */}
+                <path
+                  d="M 100 20 A 80 80 0 0 1 146.8 35.2"
+                  fill="none"
+                  stroke="#eab308"
+                  strokeWidth="12"
+                  opacity="0.8"
+                />
+                {/* Green section (33 to 100) */}
+                <path
+                  d="M 146.8 35.2 A 80 80 0 0 1 180 100"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="12"
+                  strokeLinecap="round"
+                  opacity="0.8"
+                />
+                
+                {/* Needle */}
+                <g transform={`rotate(${-90 + (sentimentScore + 100) * 0.9}, 100, 100)`}>
+                  <line
+                    x1="100"
+                    y1="100"
+                    x2="100"
+                    y2="35"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    className="text-foreground"
+                  />
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="8"
+                    fill="currentColor"
+                    className="text-foreground"
+                  />
+                  <circle
+                    cx="100"
+                    cy="100"
+                    r="4"
+                    fill="currentColor"
+                    className="text-background"
+                  />
+                </g>
+              </svg>
+              
+              {/* Labels */}
+              <div className="absolute bottom-0 left-0 text-[10px] font-bold text-destructive">-100</div>
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] font-medium text-ink4">0</div>
+              <div className="absolute bottom-0 right-0 text-[10px] font-bold text-emerald">+100</div>
+            </div>
+            
+            {/* Score Display */}
+            <div className="text-center mt-2">
+              <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${
+                sentimentScore >= 30 ? 'text-emerald-mid' : 
+                sentimentScore >= -30 ? 'text-gold-mid' : 'text-destructive'
+              }`}>
+                {sentimentScore >= 0 ? '+' : ''}{sentimentScore}
+              </span>
+              <div className={`mt-1 px-3 py-1 rounded-full text-[11px] font-bold inline-block ${
+                sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
+                sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
+                'bg-gold-bg text-gold'
+              }`}>
+                {sentimentLabel}
+              </div>
+            </div>
+            
+            <p className="text-[10px] text-ink4 mt-2 text-center">Based on expert reviews, GMP trends & market signals</p>
+          </div>
+        </div>
+        
         <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold mb-4">
           Expert Reviews & Opinions
         </h2>
@@ -92,6 +204,116 @@ export function ExpertReviews({ reviews = [], ipoName }: ExpertReviewsProps) {
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+      {/* Market Sentiment Score - Speedometer */}
+      <div className="mb-6 pb-6 border-b border-border">
+        <h3 className="text-[12px] font-semibold text-ink3 mb-4 text-center">MARKET SENTIMENT SCORE</h3>
+        
+        {/* Speedometer SVG */}
+        <div className="flex flex-col items-center">
+          <div className="relative w-[200px] h-[110px]">
+            <svg viewBox="0 0 200 110" className="w-full h-full">
+              {/* Background arc */}
+              <path
+                d="M 20 100 A 80 80 0 0 1 180 100"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="12"
+                strokeLinecap="round"
+                className="text-secondary"
+              />
+              
+              {/* Gradient arc sections */}
+              {/* Red section (-100 to -33) */}
+              <path
+                d="M 20 100 A 80 80 0 0 1 53.2 35.2"
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth="12"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+              {/* Orange section (-33 to 0) */}
+              <path
+                d="M 53.2 35.2 A 80 80 0 0 1 100 20"
+                fill="none"
+                stroke="#f97316"
+                strokeWidth="12"
+                opacity="0.8"
+              />
+              {/* Yellow section (0 to 33) */}
+              <path
+                d="M 100 20 A 80 80 0 0 1 146.8 35.2"
+                fill="none"
+                stroke="#eab308"
+                strokeWidth="12"
+                opacity="0.8"
+              />
+              {/* Green section (33 to 100) */}
+              <path
+                d="M 146.8 35.2 A 80 80 0 0 1 180 100"
+                fill="none"
+                stroke="#22c55e"
+                strokeWidth="12"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+              
+              {/* Needle */}
+              <g transform={`rotate(${-90 + (sentimentScore + 100) * 0.9}, 100, 100)`}>
+                <line
+                  x1="100"
+                  y1="100"
+                  x2="100"
+                  y2="35"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  className="text-foreground"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="8"
+                  fill="currentColor"
+                  className="text-foreground"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="4"
+                  fill="currentColor"
+                  className="text-background"
+                />
+              </g>
+            </svg>
+            
+            {/* Labels */}
+            <div className="absolute bottom-0 left-0 text-[10px] font-bold text-destructive">-100</div>
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 text-[10px] font-medium text-ink4">0</div>
+            <div className="absolute bottom-0 right-0 text-[10px] font-bold text-emerald">+100</div>
+          </div>
+          
+          {/* Score Display */}
+          <div className="text-center mt-2">
+            <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${
+              sentimentScore >= 30 ? 'text-emerald-mid' : 
+              sentimentScore >= -30 ? 'text-gold-mid' : 'text-destructive'
+            }`}>
+              {sentimentScore >= 0 ? '+' : ''}{sentimentScore}
+            </span>
+            <div className={`mt-1 px-3 py-1 rounded-full text-[11px] font-bold inline-block ${
+              sentimentLabel === 'Bullish' ? 'bg-emerald-bg text-emerald' :
+              sentimentLabel === 'Bearish' ? 'bg-destructive-bg text-destructive' :
+              'bg-gold-bg text-gold'
+            }`}>
+              {sentimentLabel}
+            </div>
+          </div>
+          
+          <p className="text-[10px] text-ink4 mt-2 text-center">Based on expert reviews, GMP trends & market signals</p>
+        </div>
+      </div>
+      
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold">
           Expert Reviews & Opinions

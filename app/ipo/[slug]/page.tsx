@@ -77,7 +77,12 @@ export default async function IPODetailPage({ params }: PageProps) {
             
             {/* Expert Reviews Section */}
             <div id="expert-reviews-section">
-              <ExpertReviews reviews={ipo.expertReviews} ipoName={ipo.name} />
+              <ExpertReviews 
+                reviews={ipo.expertReviews} 
+                ipoName={ipo.name} 
+                sentimentScore={ipo.aiPrediction}
+                sentimentLabel={ipo.sentimentLabel}
+              />
             </div>
             
             {/* Peer Comparison */}
