@@ -1,12 +1,12 @@
 export function MarketSentiment() {
   return (
-    <div className="bg-gradient-to-br from-[#1a1520] to-[#0f172a] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
-      {/* Background glow - more muted for cautious sentiment */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(234,179,8,.15)_0%,transparent_65%)] pointer-events-none" />
+    <div className="bg-gradient-to-br from-[#1e1040] to-[#0f172a] rounded-2xl p-6 flex flex-wrap gap-6 items-center mb-7 relative overflow-hidden">
+      {/* Background glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_80%_50%,rgba(91,33,182,.3)_0%,transparent_65%)] pointer-events-none" />
       
       {/* Left content */}
       <div className="relative flex-1 min-w-[200px]">
-        <div className="text-[10.5px] font-extrabold tracking-wider text-[#fbbf24] uppercase mb-2">
+        <div className="text-[10.5px] font-extrabold tracking-wider text-[#a78bfa] uppercase mb-2">
           IPOGyani AI - Market Pulse
         </div>
         <h2 className="font-[family-name:var(--font-sora)] text-lg font-extrabold text-white mb-1">
@@ -17,7 +17,7 @@ export function MarketSentiment() {
         </p>
       </div>
 
-      {/* Score Circle - lowered to 38 reflecting cautious market */}
+      {/* Score Circle */}
       <div className="relative shrink-0">
         <svg width="106" height="106" viewBox="0 0 106 106" aria-label="Market sentiment score: 38 out of 100">
           <circle cx="53" cy="53" r="42" fill="none" stroke="rgba(255,255,255,.08)" strokeWidth="10"/>
@@ -29,8 +29,8 @@ export function MarketSentiment() {
           />
           <defs>
             <linearGradient id="sentGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%" stopColor="#fbbf24"/>
-              <stop offset="100%" stopColor="#f97316"/>
+              <stop offset="0%" stopColor="#60a5fa"/>
+              <stop offset="100%" stopColor="#a78bfa"/>
             </linearGradient>
           </defs>
           <text x="53" y="48" textAnchor="middle" fill="#fff" fontFamily="var(--font-sora)" fontSize="25" fontWeight="800">38</text>
@@ -41,7 +41,7 @@ export function MarketSentiment() {
         </div>
       </div>
 
-      {/* Score Breakdown - reflecting weak market conditions */}
+      {/* Score Breakdown */}
       <div className="flex gap-4 shrink-0 relative">
         <div className="text-center">
           <div className="font-[family-name:var(--font-sora)] text-[22px] font-black leading-none text-[#f97316]">32</div>

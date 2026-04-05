@@ -1,6 +1,3 @@
-'use client';
-
-import { useState, useEffect } from 'react';
 import { currentIPOs } from '@/lib/data';
 
 const statusNodes = [
@@ -10,32 +7,16 @@ const statusNodes = [
   { id: 'listing', label: 'Listing', sub: 'Today', dotClass: 'bg-emerald-mid shadow-[0_0_0_3px_rgba(0,179,119,.2)] animate-pulse' },
 ];
 
+const getCounts = () => {
+  const counts: Record<string, number> = { open: 0, lastday: 0, allot: 0, listing: 0 };
+  currentIPOs.forEach((ipo) => {
+    if (ipo.status === 'upcoming') counts.open++;
+    else if (counts[ipo.status] !== undefined) counts[ipo.status]++;
+  });
+  return counts;
+};
+
 export function StatusBar() {
-  const [gmpTimer, setGmpTimer] = useState(900); // 15 minutes
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setGmpTimer((prev) => (prev > 0 ? prev - 1 : 900));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
-  // Count IPOs by status
-  const getCounts = () => {
-    const counts: Record<string, number> = { open: 0, lastday: 0, allot: 0, listing: 0 };
-    currentIPOs.forEach((ipo) => {
-      if (ipo.status === 'upcoming') counts.open++;
-      else if (counts[ipo.status] !== undefined) counts[ipo.status]++;
-    });
-    return counts;
-  };
-
   const counts = getCounts();
 
   return (
@@ -63,22 +44,7 @@ export function StatusBar() {
           ))}
         </div>
 
-        {/* Right Stats */}
-        <div className="hidden md:flex items-center gap-4 pl-5 border-l-[1.5px] border-border shrink-0">
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-ink4">GMP In</div>
-            <div className="font-[family-name:var(--font-sora)] text-base font-extrabold text-primary-mid">
-              {formatTimer(gmpTimer)}
-            </div>
-          </div>
-          <div className="w-px h-7 bg-border" />
-          <div>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-ink4">AI Accuracy</div>
-            <div className="font-[family-name:var(--font-sora)] text-base font-extrabold text-gold-mid">
-              72%
-            </div>
-          </div>
-        </div>
+
       </div>
     </div>
   );
