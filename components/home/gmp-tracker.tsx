@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { RefreshCw, Clock, Calendar } from 'lucide-react';
+import { RefreshCw, Calendar } from 'lucide-react';
 import { currentIPOs, type IPOStatus } from '@/lib/data';
 
 function formatTimeAgo(dateString: string): string {
@@ -78,15 +78,9 @@ export function GMPTracker() {
               {activeIPOs.length} Active
             </span>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 text-[11px] text-ink3">
-              <Clock className="w-3 h-3" />
-              <span>Updated: <strong className="text-foreground">{mounted ? formatTimeAgo(latestUpdate.toISOString()) : '--'}</strong></span>
-            </div>
-            <button className="text-[12.5px] font-semibold text-primary flex items-center gap-1 hover:opacity-75 transition-opacity">
-              <RefreshCw className="w-3 h-3" />
-              Refresh
-            </button>
+          <div className="flex items-center gap-1.5 text-[11px] text-ink3">
+            <RefreshCw className="w-3 h-3 text-primary" />
+            <span className="text-primary font-semibold">Refreshes in 5 mins</span>
           </div>
         </div>
 
@@ -102,13 +96,12 @@ export function GMPTracker() {
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Est. Price</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">AI Pred.</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Status</th>
-                <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Updated</th>
               </tr>
             </thead>
             <tbody>
               {activeIPOs.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 px-3 text-center text-ink3 text-[13px]">
+                  <td colSpan={7} className="py-8 px-3 text-center text-ink3 text-[13px]">
                     No active IPOs at the moment. Check upcoming IPOs below.
                   </td>
                 </tr>
@@ -160,9 +153,6 @@ export function GMPTracker() {
                         <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${statusBadge.className}`}>
                           {statusBadge.label}
                         </span>
-                      </td>
-                      <td className="py-3 px-3 text-[11px] text-ink3">
-                        {mounted ? formatTimeAgo(ipo.gmpLastUpdated) : '--'}
                       </td>
                     </tr>
                   );

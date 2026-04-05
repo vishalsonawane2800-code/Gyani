@@ -87,30 +87,6 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Allotment Check */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold">Check Allotment</h3>
-        </div>
-        <div className="p-4">
-          <select className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground">
-            <option value="">Select IPO</option>
-            {currentIPOs.filter(ipo => ipo.status === 'allot' || ipo.status === 'listing').map(ipo => (
-              <option key={ipo.id} value={ipo.slug}>{ipo.name}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            placeholder="Enter PAN Number"
-            className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground placeholder:text-ink4"
-            maxLength={10}
-          />
-          <button className="w-full bg-primary text-white text-[13px] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity">
-            Check Status
-          </button>
-        </div>
-      </div>
-
       {/* AI Accuracy Quick */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
@@ -125,11 +101,11 @@ export function Sidebar() {
         <div className="p-4">
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">72%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">95%</div>
               <div className="text-[9px] text-ink3">Within 5%</div>
             </div>
             <div className="bg-secondary rounded-lg p-2.5 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-gold-mid">4.8%</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-black text-emerald">2.1%</div>
               <div className="text-[9px] text-ink3">Avg Error</div>
             </div>
           </div>
