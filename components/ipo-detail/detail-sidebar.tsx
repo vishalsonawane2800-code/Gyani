@@ -34,15 +34,14 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // All calculations based on GMP - when GMP changes, everything updates automatically
-  const gmpBasedListingPrice = ipo.priceMax + ipo.gmp; // Est. Listing Price = Issue Price + GMP
-  const estimatedProfit = ipo.gmp * ipo.lotSize; // Est. Profit = GMP × Lot Size
+  // AI-based calculations - using AI prediction percentage
+  const aiPredictedListingPrice = Math.round(ipo.priceMax * (1 + ipo.aiPrediction / 100)); // Est. Listing Price = Issue Price × (1 + AI Prediction %)
+  const aiEstimatedProfit = Math.round((ipo.priceMax * (ipo.aiPrediction / 100)) * ipo.lotSize); // Est. Profit = Predicted Gain per share × Lot Size
   const minInvestment = ipo.priceMax * ipo.lotSize; // Investment = Issue Price × Lot Size
-  const profitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1); // Profit % = (GMP / Issue Price) × 100
 
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
-      {/* AI Predicted Profit for 1 Lot - GMP Based */}
+      {/* AI Predicted Profit for 1 Lot */}
       <div className="bg-gradient-to-br from-primary/10 via-cobalt/5 to-emerald/10 border border-primary/20 rounded-2xl p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -60,29 +59,30 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           </div>
         </div>
         
-        {/* Est. Listing Price */}
+        {/* AI Predicted Listing Price */}
         <div className="bg-background/60 rounded-xl p-3 mb-3">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] text-ink4 font-semibold">EST. LISTING PRICE</span>
+            <span className="text-[10px] text-ink4 font-semibold">AI PREDICTED LISTING PRICE</span>
           </div>
           <div className="flex items-baseline gap-1">
-            <span className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">Rs {gmpBasedListingPrice.toLocaleString()}</span>
+            <span className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">Rs {aiPredictedListingPrice.toLocaleString()}</span>
           </div>
+          <p className="text-[10px] text-ink4 mt-1">Based on {ipo.aiPrediction}% AI prediction</p>
         </div>
 
-        {/* Estimated Profit */}
+        {/* AI Estimated Profit */}
         <div className="bg-background/60 rounded-xl p-3 mb-3">
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-[10px] text-ink4 font-semibold">EST. PROFIT (1 LOT)</span>
+            <span className="text-[10px] text-ink4 font-semibold">AI EST. PROFIT (1 LOT)</span>
             <span className="text-[10px] text-ink4">{ipo.aiConfidence}% confidence</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${estimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
-              {estimatedProfit >= 0 ? '+' : '-'}Rs {Math.abs(estimatedProfit).toLocaleString()}
+            <span className={`font-[family-name:var(--font-sora)] text-3xl font-extrabold ${aiEstimatedProfit >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
+              {aiEstimatedProfit >= 0 ? '+' : '-'}Rs {Math.abs(aiEstimatedProfit).toLocaleString()}
             </span>
           </div>
           <p className="text-[11px] text-ink3 mt-1">
-            {estimatedProfit >= 0 ? '+' : ''}{profitPercent}% ({ipo.lotSize} shares)
+            {aiEstimatedProfit >= 0 ? '+' : ''}{ipo.aiPrediction}% ({ipo.lotSize} shares)
           </p>
         </div>
 
