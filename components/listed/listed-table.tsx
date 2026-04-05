@@ -106,7 +106,7 @@ export function ListedTable() {
         <table className="w-full text-[13px] border-collapse">
           <thead>
             <tr className="bg-secondary">
-              <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap min-w-[180px] sticky left-0 bg-secondary z-10 after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border"># Company</th>
+              <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap min-w-[180px]"># Company</th>
               <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Exchange</th>
               <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Sector</th>
               <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Date</th>
@@ -128,8 +128,8 @@ export function ListedTable() {
               const errColor = ipo.aiErr < 2 ? 'text-emerald' : ipo.aiErr < 4 ? 'text-gold-mid' : 'text-destructive';
 
               return (
-                <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors group/row">
-                  <td className="py-3 px-3 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
+                <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
+                  <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"

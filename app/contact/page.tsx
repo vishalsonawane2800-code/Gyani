@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import { Mail, MessageSquare, Clock, Twitter, Linkedin, Youtube } from 'lucide-react';
+import { Mail, MessageSquare, Clock, Linkedin, Youtube, Phone, Instagram } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Contact IPOGyani - Get in Touch',
@@ -11,18 +11,18 @@ export const metadata: Metadata = {
 
 const contactMethods = [
   {
+    icon: Phone,
+    title: 'Phone',
+    description: 'Call us for quick support',
+    value: '+91 9284401200',
+    href: 'tel:+919284401200',
+  },
+  {
     icon: Mail,
     title: 'Email',
     description: 'For general inquiries and support',
-    value: 'support@ipogyani.com',
-    href: 'mailto:support@ipogyani.com',
-  },
-  {
-    icon: MessageSquare,
-    title: 'Business Inquiries',
-    description: 'Partnerships and advertising',
-    value: 'business@ipogyani.com',
-    href: 'mailto:business@ipogyani.com',
+    value: 'contact.ipogyani@gmail.com',
+    href: 'mailto:contact.ipogyani@gmail.com',
   },
 ];
 
@@ -41,11 +41,11 @@ const faqs = [
   },
   {
     question: 'How can I report incorrect data?',
-    answer: 'If you spot any data discrepancies, please email us at support@ipogyani.com with details. We verify all reports and correct any errors promptly.',
+    answer: 'If you spot any data discrepancies, please email us at contact.ipogyani@gmail.com with details. We verify all reports and correct any errors promptly.',
   },
   {
     question: 'Do you offer API access?',
-    answer: 'We are working on a public API for developers and institutions. Contact business@ipogyani.com to join our API waitlist.',
+    answer: 'We are working on a public API for developers and institutions. Contact contact.ipogyani@gmail.com to join our API waitlist.',
   },
 ];
 
@@ -103,14 +103,14 @@ export default function ContactPage() {
             <div className="bg-card border border-border rounded-xl p-6">
               <h3 className="font-semibold text-ink mb-4">Follow Us</h3>
               <div className="flex gap-3">
-                <a href="#" className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/30 hover:bg-primary-bg transition-all">
-                  <Twitter className="w-5 h-5 text-ink3" />
-                </a>
-                <a href="#" className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/30 hover:bg-primary-bg transition-all">
-                  <Linkedin className="w-5 h-5 text-ink3" />
+                <a href="https://instagram.com/ipo.gyani" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/30 hover:bg-primary-bg transition-all">
+                  <Instagram className="w-5 h-5 text-ink3" />
                 </a>
                 <a href="#" className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/30 hover:bg-primary-bg transition-all">
                   <Youtube className="w-5 h-5 text-ink3" />
+                </a>
+                <a href="#" className="w-10 h-10 rounded-lg bg-background border border-border flex items-center justify-center hover:border-primary/30 hover:bg-primary-bg transition-all">
+                  <Linkedin className="w-5 h-5 text-ink3" />
                 </a>
               </div>
             </div>
@@ -139,7 +139,7 @@ export default function ContactPage() {
             Your feedback shapes IPOGyani. Let us know what features you&apos;d like to see, what data you need, or how we can make your IPO research easier.
           </p>
           <a 
-            href="mailto:feedback@ipogyani.com?subject=Feature Request"
+            href="mailto:contact.ipogyani@gmail.com?subject=Feature Request"
             className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
           >
             <MessageSquare className="w-4 h-4" />

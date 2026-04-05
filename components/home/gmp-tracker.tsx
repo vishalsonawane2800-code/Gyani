@@ -95,7 +95,7 @@ export function GMPTracker() {
           <table className="w-full text-[13px] border-collapse">
             <thead>
               <tr className="bg-secondary">
-                <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap min-w-[180px] sticky left-0 bg-secondary z-10 after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Company</th>
+                <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap min-w-[200px]">Company</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Exchange</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">GMP</th>
                 <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">GMP %</th>
@@ -118,8 +118,8 @@ export function GMPTracker() {
                   const isZero = ipo.gmp === 0;
                   const statusBadge = getStatusBadge(ipo.status);
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors group/row">
-                      <td className="py-3 px-3 sticky left-0 bg-card group-hover/row:bg-secondary/50 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
+                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors">
+                      <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
@@ -195,7 +195,7 @@ export function GMPTracker() {
             <table className="w-full text-[13px] border-collapse">
               <thead>
                 <tr className="bg-secondary">
-                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap min-w-[180px] sticky left-0 bg-secondary z-10 after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border">Company</th>
+                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap min-w-[200px]">Company</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Exchange</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Price Band</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-2.5 px-3 whitespace-nowrap">Issue Size</th>
@@ -208,8 +208,8 @@ export function GMPTracker() {
                   const isPositive = ipo.gmp > 0;
                   const isZero = ipo.gmp === 0;
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors group/row">
-                      <td className="py-3 px-3 sticky left-0 bg-card group-hover/row:bg-secondary/50 z-10 min-w-[180px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
+                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors">
+                      <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           <div
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
