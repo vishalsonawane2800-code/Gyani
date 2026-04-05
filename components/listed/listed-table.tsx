@@ -138,7 +138,7 @@ export function ListedTable() {
                         {ipo.abbr}
                       </div>
                       <div>
-                        <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary-mid hover:underline">
+                        <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
                           {ipo.name}
                         </Link>
                         <div className="text-[10.5px] text-ink3">{ipo.sector}</div>
@@ -166,7 +166,7 @@ export function ListedTable() {
                   <td className={`py-3 px-3 text-right font-bold ${subColor}`}>
                     {ipo.subTimes.toFixed(2)}x
                   </td>
-                  <td className="py-3 px-3 text-right font-bold text-primary-mid">
+                  <td className="py-3 px-3 text-right font-bold text-primary">
                     {ipo.aiPred}
                   </td>
                   <td className={`py-3 px-3 text-right text-[11.5px] font-bold ${errColor}`}>
@@ -193,7 +193,7 @@ export function ListedTable() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-card text-ink3 disabled:opacity-50 disabled:cursor-not-allowed hover:border-primary-mid hover:text-primary-mid transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-card text-ink3 disabled:opacity-50 disabled:cursor-not-allowed hover:border-primary hover:text-primary transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -207,7 +207,7 @@ export function ListedTable() {
                 className={`w-8 h-8 flex items-center justify-center rounded-lg text-[12.5px] font-semibold transition-colors ${
                   page === pageNum
                     ? 'bg-primary text-white'
-                    : 'border border-border bg-card text-ink3 hover:border-primary-mid hover:text-primary-mid'
+                    : 'border border-border bg-card text-ink3 hover:border-primary hover:text-primary'
                 }`}
               >
                 {pageNum}
@@ -218,7 +218,7 @@ export function ListedTable() {
           <button
             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-card text-ink3 disabled:opacity-50 disabled:cursor-not-allowed hover:border-primary-mid hover:text-primary-mid transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-card text-ink3 disabled:opacity-50 disabled:cursor-not-allowed hover:border-primary hover:text-primary transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

@@ -44,12 +44,9 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-[#1a0533] via-[#0f172a] to-[#1d1040] rounded-2xl p-6 mb-6 relative overflow-hidden">
-      {/* Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(91,33,182,.3)_0%,transparent_65%)] pointer-events-none" />
-      
+    <div className="bg-foreground rounded-2xl p-6 mb-6 relative overflow-hidden">
       {/* Header Chip */}
-      <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary-mid bg-primary/15 border border-primary/30 px-3 py-1 rounded-full w-fit mb-4 relative">
+      <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary bg-white/10 border border-white/20 px-3 py-1 rounded-full w-fit mb-4 relative">
         <Check className="w-3 h-3" />
         IPOGyani AI Engine - Live Prediction
       </div>
@@ -76,7 +73,7 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
             <p className="text-[11px] text-white/50 mb-2">Confidence Score - {ipo.aiConfidence}%</p>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-gradient-to-r from-primary to-cobalt rounded-full transition-all duration-500"
+                className="h-full bg-primary rounded-full transition-all duration-500"
                 style={{ width: `${ipo.aiConfidence}%` }}
               />
             </div>

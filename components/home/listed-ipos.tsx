@@ -29,7 +29,7 @@ export function ListedIPOs() {
         </div>
         <Link 
           href="/listed" 
-          className="flex items-center gap-1.5 text-[12.5px] font-semibold text-primary-mid hover:opacity-75 transition-opacity"
+          className="flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity"
         >
           View All
           <ArrowRight className="w-3.5 h-3.5" />

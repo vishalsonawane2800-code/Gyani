@@ -37,16 +37,16 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
       <div className="flex items-center gap-2 mb-5">
-        <FileText className="w-5 h-5 text-primary-mid" />
+        <FileText className="w-5 h-5 text-primary" />
         <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">Issue Details</h2>
       </div>
       
       {/* Issue Size Header */}
-      <div className="bg-gradient-to-br from-primary/10 to-cobalt/10 rounded-xl p-4 mb-5">
+      <div className="bg-primary-bg rounded-xl p-4 mb-5">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Total Issue Size</p>
-            <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold text-primary-mid">
+            <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold text-primary">
               Rs {issueDetails.totalIssueSizeCr >= 1000 
                 ? `${(issueDetails.totalIssueSizeCr / 100).toFixed(0)} Cr` 
                 : `${issueDetails.totalIssueSizeCr} Cr`}

@@ -18,7 +18,7 @@ export function SearchSection() {
   return (
     <div className="mb-7">
       {/* Search Bar */}
-      <div className="flex bg-card border-2 border-border rounded-2xl overflow-hidden shadow-sm focus-within:border-primary-mid focus-within:shadow-[0_0_0_3px_rgba(91,33,182,.12)] transition-all">
+      <div className="flex bg-card border-2 border-border rounded-2xl overflow-hidden shadow-sm focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(79,70,229,.1)] transition-all">
         <input
           type="search"
           value={query}
@@ -29,7 +29,7 @@ export function SearchSection() {
           autoComplete="off"
           spellCheck="false"
         />
-        <button className="bg-gradient-to-br from-primary to-cobalt text-white text-[13px] font-bold px-6 shrink-0 flex items-center gap-2 transition-opacity hover:opacity-90">
+        <button className="bg-primary text-white text-[13px] font-bold px-6 shrink-0 flex items-center gap-2 transition-opacity hover:opacity-90">
           <Search className="w-4 h-4" />
           Search
         </button>
@@ -41,7 +41,7 @@ export function SearchSection() {
           <button
             key={tag}
             onClick={() => setQuery(tag)}
-            className="text-[11.5px] text-ink3 py-1 px-3 rounded-full border border-border cursor-pointer transition-all hover:border-primary-mid hover:text-primary-mid hover:bg-primary-bg"
+            className="text-[11.5px] text-ink3 py-1 px-3 rounded-full border border-border cursor-pointer transition-all hover:border-primary hover:text-primary hover:bg-primary-bg"
           >
             {tag}
           </button>

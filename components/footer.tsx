@@ -26,13 +26,13 @@ const footerLinks = {
 
 export function Footer() {
   return (
-    <footer className="bg-ink text-white/55 pt-11 pb-6 px-5">
+    <footer className="bg-foreground text-white/55 pt-11 pb-6 px-5">
       <div className="max-w-[1440px] mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-8">
           {/* Brand */}
           <div>
             <div className="font-[family-name:var(--font-sora)] font-black text-[22px] text-white mb-3">
-              IPO<span className="text-primary-mid">Gyani</span>
+              IPO<span className="text-primary">Gyani</span>
             </div>
             <p className="text-[12.5px] leading-relaxed max-w-[280px] text-white/50">
               {"India's most intelligent IPO research platform. Live GMP, AI predictions, and India's most complete listed IPO database."}

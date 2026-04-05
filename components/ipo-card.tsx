@@ -44,7 +44,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
       case 'lastday':
         return { label: 'Last Day', className: 'bg-gold-bg text-gold border-gold/20' };
       case 'allot':
-        return { label: 'Allotment Day', className: 'bg-primary-bg text-primary border-primary/20' };
+        return { label: 'Allotment Day', className: 'bg-primary-bg text-primary border-primary/30' };
       case 'listing':
         return { label: 'Listing Day', className: 'bg-emerald-bg text-emerald border-emerald/20' };
       case 'upcoming':
@@ -95,7 +95,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
             <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge()}`}>
               {ipo.exchange}
             </span>
-            <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-xl bg-gradient-to-r from-primary to-cobalt text-white">
+            <span className="text-[9.5px] font-bold px-2 py-0.5 rounded-xl bg-primary text-white">
               AI
             </span>
           </div>
@@ -152,11 +152,11 @@ export function IPOCard({ ipo }: IPOCardProps) {
 
       {/* AI Prediction Row */}
       <div className="flex items-center gap-2 py-2 px-2.5 border border-border rounded-lg mb-2.5 text-[12px]">
-        <Star className="w-3 h-3 text-primary-mid" fill="currentColor" />
+        <Star className="w-3 h-3 text-primary" fill="currentColor" />
         <span className="text-[10px] text-ink3 font-semibold shrink-0">AI Prediction</span>
         <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
           <div 
-            className="h-full bg-gradient-to-r from-primary to-cobalt rounded-full"
+            className="h-full bg-primary rounded-full"
             style={{ width: `${ipo.aiConfidence}%` }}
           />
         </div>
@@ -170,7 +170,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
 
       {/* Action */}
       <div className="flex">
-        <span className="flex-1 text-center py-2 rounded-lg text-[12px] font-bold bg-gradient-to-br from-primary to-cobalt text-white cursor-pointer transition-opacity hover:opacity-90">
+        <span className="flex-1 text-center py-2 rounded-lg text-[12px] font-bold bg-primary text-white cursor-pointer transition-opacity hover:opacity-90">
           View Analysis
         </span>
       </div>

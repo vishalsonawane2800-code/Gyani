@@ -9,7 +9,7 @@ export function NewsSection() {
         <h2 className="font-[family-name:var(--font-sora)] text-[17px] font-bold">
           IPO Market News
         </h2>
-        <Link href="/news" className="text-[12.5px] font-semibold text-primary-mid hover:opacity-75 transition-opacity">
+        <Link href="/news" className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity">
           All News
         </Link>
       </div>

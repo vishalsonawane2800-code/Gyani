@@ -21,7 +21,7 @@ export function PageFooter({ ipo }: PageFooterProps) {
     <div className="mt-10 border-t border-border pt-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Check Allotment */}
-        <div className="bg-gradient-to-br from-primary/5 to-cobalt/5 border border-primary/20 rounded-2xl p-6">
+        <div className="bg-primary-bg border border-primary/20 rounded-2xl p-6">
           <h3 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-2">
             Check Allotment Status
           </h3>
@@ -29,8 +29,8 @@ export function PageFooter({ ipo }: PageFooterProps) {
             Check your {ipo.name} IPO allotment status on the registrar website.
           </p>
           <div className="flex items-center gap-3 mb-4 p-3 bg-background rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-cobalt/10 flex items-center justify-center">
-              <span className="font-bold text-cobalt text-sm">R</span>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <span className="font-bold text-primary text-sm">R</span>
             </div>
             <div>
               <p className="text-[12px] font-semibold">{ipo.registrar}</p>
@@ -41,7 +41,7 @@ export function PageFooter({ ipo }: PageFooterProps) {
             href={registrarUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-br from-primary to-cobalt text-white text-[13px] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[13px] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
           >
             Check Allotment Status
             <ExternalLink className="w-4 h-4" />

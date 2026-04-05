@@ -77,12 +77,12 @@ export default function ContactPage() {
               >
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-lg bg-primary-bg flex items-center justify-center flex-shrink-0">
-                    <method.icon className="w-5 h-5 text-primary-mid" />
+                    <method.icon className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-ink mb-1">{method.title}</h3>
                     <p className="text-ink3 text-sm mb-2">{method.description}</p>
-                    <span className="text-primary-mid font-medium text-sm">{method.value}</span>
+                    <span className="text-primary font-medium text-sm">{method.value}</span>
                   </div>
                 </div>
               </a>
@@ -133,14 +133,14 @@ export default function ContactPage() {
         </div>
 
         {/* Feedback Banner */}
-        <div className="bg-gradient-to-br from-primary-bg to-cobalt-bg rounded-2xl p-8 text-center">
+        <div className="bg-secondary border border-border rounded-2xl p-8 text-center">
           <h2 className="font-[family-name:var(--font-sora)] text-xl font-bold text-ink mb-3">Help Us Improve</h2>
           <p className="text-ink2 max-w-xl mx-auto mb-4">
             Your feedback shapes IPOGyani. Let us know what features you&apos;d like to see, what data you need, or how we can make your IPO research easier.
           </p>
           <a 
             href="mailto:feedback@ipogyani.com?subject=Feature Request"
-            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-primary-mid transition-colors"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity"
           >
             <MessageSquare className="w-4 h-4" />
             Send Feedback

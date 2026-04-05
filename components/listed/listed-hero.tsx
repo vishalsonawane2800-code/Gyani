@@ -15,18 +15,15 @@ export function ListedHero() {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-[#1a0533] via-[#0f172a] to-[#1d1040] py-14 px-5 relative overflow-hidden">
-      {/* Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_70%_50%,rgba(91,33,182,.3)_0%,transparent_65%)] pointer-events-none" />
-      
+    <div className="bg-foreground py-14 px-5 relative overflow-hidden">
       <div className="max-w-[1440px] mx-auto relative">
         {/* Eyebrow */}
-        <div className="inline-flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase text-primary-mid bg-primary/15 border border-primary/30 px-3 py-1.5 rounded-full mb-4">
+        <div className="inline-flex items-center gap-2 text-[11px] font-bold tracking-wider uppercase text-primary bg-white/10 border border-white/20 px-3 py-1.5 rounded-full mb-4">
           Database Updated Daily
         </div>
         
         <h1 className="font-[family-name:var(--font-sora)] text-3xl md:text-4xl font-black text-white leading-tight mb-3">
-          Listed IPO <span className="text-[#a78bfa]">Database</span>
+          Listed IPO <span className="text-primary">Database</span>
         </h1>
         
         <p className="text-[15px] text-white/60 max-w-xl mb-8">

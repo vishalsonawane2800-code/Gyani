@@ -11,10 +11,10 @@ export function Sidebar() {
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
           <h3 className="text-[13px] font-bold flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-primary-mid" />
+            <Calendar className="w-4 h-4 text-primary" />
             Upcoming Events
           </h3>
-          <Link href="/events" className="text-[11.5px] font-semibold text-primary-mid">
+          <Link href="/events" className="text-[11.5px] font-semibold text-primary">
             View All
           </Link>
         </div>
@@ -57,7 +57,7 @@ export function Sidebar() {
             <TrendingUp className="w-4 h-4 text-emerald-mid" />
             Quick GMP
           </h3>
-          <Link href="/#gmp" className="text-[11.5px] font-semibold text-primary-mid">
+          <Link href="/#gmp" className="text-[11.5px] font-semibold text-primary">
             View All
           </Link>
         </div>
@@ -93,7 +93,7 @@ export function Sidebar() {
           <h3 className="text-[13px] font-bold">Check Allotment</h3>
         </div>
         <div className="p-4">
-          <select className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary-mid bg-card text-foreground">
+          <select className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground">
             <option value="">Select IPO</option>
             {currentIPOs.filter(ipo => ipo.status === 'allot' || ipo.status === 'listing').map(ipo => (
               <option key={ipo.id} value={ipo.slug}>{ipo.name}</option>
@@ -102,10 +102,10 @@ export function Sidebar() {
           <input
             type="text"
             placeholder="Enter PAN Number"
-            className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary-mid bg-card text-foreground placeholder:text-ink4"
+            className="w-full border-[1.5px] border-border-secondary rounded-lg py-2 px-3 text-[13px] mb-2 outline-none focus:border-primary bg-card text-foreground placeholder:text-ink4"
             maxLength={10}
           />
-          <button className="w-full bg-gradient-to-br from-primary to-cobalt text-white text-[13px] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity">
+          <button className="w-full bg-primary text-white text-[13px] font-bold py-2.5 rounded-lg hover:opacity-90 transition-opacity">
             Check Status
           </button>
         </div>
@@ -115,10 +115,10 @@ export function Sidebar() {
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
           <h3 className="text-[13px] font-bold flex items-center gap-2">
-            <Brain className="w-4 h-4 text-primary-mid" />
+            <Brain className="w-4 h-4 text-primary" />
             AI Accuracy
           </h3>
-          <Link href="/accuracy" className="text-[11.5px] font-semibold text-primary-mid">
+          <Link href="/accuracy" className="text-[11.5px] font-semibold text-primary">
             Full Dashboard
           </Link>
         </div>
@@ -135,7 +135,7 @@ export function Sidebar() {
           </div>
           <Link 
             href="/accuracy"
-            className="block text-center text-[12px] font-semibold py-2 px-4 rounded-lg border border-primary-mid text-primary-mid hover:bg-primary-bg transition-colors"
+            className="block text-center text-[12px] font-semibold py-2 px-4 rounded-lg border border-primary text-primary hover:bg-primary-bg transition-colors"
           >
             View All Predictions
           </Link>
@@ -156,7 +156,7 @@ export function Sidebar() {
               }`}
             >
               <span className="text-[12.5px] font-medium">{broker}</span>
-              <button className="text-[11.5px] font-bold px-3.5 py-1.5 rounded-lg bg-gradient-to-br from-primary to-cobalt text-white hover:opacity-90 transition-opacity flex items-center gap-1">
+              <button className="text-[11.5px] font-bold px-3.5 py-1.5 rounded-lg bg-primary text-white hover:opacity-90 transition-opacity flex items-center gap-1">
                 Apply
                 <ExternalLink className="w-3 h-3" />
               </button>

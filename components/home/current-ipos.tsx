@@ -68,7 +68,7 @@ export function CurrentIPOs() {
               </button>
             ))}
           </div>
-          <Link href="/listed" className="text-[12.5px] font-semibold text-primary-mid hover:opacity-75 transition-opacity">
+          <Link href="/listed" className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity">
             View All
           </Link>
         </div>

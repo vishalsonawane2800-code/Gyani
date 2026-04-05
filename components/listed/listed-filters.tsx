@@ -57,7 +57,7 @@ export function ListedFilters() {
               onClick={() => setExchange(ex)}
               className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-md transition-all ${
                 exchange === ex
-                  ? 'bg-primary-bg text-primary-mid'
+                  ? 'bg-primary-bg text-primary'
                   : 'text-ink3 hover:bg-secondary'
               }`}
             >
@@ -77,7 +77,7 @@ export function ListedFilters() {
               onClick={() => setGainFilter(g.value)}
               className={`text-[11.5px] font-semibold px-2.5 py-1 rounded-md transition-all ${
                 gainFilter === g.value
-                  ? 'bg-primary-bg text-primary-mid'
+                  ? 'bg-primary-bg text-primary'
                   : 'text-ink3 hover:bg-secondary'
               }`}
             >
