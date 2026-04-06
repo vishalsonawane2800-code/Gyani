@@ -79,39 +79,22 @@ export function HeroSection() {
               </Link>
             </div>
             
-            {/* KPI Stats Row - 2x2 on mobile, 4 cols on desktop */}
-            <div className="grid grid-cols-4 gap-2 sm:gap-3 pt-3 sm:pt-5">
+            {/* KPI Stats Row - always 4 cols in single line */}
+            <div className="flex gap-1.5 sm:gap-3 pt-3 sm:pt-5">
               {stats.map((stat) => (
                 <div 
                   key={stat.label} 
-                  className="backdrop-blur-xl rounded-xl sm:rounded-2xl px-2 sm:px-4 py-2.5 sm:py-3 border border-white/10"
+                  className="flex-1 backdrop-blur-xl rounded-lg sm:rounded-2xl px-1.5 sm:px-4 py-2 sm:py-3 border border-white/10 text-center"
                   style={{ background: 'rgba(255,255,255,0.05)' }}
                 >
-                  <div className={`font-heading text-base sm:text-xl lg:text-2xl font-black ${stat.color} leading-none mb-0.5`}>
+                  <div className={`font-heading text-[13px] sm:text-xl lg:text-2xl font-black ${stat.color} leading-none mb-0.5`}>
                     {stat.value}
                   </div>
-                  <div className="text-white/40 text-[8px] sm:text-[10px] font-semibold tracking-wide">{stat.label}</div>
+                  <div className="text-white/40 text-[7px] sm:text-[10px] font-semibold tracking-wide leading-tight">{stat.label}</div>
                 </div>
               ))}
             </div>
             
-            {/* Trust badges - hidden on mobile */}
-            <div className="hidden sm:flex flex-wrap items-center gap-3 text-white/40 text-xs pt-1">
-              <span className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                Free to use
-              </span>
-              <span className="w-px h-3 bg-white/15" />
-              <span className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                No registration needed
-              </span>
-              <span className="w-px h-3 bg-white/15" />
-              <span className="flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                Updated daily
-              </span>
-            </div>
           </div>
           
           {/* Right: Live IPO Snapshot Card */}
