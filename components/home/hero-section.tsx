@@ -7,7 +7,7 @@ const liveIPOs = currentIPOs.filter(ipo =>
 ).slice(0, 4);
 
 const stats = [
-  { value: '85%+', label: 'AI Accuracy', color: 'text-emerald-400' },
+  { value: '95%+', label: 'AI Accuracy', color: 'text-emerald-400' },
   { value: '500+', label: 'IPOs Tracked', color: 'text-violet-400' },
   { value: '25+', label: 'AI Signals', color: 'text-amber-400' },
   { value: 'Live', label: 'GMP Data', color: 'text-white' },
@@ -155,6 +155,13 @@ export function HeroSection() {
                       {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
                     </div>
                     <div className="text-white/40 text-[10px] mt-0.5">AI Prediction</div>
+                    <div className="text-white/50 text-[10px] mt-1">
+                      GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>₹{ipo.gmp}</span>
+                      <span className="text-white/30 mx-1">|</span>
+                      <span className={ipo.gmpPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {ipo.gmpPercent >= 0 ? '+' : ''}{ipo.gmpPercent}%
+                      </span>
+                    </div>
                   </div>
                 </Link>
               )) : (
