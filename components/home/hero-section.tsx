@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { TrendingUp, ArrowRight, Check } from 'lucide-react';
+import { TrendingUp, ArrowRight } from 'lucide-react';
 import { currentIPOs } from '@/lib/data';
 
 const liveIPOs = currentIPOs.filter(ipo => 
