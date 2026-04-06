@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -61,6 +63,8 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.18.0",
+    "wrangler": "^4.80.0",
     "@netlify/plugin-nextjs": "^5.10.0",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
