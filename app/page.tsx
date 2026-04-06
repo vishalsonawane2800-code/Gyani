@@ -37,24 +37,6 @@ export default function HomePage() {
       <Header />
       <StatusBar />
       
-      {/* Quick Links to All Pages */}
-      <div className="max-w-[1440px] mx-auto px-5 py-4">
-        <div className="bg-card rounded-xl border border-border p-4">
-          <h2 className="font-semibold text-ink mb-3">All Pages (Quick Links)</h2>
-          <div className="flex flex-wrap gap-2">
-            {allPages.map((page) => (
-              <Link 
-                key={page.href} 
-                href={page.href}
-                className="px-3 py-1.5 bg-secondary hover:bg-primary hover:text-white rounded-lg text-sm text-ink2 transition-colors"
-              >
-                {page.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
-      
       <main className="max-w-[1440px] mx-auto px-5 py-6 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
@@ -70,6 +52,24 @@ export default function HomePage() {
           <Sidebar />
         </div>
       </main>
+      
+      {/* Quick Links to All Pages */}
+      <div className="max-w-[1440px] mx-auto px-5 py-6">
+        <div className="bg-card rounded-xl border border-border p-4">
+          <h2 className="font-semibold text-ink mb-3">All Pages (Quick Links)</h2>
+          <div className="flex flex-wrap gap-2">
+            {allPages.map((page) => (
+              <Link 
+                key={page.href} 
+                href={page.href}
+                className="px-3 py-1.5 bg-secondary hover:bg-primary hover:text-white rounded-lg text-sm text-ink2 transition-colors"
+              >
+                {page.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
       
       <Footer />
     </div>
