@@ -224,7 +224,12 @@
 
 /* Utility Classes */
 .font-heading {
-  font-family: var(--font-heading);
+  font-family: var(--font-sora), 'Sora', system-ui, sans-serif;
+}
+
+/* Violet gradient - fintech theme */
+.bg-vgrad {
+  background: linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%);
 }
 
 /* Gradient text utility */

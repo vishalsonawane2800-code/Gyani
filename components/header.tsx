@@ -47,11 +47,11 @@ export function Header() {
       <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 mr-5 shrink-0">
-          <div className="w-[34px] h-[34px] bg-primary rounded-lg flex items-center justify-center">
+          <div className="w-[34px] h-[34px] rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
             <TrendingUp className="w-[18px] h-[18px] text-white" strokeWidth={2} />
           </div>
-          <span className="font-[family-name:var(--font-sora)] font-black text-xl tracking-tight text-foreground">
-            IPO<span className="text-primary">Gyani</span>
+          <span className="font-heading font-black text-xl tracking-tight text-foreground">
+            IPO<span className="text-violet-600">Gyani</span>
           </span>
         </Link>
 
@@ -106,7 +106,7 @@ export function Header() {
           </button>
 
           {/* Pro+ Button */}
-          <button className="hidden sm:flex items-center gap-1.5 text-[12px] font-semibold text-white bg-primary hover:bg-primary-mid px-3 py-1.5 rounded-lg transition-colors">
+          <button className="hidden sm:flex items-center gap-1.5 text-[12px] font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:opacity-90 hover:-translate-y-0.5" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
             <Sparkles className="w-3.5 h-3.5" />
             Pro+
           </button>
@@ -159,7 +159,7 @@ export function Header() {
             <button className="flex-1 text-[13px] font-medium text-ink2 py-2 rounded-lg border border-border">
               Log in
             </button>
-            <button className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-semibold text-white bg-primary py-2 rounded-lg">
+            <button className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-bold text-white py-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
               <Sparkles className="w-3.5 h-3.5" />
               Pro+
             </button>
