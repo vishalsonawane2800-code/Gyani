@@ -1,11 +1,16 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "v0-java-script-library-code",
-  "compatibility_date": "2026-04-06",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2024-09-23",
   "observability": {
     "enabled": true
   },
   "compatibility_flags": [
     "nodejs_compat"
-  ]
+  ],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
 }
