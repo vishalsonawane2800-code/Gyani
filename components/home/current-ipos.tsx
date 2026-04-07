@@ -1,43 +1,72 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { IPOCard } from '@/components/ipo-card';
-import { currentIPOs } from '@/lib/data';
+import { supabase } from '@/lib/supabase';
 import type { IPOStatus } from '@/lib/data';
 
 type FilterType = 'all' | 'main' | 'sme';
 
-// Priority order for IPO status (higher priority = more urgent)
+// Priority order for IPO status
 const statusPriority: Record<IPOStatus, number> = {
-  'listing': 5,
-  'allot': 4,
-  'lastday': 3,
-  'open': 2,
-  'upcoming': 1,
-  'closed': 0,
+  listing: 5,
+  allot: 4,
+  lastday: 3,
+  open: 2,
+  upcoming: 1,
+  closed: 0,
 };
 
-// Only show open IPOs (open, lastday, allot, listing) - not closed or upcoming
+// Only show open IPOs
 const openStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
 
 export function CurrentIPOs() {
   const [filter, setFilter] = useState<FilterType>('all');
+  const [currentIPOs, setCurrentIPOs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Filter only open IPOs and sort by status priority (most urgent first)
-  const openIPOs = currentIPOs.filter(ipo => openStatuses.includes(ipo.status));
+  // Fetch IPOs from Supabase
+  useEffect(() => {
+    const fetchIPOs = async () => {
+      const { data, error } = await supabase.from('ipos').select('*');
+
+      if (error) {
+        console.error('Error fetching IPOs:', error);
+      } else {
+        setCurrentIPOs(data || []);
+      }
+
+      setLoading(false);
+    };
+
+    fetchIPOs();
+  }, []);
+
+  // Filter only open IPOs and sort by priority
+  const openIPOs = currentIPOs.filter((ipo) =>
+    openStatuses.includes(ipo.status)
+  );
+
   const sortedIPOs = [...openIPOs].sort((a, b) => {
     return statusPriority[b.status] - statusPriority[a.status];
   });
 
   const filteredIPOs = sortedIPOs.filter((ipo) => {
     if (filter === 'all') return true;
-    if (filter === 'main') return ipo.exchange === 'Mainboard' || ipo.exchange === 'REIT';
-    if (filter === 'sme') return ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+    if (filter === 'main')
+      return ipo.exchange === 'Mainboard' || ipo.exchange === 'REIT';
+    if (filter === 'sme')
+      return ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
     return true;
   });
 
   const activeCount = openIPOs.length;
+
+  // Loading state
+  if (loading) {
+    return <div className="mb-7">Loading IPOs...</div>;
+  }
 
   return (
     <section id="current" className="mb-7">
@@ -51,6 +80,7 @@ export function CurrentIPOs() {
             {activeCount} Active
           </span>
         </div>
+
         <div className="flex items-center gap-2.5">
           {/* Filter Toggle */}
           <div className="flex bg-secondary rounded-lg p-0.5 gap-0.5">
@@ -64,17 +94,25 @@ export function CurrentIPOs() {
                     : 'text-ink3 hover:text-foreground'
                 }`}
               >
-                {type === 'all' ? 'All' : type === 'main' ? 'Mainboard' : 'SME'}
+                {type === 'all'
+                  ? 'All'
+                  : type === 'main'
+                  ? 'Mainboard'
+                  : 'SME'}
               </button>
             ))}
           </div>
-          <Link href="/listed" className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity">
+
+          <Link
+            href="/listed"
+            className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity"
+          >
             View All
           </Link>
         </div>
       </div>
 
-      {/* IPO Cards Grid */}
+      {/* IPO Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredIPOs.map((ipo) => (
           <IPOCard key={ipo.id} ipo={ipo} />
