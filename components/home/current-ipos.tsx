@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { IPOCard } from '@/components/ipo-card';
-import { supabase } from '@/lib/supabase';
-import type { IPOStatus } from '@/lib/data';
 
 type FilterType = 'all' | 'main' | 'sme';
 
 // Priority order for IPO status
-const statusPriority: Record<IPOStatus, number> = {
+const statusPriority: Record<string, number> = {
   listing: 5,
   allot: 4,
   lastday: 3,
@@ -19,7 +17,22 @@ const statusPriority: Record<IPOStatus, number> = {
 };
 
 // Only show open IPOs
-const openStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
+const openStatuses: string[] = ['open', 'lastday', 'allot', 'listing'];
+
+interface IPO {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  price_band: string;
+  lot_size: number;
+  issue_size: string;
+  exchange: string;
+  open_date: string;
+  close_date: string;
+  latest_gmp?: number;
+  gmp?: number;
+}
 
 interface CurrentIPOsProps {
   ipos: IPO[];
@@ -27,57 +40,14 @@ interface CurrentIPOsProps {
 
 export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
-  const [currentIPOs, setCurrentIPOs] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch IPOs from Supabase
-  useEffect(() => {
-    const fetchIPOs = async () => {
-      const { data, error } = await supabase
-        .from("ipos")
-        .select(`
-          *,
-          gmp_history (gmp, recorded_at)
-        `);
-
-      if (error) {
-        console.error("Error fetching IPOs:", error);
-      } else {
-        const formattedData = (data || []).map((ipo: any) => {
-          const gmpHistory = ipo.gmp_history || [];
-
-          // Get latest GMP
-          const latestGMP =
-            gmpHistory.length > 0
-              ? gmpHistory.sort(
-                  (a: any, b: any) =>
-                    new Date(b.recorded_at).getTime() -
-                    new Date(a.recorded_at).getTime()
-                )[0].gmp
-              : null;
-
-          return {
-            ...ipo,
-            gmp: latestGMP,
-          };
-        });
-
-        setCurrentIPOs(formattedData);
-      }
-
-      setLoading(false);
-    };
-
-    fetchIPOs();
-  }, []);
 
   // Filter only open IPOs and sort by priority
-  const openIPOs = currentIPOs.filter((ipo) =>
+  const openIPOs = ipos.filter((ipo) =>
     openStatuses.includes(ipo.status)
   );
 
   const sortedIPOs = [...openIPOs].sort((a, b) => {
-    return statusPriority[b.status] - statusPriority[a.status];
+    return (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0);
   });
 
   const filteredIPOs = sortedIPOs.filter((ipo) => {
@@ -90,11 +60,6 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   });
 
   const activeCount = openIPOs.length;
-
-  // Loading state
-  if (loading) {
-    return <div className="mb-7">Loading IPOs...</div>;
-  }
 
   return (
     <section id="current" className="mb-7">
