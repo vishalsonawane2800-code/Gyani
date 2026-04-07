@@ -2,16 +2,19 @@
 
 import Link from 'next/link';
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { currentIPOs } from '@/lib/data';
+import type { ListedIPO } from '@/lib/data';
 
-export function ListedIPOs() {
-  // Get only closed IPOs and take the most recent 6
-  const closedIPOs = currentIPOs
-    .filter(ipo => ipo.status === 'closed')
+interface ListedIPOsProps {
+  listedIpos: ListedIPO[];
+}
+
+export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
+  // Take the most recent 6 listed IPOs
+  const recentListedIPOs = listedIpos
     .sort((a, b) => new Date(b.listDate).getTime() - new Date(a.listDate).getTime())
     .slice(0, 6);
 
-  if (closedIPOs.length === 0) {
+  if (recentListedIPOs.length === 0) {
     return null;
   }
 
@@ -24,7 +27,7 @@ export function ListedIPOs() {
             Recently Listed IPOs
           </h2>
           <span className="text-[10.5px] font-extrabold py-0.5 px-2.5 rounded-full bg-primary-bg text-primary">
-            {closedIPOs.length} Recent
+            {recentListedIPOs.length} Recent
           </span>
         </div>
         <Link 
@@ -51,17 +54,15 @@ export function ListedIPOs() {
               </tr>
             </thead>
             <tbody>
-              {closedIPOs.map((ipo, idx) => {
-                const listingGain = ipo.estListPrice - ipo.priceMax;
-                const listingGainPercent = ((listingGain / ipo.priceMax) * 100).toFixed(1);
-                const isPositive = listingGain > 0;
-                const isNegative = listingGain < 0;
+              {recentListedIPOs.map((ipo, idx) => {
+                const isPositive = ipo.gainPct > 0;
+                const isNegative = ipo.gainPct < 0;
                 
                 return (
                   <tr 
                     key={ipo.id} 
                     className={`hover:bg-secondary/30 transition-colors ${
-                      idx !== closedIPOs.length - 1 ? 'border-b border-border' : ''
+                      idx !== recentListedIPOs.length - 1 ? 'border-b border-border' : ''
                     }`}
                   >
                     <td className="py-3 px-4">
@@ -90,12 +91,12 @@ export function ListedIPOs() {
                     </td>
                     <td className="text-right py-3 px-4">
                       <span className="text-[13px] font-medium text-ink">
-                        Rs {ipo.priceMax}
+                        Rs {ipo.issuePrice}
                       </span>
                     </td>
                     <td className="text-right py-3 px-4">
                       <span className="text-[13px] font-medium text-ink">
-                        Rs {ipo.estListPrice}
+                        Rs {ipo.listPrice}
                       </span>
                     </td>
                     <td className="text-right py-3 px-4">
@@ -107,12 +108,12 @@ export function ListedIPOs() {
                         {isPositive ? <TrendingUp className="w-3 h-3" /> : 
                          isNegative ? <TrendingDown className="w-3 h-3" /> : 
                          <Minus className="w-3 h-3" />}
-                        {isPositive ? '+' : ''}{listingGainPercent}%
+                        {isPositive ? '+' : ''}{ipo.gainPct.toFixed(1)}%
                       </div>
                     </td>
                     <td className="text-center py-3 px-4">
                       <span className="text-[12px] font-medium text-ink">
-                        {ipo.subscription.total}x
+                        {ipo.subTimes}x
                       </span>
                     </td>
                   </tr>

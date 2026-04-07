@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { TrendingUp, ArrowRight } from 'lucide-react';
-import { currentIPOs } from '@/lib/data';
+import type { IPO } from '@/lib/data';
 
-const liveIPOs = currentIPOs.filter(ipo => 
-  ipo.status === 'open' || ipo.status === 'lastday'
-).slice(0, 3);
+interface HeroSectionProps {
+  ipos: IPO[];
+}
 
 const stats = [
   { value: '95%+', label: 'AI Accuracy', color: 'text-emerald-400' },
@@ -13,7 +13,11 @@ const stats = [
   { value: 'Live', label: 'GMP Data', color: 'text-white' },
 ];
 
-export function HeroSection() {
+export function HeroSection({ ipos }: HeroSectionProps) {
+  const liveIPOs = ipos.filter(ipo => 
+    ipo.status === 'open' || ipo.status === 'lastday'
+  ).slice(0, 3);
+
   return (
     <section className="relative overflow-hidden" style={{ background: 'linear-gradient(155deg, #0d0b1e 0%, #1a0f3c 40%, #0f2050 100%)' }}>
       {/* Radial gradient overlays */}
@@ -138,7 +142,7 @@ export function HeroSection() {
                       {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
                     </div>
                     <div className="text-white/50 text-[9px] sm:text-[10px] mt-0.5">
-                      GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>₹{ipo.gmp}</span>
+                      GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>Rs {ipo.gmp}</span>
                       <span className="text-white/30 mx-0.5">|</span>
                       <span className={ipo.gmpPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
                         {ipo.gmpPercent >= 0 ? '+' : ''}{ipo.gmpPercent}%

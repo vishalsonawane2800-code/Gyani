@@ -7,6 +7,8 @@ import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
+import { getCurrentIPOs, getListedIPOs } from '@/lib/supabase/queries';
+import { currentIPOs as fallbackIPOs, listedIPOs as fallbackListedIPOs } from '@/lib/data';
 import Link from 'next/link';
 
 const allPages = [
@@ -29,20 +31,32 @@ const allPages = [
   { href: '/disclaimer', label: 'Disclaimer' },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Fetch data from Supabase with fallback to static data
+  let ipos = await getCurrentIPOs();
+  let listedIpos = await getListedIPOs({ limit: 10 });
+  
+  // Use fallback data if Supabase returns empty (no data seeded yet)
+  if (ipos.length === 0) {
+    ipos = fallbackIPOs;
+  }
+  if (listedIpos.length === 0) {
+    listedIpos = fallbackListedIPOs;
+  }
+  
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
-      <HeroSection />
+      <HeroSection ipos={ipos} />
       
       <main className="max-w-[1440px] mx-auto px-5 py-6 pb-16">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div className="min-w-0">
             <MarketSentiment />
-            <CurrentIPOs />
-            <ListedIPOs />
-            <GMPTracker />
+            <CurrentIPOs ipos={ipos} />
+            <ListedIPOs listedIpos={listedIpos} />
+            <GMPTracker ipos={ipos} />
             <NewsSection />
           </div>
           

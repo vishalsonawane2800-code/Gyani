@@ -21,7 +21,11 @@ const statusPriority: Record<IPOStatus, number> = {
 // Only show open IPOs
 const openStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
 
-export function CurrentIPOs() {
+interface CurrentIPOsProps {
+  ipos: IPO[];
+}
+
+export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
   const [currentIPOs, setCurrentIPOs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
