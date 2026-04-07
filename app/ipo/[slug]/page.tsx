@@ -12,7 +12,8 @@ import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
 import { PeerComparison } from '@/components/ipo-detail/peer-comparison';
 import { DetailSidebar } from '@/components/ipo-detail/detail-sidebar';
 import { PageFooter } from '@/components/ipo-detail/page-footer';
-import { currentIPOs, getIPOBySlug } from '@/lib/data';
+import { getIPOBySlug, getAllIPOSlugs } from '@/lib/supabase/queries';
+import { getIPOBySlug as getStaticIPOBySlug, currentIPOs } from '@/lib/data';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -21,7 +22,12 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const ipo = getIPOBySlug(slug);
+  
+  // Try Supabase first, fallback to static data
+  let ipo = await getIPOBySlug(slug);
+  if (!ipo) {
+    ipo = getStaticIPOBySlug(slug);
+  }
   
   if (!ipo) {
     return { title: 'IPO Not Found | IPOGyani' };
@@ -35,14 +41,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  return currentIPOs.map((ipo) => ({
-    slug: ipo.slug,
+  // Try Supabase first
+  const slugs = await getAllIPOSlugs();
+  
+  // Combine with static data slugs for fallback
+  const staticSlugs = currentIPOs.map((ipo) => ipo.slug);
+  const allSlugs = [...new Set([...slugs, ...staticSlugs])];
+  
+  return allSlugs.map((slug) => ({
+    slug,
   }));
 }
 
 export default async function IPODetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const ipo = getIPOBySlug(slug);
+  
+  // Try Supabase first, fallback to static data
+  let ipo = await getIPOBySlug(slug);
+  if (!ipo) {
+    ipo = getStaticIPOBySlug(slug);
+  }
   
   if (!ipo) {
     notFound();

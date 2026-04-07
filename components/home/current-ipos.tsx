@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { IPOCard } from '@/components/ipo-card';
-import { currentIPOs } from '@/lib/data';
-import type { IPOStatus } from '@/lib/data';
+import type { IPO, IPOStatus } from '@/lib/data';
 
 type FilterType = 'all' | 'main' | 'sme';
 
@@ -21,11 +20,15 @@ const statusPriority: Record<IPOStatus, number> = {
 // Only show open IPOs (open, lastday, allot, listing) - not closed or upcoming
 const openStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
 
-export function CurrentIPOs() {
+interface CurrentIPOsProps {
+  ipos: IPO[];
+}
+
+export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
 
   // Filter only open IPOs and sort by status priority (most urgent first)
-  const openIPOs = currentIPOs.filter(ipo => openStatuses.includes(ipo.status));
+  const openIPOs = ipos.filter(ipo => openStatuses.includes(ipo.status));
   const sortedIPOs = [...openIPOs].sort((a, b) => {
     return statusPriority[b.status] - statusPriority[a.status];
   });
