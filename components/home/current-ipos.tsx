@@ -29,12 +29,37 @@ export function CurrentIPOs() {
   // Fetch IPOs from Supabase
   useEffect(() => {
     const fetchIPOs = async () => {
-      const { data, error } = await supabase.from('ipos').select('*');
+const { data, error } = await supabase
+  .from("ipos")
+  .select(`
+    *,
+    gmp_history (gmp, recorded_at)
+  `);
 
-      if (error) {
-        console.error('Error fetching IPOs:', error);
-      } else {
-        setCurrentIPOs(data || []);
+if (error) {
+  console.error("Error fetching IPOs:", error);
+} else {
+  const formattedData = (data || []).map((ipo: any) => {
+    const gmpHistory = ipo.gmp_history || [];
+
+    // Get latest GMP
+    const latestGMP =
+      gmpHistory.length > 0
+        ? gmpHistory.sort(
+            (a: any, b: any) =>
+              new Date(b.recorded_at).getTime() -
+              new Date(a.recorded_at).getTime()
+          )[0].gmp
+        : null;
+
+    return {
+      ...ipo,
+      gmp: latestGMP,
+    };
+  });
+
+  setCurrentIPOs(formattedData);
+}
       }
 
       setLoading(false);
