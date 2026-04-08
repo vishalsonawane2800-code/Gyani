@@ -14,8 +14,42 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
+import { Loader2, Upload, X, Image as ImageIcon, Info, RefreshCw, Brain } from 'lucide-react'
 import Image from 'next/image'
+
+/* =========================================================================
+   IPO ADMIN FORM - User Guide
+   =========================================================================
+   
+   This form is divided into sections:
+   
+   1. BASIC INFO (Required) - IPO name, exchange, sector, dates
+      - Name: Full company name (e.g., "Fractal Analytics Limited")
+      - Slug: Auto-generated URL slug (e.g., "fractal-analytics-ipo")
+      - Exchange: BSE SME / NSE SME / Mainboard / REIT
+      
+   2. LOGO & BRANDING - Upload company logo or set brand colors
+      - Logo: Upload PNG/JPG (max 2MB)
+      - If no logo, initials will be displayed with brand colors
+      
+   3. PRICING & ISSUE DETAILS - Price band, lot size, issue size
+      - Price Min/Max: Price band in Rs (e.g., 100-120)
+      - Lot Size: Minimum shares to apply (e.g., 100)
+      - Issue Size: Total issue size in Cr
+      
+   4. AI PREDICTION (Manual Entry) - Your AI prediction values
+      - AI Prediction: Expected listing gain/loss % (e.g., +15 or -5)
+      - AI Confidence: How confident you are (0-100%)
+      - Sentiment Score: Market sentiment (-100 to +100)
+      - Sentiment Label: Bullish / Neutral / Bearish
+      
+   5. GMP & SUBSCRIPTION - Auto-refreshed every 15 mins
+      - These values are fetched automatically from external sources
+      - You can manually override if needed
+      
+   Note: YouTuber reviews, analyst opinions, and news reviews 
+   are managed in a separate Reviews page after IPO is created.
+   ========================================================================= */
 
 interface IPOFormData {
   id?: number
@@ -45,6 +79,11 @@ interface IPOFormData {
   bg_color: string
   fg_color: string
   logo_url: string
+  // AI Prediction fields (Manual Entry)
+  ai_prediction: number
+  ai_confidence: number
+  sentiment_score: number
+  sentiment_label: string
 }
 
 const defaultFormData: IPOFormData = {
@@ -74,10 +113,15 @@ const defaultFormData: IPOFormData = {
   bg_color: '#f0f9ff',
   fg_color: '#0369a1',
   logo_url: '',
+  ai_prediction: 0,
+  ai_confidence: 50,
+  sentiment_score: 50,
+  sentiment_label: 'Neutral',
 }
 
 const exchanges = ['Mainboard', 'BSE SME', 'NSE SME', 'REIT']
 const statuses = ['upcoming', 'open', 'lastday', 'allot', 'listing', 'closed']
+const sentimentLabels = ['Bullish', 'Neutral', 'Bearish']
 
 interface IPOFormProps {
   initialData?: Partial<IPOFormData>
@@ -143,13 +187,11 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file')
       return
     }
 
-    // Validate file size (max 2MB)
     if (file.size > 2 * 1024 * 1024) {
       toast.error('Image size should be less than 2MB')
       return
@@ -221,13 +263,134 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* Company Logo */}
+      {/* SECTION 1: BASIC INFO - REQUIRED FIELDS */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Company Logo</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">1. Basic Information</h2>
+          <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">Required</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Enter the IPO company name, exchange type, and sector. The slug and abbreviation are auto-generated.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* IPO Name - Most Important Field */}
+          <div className="lg:col-span-2">
+            <Label htmlFor="name" className="text-slate-300">
+              IPO Name *
+              <span className="text-xs text-slate-500 ml-2">Full company name</span>
+            </Label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              required
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., Fractal Analytics Limited"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="abbr" className="text-slate-300">
+              Abbreviation
+              <span className="text-xs text-slate-500 ml-2">Auto-generated</span>
+            </Label>
+            <Input
+              id="abbr"
+              name="abbr"
+              value={formData.abbr}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., FA"
+            />
+          </div>
+          
+          <div className="lg:col-span-2">
+            <Label htmlFor="slug" className="text-slate-300">
+              URL Slug
+              <span className="text-xs text-slate-500 ml-2">Auto-generated from name</span>
+            </Label>
+            <Input
+              id="slug"
+              name="slug"
+              value={formData.slug}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="auto-generated-from-name"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="exchange" className="text-slate-300">Exchange *</Label>
+            <Select
+              value={formData.exchange}
+              onValueChange={(value) => handleSelectChange('exchange', value)}
+            >
+              <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
+                <SelectValue placeholder="Select exchange" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-700 border-slate-600">
+                {exchanges.map((ex) => (
+                  <SelectItem key={ex} value={ex} className="text-white hover:bg-slate-600">
+                    {ex}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <Label htmlFor="sector" className="text-slate-300">
+              Sector *
+              <span className="text-xs text-slate-500 ml-2">Industry type</span>
+            </Label>
+            <Input
+              id="sector"
+              name="sector"
+              value={formData.sector}
+              onChange={handleChange}
+              required
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., Technology / AI Analytics"
+            />
+          </div>
+          
+          <div>
+            <Label htmlFor="status" className="text-slate-300">Status *</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value) => handleSelectChange('status', value)}
+            >
+              <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-700 border-slate-600">
+                {statuses.map((status) => (
+                  <SelectItem key={status} value={status} className="text-white hover:bg-slate-600">
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 2: LOGO & BRANDING */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">2. Logo & Branding</h2>
+          <span className="text-xs text-slate-400 bg-slate-600/50 px-2 py-0.5 rounded">Optional</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Upload company logo (PNG/JPG, max 2MB). If no logo, initials will be displayed with the brand colors.
+        </p>
+        
         <div className="flex items-start gap-6">
           {/* Logo Preview */}
           <div 
-            className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden"
+            className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden shrink-0"
             style={{ backgroundColor: formData.bg_color }}
           >
             {formData.logo_url ? (
@@ -281,114 +444,76 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
                 </Button>
               )}
             </div>
-            <p className="text-sm text-slate-400">
-              Upload a company logo (PNG, JPG, SVG). Max 2MB. If no logo is uploaded, initials will be displayed.
-            </p>
             {formData.logo_url && (
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <ImageIcon className="h-4 w-4" />
                 <span className="truncate max-w-xs">{formData.logo_url}</span>
               </div>
             )}
+            
+            {/* Brand Colors */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label htmlFor="bg_color" className="text-slate-300 text-sm">Background Color</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="bg_color"
+                    name="bg_color"
+                    type="color"
+                    value={formData.bg_color}
+                    onChange={handleChange}
+                    className="w-12 h-9 p-1 bg-slate-700 border-slate-600"
+                  />
+                  <Input
+                    name="bg_color"
+                    value={formData.bg_color}
+                    onChange={handleChange}
+                    className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 text-sm"
+                    placeholder="#f0f9ff"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="fg_color" className="text-slate-300 text-sm">Text Color</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    id="fg_color"
+                    name="fg_color"
+                    type="color"
+                    value={formData.fg_color}
+                    onChange={handleChange}
+                    className="w-12 h-9 p-1 bg-slate-700 border-slate-600"
+                  />
+                  <Input
+                    name="fg_color"
+                    value={formData.fg_color}
+                    onChange={handleChange}
+                    className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 text-sm"
+                    placeholder="#0369a1"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Basic Information */}
+      {/* SECTION 3: PRICING & ISSUE DETAILS */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Basic Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2">
-            <Label htmlFor="name" className="text-slate-300">IPO Name *</Label>
-            <Input
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={(e) => handleNameChange(e.target.value)}
-              required
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="e.g., Fractal Analytics"
-            />
-          </div>
-          <div>
-            <Label htmlFor="abbr" className="text-slate-300">Abbreviation</Label>
-            <Input
-              id="abbr"
-              name="abbr"
-              value={formData.abbr}
-              onChange={handleChange}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="e.g., FA"
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <Label htmlFor="slug" className="text-slate-300">URL Slug</Label>
-            <Input
-              id="slug"
-              name="slug"
-              value={formData.slug}
-              onChange={handleChange}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="auto-generated-from-name"
-            />
-          </div>
-          <div>
-            <Label htmlFor="exchange" className="text-slate-300">Exchange *</Label>
-            <Select
-              value={formData.exchange}
-              onValueChange={(value) => handleSelectChange('exchange', value)}
-            >
-              <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                <SelectValue placeholder="Select exchange" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-700 border-slate-600">
-                {exchanges.map((ex) => (
-                  <SelectItem key={ex} value={ex} className="text-white hover:bg-slate-600">
-                    {ex}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor="sector" className="text-slate-300">Sector *</Label>
-            <Input
-              id="sector"
-              name="sector"
-              value={formData.sector}
-              onChange={handleChange}
-              required
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="e.g., Technology / AI Analytics"
-            />
-          </div>
-          <div>
-            <Label htmlFor="status" className="text-slate-300">Status *</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(value) => handleSelectChange('status', value)}
-            >
-              <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-700 border-slate-600">
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status} className="text-white hover:bg-slate-600">
-                    {status.charAt(0).toUpperCase() + status.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">3. Pricing & Issue Details</h2>
+          <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">Required</span>
         </div>
-      </div>
-
-      {/* Pricing & Issue Details */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Pricing & Issue Details</h2>
+        <p className="text-sm text-slate-400 mb-4">
+          Enter the price band, lot size, and issue size. These are essential for calculating investment amounts.
+        </p>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
-            <Label htmlFor="price_min" className="text-slate-300">Price Min (Rs) *</Label>
+            <Label htmlFor="price_min" className="text-slate-300">
+              Price Min (Rs) *
+              <span className="text-xs text-slate-500 ml-1">Lower band</span>
+            </Label>
             <Input
               id="price_min"
               name="price_min"
@@ -401,7 +526,10 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="price_max" className="text-slate-300">Price Max (Rs) *</Label>
+            <Label htmlFor="price_max" className="text-slate-300">
+              Price Max (Rs) *
+              <span className="text-xs text-slate-500 ml-1">Upper band</span>
+            </Label>
             <Input
               id="price_max"
               name="price_max"
@@ -414,7 +542,10 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="lot_size" className="text-slate-300">Lot Size *</Label>
+            <Label htmlFor="lot_size" className="text-slate-300">
+              Lot Size *
+              <span className="text-xs text-slate-500 ml-1">Min shares</span>
+            </Label>
             <Input
               id="lot_size"
               name="lot_size"
@@ -427,7 +558,10 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="issue_size_cr" className="text-slate-300">Issue Size (Cr) *</Label>
+            <Label htmlFor="issue_size_cr" className="text-slate-300">
+              Issue Size (Cr) *
+              <span className="text-xs text-slate-500 ml-1">Total size</span>
+            </Label>
             <Input
               id="issue_size_cr"
               name="issue_size_cr"
@@ -463,7 +597,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="ofs" className="text-slate-300">OFS</Label>
+            <Label htmlFor="ofs" className="text-slate-300">OFS (Offer for Sale)</Label>
             <Input
               id="ofs"
               name="ofs"
@@ -476,9 +610,16 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         </div>
       </div>
 
-      {/* Important Dates */}
+      {/* SECTION 4: IMPORTANT DATES */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Important Dates</h2>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">4. Important Dates</h2>
+          <span className="text-xs text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">Required</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Enter IPO timeline dates. These dates are used to auto-update IPO status.
+        </p>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <Label htmlFor="open_date" className="text-slate-300">Open Date *</Label>
@@ -531,9 +672,169 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         </div>
       </div>
 
-      {/* Company & Manager Details */}
+      {/* SECTION 5: AI PREDICTION - MANUAL ENTRY */}
+      <div className="bg-gradient-to-r from-indigo-900/30 to-purple-900/30 rounded-xl border border-indigo-500/30 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Brain className="h-5 w-5 text-indigo-400" />
+          <h2 className="text-lg font-semibold text-white">5. AI Prediction</h2>
+          <span className="text-xs text-indigo-400 bg-indigo-400/10 px-2 py-0.5 rounded">Manual Entry</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Enter your AI prediction values manually. These will be displayed on the IPO detail page.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <Label htmlFor="ai_prediction" className="text-slate-300">
+              AI Prediction (%)
+              <span className="text-xs text-slate-500 ml-1">Listing gain/loss</span>
+            </Label>
+            <Input
+              id="ai_prediction"
+              name="ai_prediction"
+              type="number"
+              step="0.1"
+              value={formData.ai_prediction || ''}
+              onChange={handleChange}
+              className="bg-slate-700/50 border-indigo-500/30 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., +15 or -5"
+            />
+            <p className="text-xs text-slate-500 mt-1">Positive = gain, Negative = loss</p>
+          </div>
+          <div>
+            <Label htmlFor="ai_confidence" className="text-slate-300">
+              AI Confidence (%)
+              <span className="text-xs text-slate-500 ml-1">0-100</span>
+            </Label>
+            <Input
+              id="ai_confidence"
+              name="ai_confidence"
+              type="number"
+              min="0"
+              max="100"
+              value={formData.ai_confidence || ''}
+              onChange={handleChange}
+              className="bg-slate-700/50 border-indigo-500/30 text-white placeholder:text-slate-400 mt-1"
+              placeholder="50"
+            />
+            <p className="text-xs text-slate-500 mt-1">How confident is the prediction</p>
+          </div>
+          <div>
+            <Label htmlFor="sentiment_score" className="text-slate-300">
+              Sentiment Score
+              <span className="text-xs text-slate-500 ml-1">-100 to +100</span>
+            </Label>
+            <Input
+              id="sentiment_score"
+              name="sentiment_score"
+              type="number"
+              min="-100"
+              max="100"
+              value={formData.sentiment_score || ''}
+              onChange={handleChange}
+              className="bg-slate-700/50 border-indigo-500/30 text-white placeholder:text-slate-400 mt-1"
+              placeholder="50"
+            />
+            <p className="text-xs text-slate-500 mt-1">Market sentiment indicator</p>
+          </div>
+          <div>
+            <Label htmlFor="sentiment_label" className="text-slate-300">Sentiment Label</Label>
+            <Select
+              value={formData.sentiment_label}
+              onValueChange={(value) => handleSelectChange('sentiment_label', value)}
+            >
+              <SelectTrigger className="bg-slate-700/50 border-indigo-500/30 text-white mt-1">
+                <SelectValue placeholder="Select sentiment" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-700 border-slate-600">
+                {sentimentLabels.map((label) => (
+                  <SelectItem key={label} value={label} className="text-white hover:bg-slate-600">
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-slate-500 mt-1">Overall market mood</p>
+          </div>
+        </div>
+        
+        {/* AI Prediction Preview */}
+        <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
+          <p className="text-sm text-slate-400 mb-2">Preview:</p>
+          <div className="flex items-center gap-4">
+            <div className={`text-2xl font-bold ${formData.ai_prediction >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {formData.ai_prediction >= 0 ? '+' : ''}{formData.ai_prediction || 0}%
+            </div>
+            <div className="text-sm text-slate-400">
+              {formData.ai_confidence || 50}% confidence
+            </div>
+            <div className={`px-2 py-1 rounded text-xs font-medium ${
+              formData.sentiment_label === 'Bullish' ? 'bg-green-500/20 text-green-400' :
+              formData.sentiment_label === 'Bearish' ? 'bg-red-500/20 text-red-400' :
+              'bg-yellow-500/20 text-yellow-400'
+            }`}>
+              {formData.sentiment_label || 'Neutral'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 6: GMP & SUBSCRIPTION - AUTO-REFRESHED */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Company & Manager Details</h2>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <RefreshCw className="h-5 w-5 text-cyan-400" />
+            <h2 className="text-lg font-semibold text-white">6. GMP & Subscription</h2>
+            <span className="text-xs text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">Auto-refreshed every 15 mins</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-slate-500">
+            <Info className="h-4 w-4" />
+            <span>Values fetched from external sources automatically</span>
+          </div>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          GMP and subscription data are auto-fetched. You can manually override if needed.
+          Set the Chittorgarh URL below to enable auto-scraping.
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="md:col-span-3">
+            <Label htmlFor="chittorgarh_url" className="text-slate-300">
+              Chittorgarh URL
+              <span className="text-xs text-cyan-400 ml-2">Required for auto-refresh</span>
+            </Label>
+            <Input
+              id="chittorgarh_url"
+              name="chittorgarh_url"
+              value={formData.chittorgarh_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://www.chittorgarh.com/ipo/company-name-ipo/123/"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Paste the Chittorgarh IPO page URL to enable automatic GMP and subscription updates
+            </p>
+          </div>
+        </div>
+        
+        <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-lg">
+          <p className="text-sm text-cyan-300 font-medium mb-2">How Auto-Refresh Works:</p>
+          <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
+            <li>GMP data is fetched from IPO GMP sources every 15 minutes</li>
+            <li>Subscription data is scraped from Chittorgarh during IPO open period</li>
+            <li>Status is auto-updated based on IPO dates</li>
+            <li>You can manually edit values anytime to override auto-fetched data</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* SECTION 7: COMPANY & MANAGER DETAILS */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">7. Company & Manager Details</h2>
+          <span className="text-xs text-slate-400 bg-slate-600/50 px-2 py-0.5 rounded">Optional</span>
+        </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="registrar" className="text-slate-300">Registrar</Label>
@@ -565,27 +866,20 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               value={formData.about_company}
               onChange={handleChange}
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1 min-h-[100px]"
-              placeholder="Brief description of the company..."
+              placeholder="Brief description of the company and its business..."
             />
           </div>
         </div>
       </div>
 
-      {/* External Links & Symbols */}
+      {/* SECTION 8: EXCHANGE SYMBOLS */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">External Links & Symbols</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <Label htmlFor="chittorgarh_url" className="text-slate-300">Chittorgarh URL</Label>
-            <Input
-              id="chittorgarh_url"
-              name="chittorgarh_url"
-              value={formData.chittorgarh_url}
-              onChange={handleChange}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="https://www.chittorgarh.com/ipo/..."
-            />
-          </div>
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">8. Exchange Symbols</h2>
+          <span className="text-xs text-slate-400 bg-slate-600/50 px-2 py-0.5 rounded">Optional - For listed IPOs</span>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <Label htmlFor="nse_symbol" className="text-slate-300">NSE Symbol</Label>
             <Input
@@ -611,70 +905,24 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         </div>
       </div>
 
-      {/* Colors */}
-      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
-        <h2 className="text-lg font-semibold text-white mb-4">Brand Colors</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="bg_color" className="text-slate-300">Background Color</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                id="bg_color"
-                name="bg_color"
-                type="color"
-                value={formData.bg_color}
-                onChange={handleChange}
-                className="w-16 h-10 p-1 bg-slate-700 border-slate-600"
-              />
-              <Input
-                name="bg_color"
-                value={formData.bg_color}
-                onChange={handleChange}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
-                placeholder="#f0f9ff"
-              />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="fg_color" className="text-slate-300">Foreground/Text Color</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                id="fg_color"
-                name="fg_color"
-                type="color"
-                value={formData.fg_color}
-                onChange={handleChange}
-                className="w-16 h-10 p-1 bg-slate-700 border-slate-600"
-              />
-              <Input
-                name="fg_color"
-                value={formData.fg_color}
-                onChange={handleChange}
-                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400"
-                placeholder="#0369a1"
-              />
-            </div>
-          </div>
-          {/* Color Preview */}
-          <div className="md:col-span-2">
-            <Label className="text-slate-300">Preview</Label>
-            <div
-              className="mt-2 p-4 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: formData.bg_color }}
-            >
-              <span
-                className="font-bold text-lg"
-                style={{ color: formData.fg_color }}
-              >
-                {formData.abbr || 'AB'}
-              </span>
+      {/* Reviews Note */}
+      {isEditing && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-amber-300 font-medium">Managing Reviews</p>
+              <p className="text-sm text-amber-300/70 mt-1">
+                YouTuber reviews, analyst opinions, and news reviews are managed separately.
+                After saving this IPO, go to <strong>Admin &gt; Reviews</strong> to add expert reviews.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Submit Buttons */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 sticky bottom-4 bg-slate-900/90 backdrop-blur-sm p-4 rounded-xl border border-slate-700">
         <Button
           type="submit"
           disabled={loading}
@@ -691,6 +939,11 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         >
           Cancel
         </Button>
+        {isEditing && (
+          <span className="text-xs text-slate-500 ml-auto">
+            After saving, manage reviews at Admin &gt; Reviews
+          </span>
+        )}
       </div>
     </form>
   )

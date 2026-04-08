@@ -66,6 +66,11 @@ export async function POST(request: Request) {
       nse_symbol: body.nse_symbol || null,
       bse_scrip_code: body.bse_scrip_code || null,
       logo_url: body.logo_url || null,
+      // AI Prediction fields (manually entered)
+      ai_prediction: body.ai_prediction || 0,
+      ai_confidence: body.ai_confidence || 50,
+      sentiment_score: body.sentiment_score || 50,
+      sentiment_label: body.sentiment_label || 'Neutral',
     }
 
     const { data, error } = await supabase
