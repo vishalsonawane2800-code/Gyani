@@ -45,7 +45,7 @@ export function Header() {
 
   return (
     <nav className="sticky top-0 z-50 bg-card border-b border-border">
-      <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
+      <div className="max-w-[1440px] mx-auto flex items-center h-[64px] px-5">
         {/* Logo */}
         <Link href="/" className="flex items-center mr-5 shrink-0">
           <Image 
