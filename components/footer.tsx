@@ -34,9 +34,9 @@ export function Footer() {
             <Image 
               src="/images/logo.png" 
               alt="IPOGyani" 
-              width={180} 
-              height={48}
-              className="h-[48px] w-auto mb-3 brightness-0 invert"
+              width={198} 
+              height={53}
+              className="h-[53px] w-auto mb-3 brightness-0 invert"
             />
             <p className="text-[12.5px] leading-relaxed max-w-[280px] text-white/50">
               {"India's most intelligent IPO research platform. Live GMP, AI predictions, and India's most complete listed IPO database."}

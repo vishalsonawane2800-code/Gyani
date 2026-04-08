@@ -45,15 +45,15 @@ export function Header() {
 
   return (
     <nav className="sticky top-0 z-50 bg-card border-b border-border">
-      <div className="max-w-[1440px] mx-auto flex items-center h-[64px] px-5">
+      <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
         {/* Logo */}
         <Link href="/" className="flex items-center mr-5 shrink-0">
           <Image 
             src="/images/logo.png" 
             alt="IPOGyani - India's Smartest IPO Platform" 
-            width={168} 
-            height={43}
-            className="h-[43px] w-auto"
+            width={185} 
+            height={47}
+            className="h-[47px] w-auto"
             priority
           />
         </Link>
