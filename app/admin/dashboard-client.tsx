@@ -488,8 +488,8 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     </div>
   )
 }
-  
-  function StatCard({
+
+function StatCard({
   icon: Icon,
   label,
   value,
