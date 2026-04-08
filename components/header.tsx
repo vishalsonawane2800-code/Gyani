@@ -51,9 +51,9 @@ export function Header() {
           <Image 
             src="/images/logo.png" 
             alt="IPOGyani - India's Smartest IPO Platform" 
-            width={140} 
-            height={36}
-            className="h-[36px] w-auto"
+            width={168} 
+            height={43}
+            className="h-[43px] w-auto"
             priority
           />
         </Link>
