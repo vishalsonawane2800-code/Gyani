@@ -423,9 +423,8 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
               )}
             </tbody>
           </table>
-</div>
-  </div>
-  </div>
+        </div>
+      </div>
 
       {/* Migrate to Listed Dialog */}
       <Dialog open={migrateDialogOpen} onOpenChange={setMigrateDialogOpen}>
