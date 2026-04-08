@@ -6,6 +6,10 @@ export const dynamic = 'force-dynamic'
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
   
+  if (!supabase) {
+    return <AdminDashboardClient ipos={[]} stats={{ total: 0, open: 0, upcoming: 0, closed: 0 }} />
+  }
+
   // Fetch all IPOs for admin
   const { data: ipos, error } = await supabase
     .from('ipos')

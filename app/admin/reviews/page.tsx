@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { ReviewsClient } from './reviews-client'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'Manage Reviews | Admin',
   description: 'Add and manage expert reviews for IPOs',
@@ -8,6 +10,7 @@ export const metadata = {
 
 async function getIPOs() {
   const supabase = await createClient()
+  if (!supabase) return []
   const { data } = await supabase
     .from('ipos')
     .select('id, name, slug')
@@ -17,6 +20,7 @@ async function getIPOs() {
 
 async function getReviews() {
   const supabase = await createClient()
+  if (!supabase) return []
   const { data } = await supabase
     .from('expert_reviews')
     .select(`
