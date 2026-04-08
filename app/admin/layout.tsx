@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { 
   LayoutDashboard, 
@@ -45,7 +46,13 @@ export default function AdminLayout({
         <div className="h-16 flex items-center justify-between px-4 border-b border-slate-700">
           {sidebarOpen && (
             <Link href="/admin" className="flex items-center gap-2">
-              <span className="font-heading font-bold text-xl text-white">IPOGyani</span>
+              <Image 
+                src="/images/logo.png" 
+                alt="IPOGyani Admin" 
+                width={110} 
+                height={28}
+                className="h-[28px] w-auto brightness-0 invert"
+              />
               <span className="text-xs bg-amber-500 text-slate-900 px-1.5 py-0.5 rounded font-medium">Admin</span>
             </Link>
           )}
