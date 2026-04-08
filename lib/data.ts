@@ -63,6 +63,7 @@ export interface IPO {
   abbr: string;
   bgColor: string;
   fgColor: string;
+  logoUrl?: string;
   exchange: ExchangeType;
   sector: string;
   openDate: string;
@@ -121,6 +122,7 @@ export interface ListedIPO {
   abbr: string;
   bgColor: string;
   fgColor: string;
+  logoUrl?: string;
   exchange: ExchangeType;
   sector: string;
   listDate: string;

@@ -9,7 +9,10 @@ import {
   List,
   Pencil,
   Trash2,
-  Plus
+  Plus,
+  RefreshCw,
+  ArrowRight,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -25,19 +28,34 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 
 interface IPOData {
   id: number
   name: string
   slug: string
+  abbr: string
   status: string
   exchange: string
   price_min: number
   price_max: number
   open_date: string
   close_date: string
+  list_date: string
   created_at: string
+  logo_url?: string
+  bg_color?: string
+  fg_color?: string
 }
 
 interface AdminDashboardClientProps {
@@ -62,6 +80,88 @@ const statusColors: Record<string, string> = {
 export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps) {
   const router = useRouter()
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [syncingStatus, setSyncingStatus] = useState(false)
+  const [lastSynced, setLastSynced] = useState<string | null>(null)
+  const [migrateDialogOpen, setMigrateDialogOpen] = useState(false)
+  const [migratingIpo, setMigratingIpo] = useState<IPOData | null>(null)
+  const [listingPrice, setListingPrice] = useState('')
+  const [migrating, setMigrating] = useState(false)
+
+  // Auto-sync status on page load
+  useEffect(() => {
+    const autoSync = async () => {
+      try {
+        const response = await fetch('/api/admin/auto-status', { method: 'POST' })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.updates && data.updates.length > 0) {
+            toast.success(`Updated ${data.updates.length} IPO status(es)`)
+            router.refresh()
+          }
+          setLastSynced(new Date().toLocaleTimeString())
+        }
+      } catch (error) {
+        console.error('Auto-sync error:', error)
+      }
+    }
+    autoSync()
+  }, [router])
+
+  const handleSyncStatus = async () => {
+    setSyncingStatus(true)
+    try {
+      const response = await fetch('/api/admin/auto-status', { method: 'POST' })
+      if (response.ok) {
+        const data = await response.json()
+        if (data.updates && data.updates.length > 0) {
+          toast.success(`Updated ${data.updates.length} IPO(s): ${data.updates.map((u: { name: string }) => u.name).join(', ')}`)
+          router.refresh()
+        } else {
+          toast.info('All IPO statuses are up to date')
+        }
+        setLastSynced(new Date().toLocaleTimeString())
+      } else {
+        throw new Error('Failed to sync')
+      }
+    } catch (error) {
+      toast.error('Failed to sync IPO statuses')
+      console.error('Sync error:', error)
+    } finally {
+      setSyncingStatus(false)
+    }
+  }
+
+  const openMigrateDialog = (ipo: IPOData) => {
+    setMigratingIpo(ipo)
+    setListingPrice('')
+    setMigrateDialogOpen(true)
+  }
+
+  const handleMigrate = async () => {
+    if (!migratingIpo || !listingPrice) return
+    
+    setMigrating(true)
+    try {
+      const response = await fetch(`/api/admin/ipos/${migratingIpo.id}/migrate-listed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ list_price: parseFloat(listingPrice) }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to migrate')
+      }
+
+      toast.success(`${migratingIpo.name} migrated to Listed IPOs`)
+      setMigrateDialogOpen(false)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to migrate IPO')
+    } finally {
+      setMigrating(false)
+    }
+  }
 
   const handleDelete = async (id: number) => {
     setDeletingId(id)
@@ -105,12 +205,32 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
             Manage IPO data, GMP, and subscription information
           </p>
         </div>
-        <Link href="/admin/ipos/new">
-          <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
-            <Plus className="h-4 w-4 mr-2" />
-            Add New IPO
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            onClick={handleSyncStatus}
+            disabled={syncingStatus}
+            className="border-slate-600 text-slate-300 hover:bg-slate-700"
+          >
+            {syncingStatus ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Sync Status
           </Button>
-        </Link>
+          <Link href="/admin/ipos/new">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New IPO
+            </Button>
+          </Link>
+        </div>
+        {lastSynced && (
+          <p className="text-xs text-slate-500 mt-2 sm:mt-0 sm:absolute sm:right-0 sm:top-full">
+            Last synced: {lastSynced}
+          </p>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -207,17 +327,29 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       </Badge>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link href={`/admin/ipos/${ipo.id}/edit`}>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="text-slate-400 hover:text-white hover:bg-slate-700"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                        <AlertDialog>
+<div className="flex items-center justify-end gap-2">
+  {/* Migrate to Listed button - show only for listing status */}
+  {ipo.status === 'listing' && (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => openMigrateDialog(ipo)}
+      className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+      title="Migrate to Listed IPOs"
+    >
+      <ArrowRight className="h-4 w-4" />
+    </Button>
+  )}
+  <Link href={`/admin/ipos/${ipo.id}/edit`}>
+  <Button
+  variant="ghost"
+  size="icon"
+  className="text-slate-400 hover:text-white hover:bg-slate-700"
+  >
+  <Pencil className="h-4 w-4" />
+  </Button>
+  </Link>
+  <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button 
                               variant="ghost" 
@@ -255,13 +387,73 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
               )}
             </tbody>
           </table>
-        </div>
-      </div>
-    </div>
-  )
-}
+</div>
+  </div>
+  </div>
 
-function StatCard({
+      {/* Migrate to Listed Dialog */}
+      <Dialog open={migrateDialogOpen} onOpenChange={setMigrateDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Migrate to Listed IPOs
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {migratingIpo && (
+                <>
+                  Enter the listing price for <strong className="text-white">{migratingIpo.name}</strong> to migrate it to the Listed IPOs directory.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="listingPrice" className="text-slate-300">
+                Listing Price (Rs)
+              </Label>
+              <Input
+                id="listingPrice"
+                type="number"
+                value={listingPrice}
+                onChange={(e) => setListingPrice(e.target.value)}
+                placeholder={migratingIpo ? `Issue price: Rs ${migratingIpo.price_max}` : 'Enter listing price'}
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            {listingPrice && migratingIpo && (
+              <div className="p-3 bg-slate-700/50 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Gain/Loss:</span>
+                  <span className={parseFloat(listingPrice) >= migratingIpo.price_max ? 'text-green-400' : 'text-red-400'}>
+                    {((parseFloat(listingPrice) - migratingIpo.price_max) / migratingIpo.price_max * 100).toFixed(2)}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setMigrateDialogOpen(false)}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleMigrate}
+              disabled={!listingPrice || migrating}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            >
+              {migrating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Migrate to Listed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+  )
+  }
+  
+  function StatCard({
   icon: Icon,
   label,
   value,

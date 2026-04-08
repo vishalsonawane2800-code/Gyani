@@ -20,6 +20,7 @@ export interface IPOSimple {
   abbr?: string
   bg_color?: string
   fg_color?: string
+  logo_url?: string
   sector?: string
   allotment_date?: string
   list_date?: string
@@ -75,10 +76,11 @@ function transformIPO(ipo: IPOSimple, gmp: number): IPO {
     id: typeof ipo.id === 'string' ? parseInt(ipo.id) || 0 : ipo.id as unknown as number,
     name: ipo.name,
     slug: ipo.slug,
-    abbr: ipo.abbr || ipo.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-    bgColor: ipo.bg_color || '#f0f9ff',
-    fgColor: ipo.fg_color || '#0369a1',
-    exchange: (ipo.exchange as IPO['exchange']) || 'BSE SME',
+abbr: ipo.abbr || ipo.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+  bgColor: ipo.bg_color || '#f0f9ff',
+  fgColor: ipo.fg_color || '#0369a1',
+  logoUrl: ipo.logo_url || undefined,
+  exchange: (ipo.exchange as IPO['exchange']) || 'BSE SME',
     sector: ipo.sector || 'General',
     openDate: ipo.open_date,
     closeDate: ipo.close_date,

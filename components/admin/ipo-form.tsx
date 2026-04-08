@@ -14,7 +14,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Upload, X, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 interface IPOFormData {
   id?: number
@@ -43,6 +44,7 @@ interface IPOFormData {
   bse_scrip_code: string
   bg_color: string
   fg_color: string
+  logo_url: string
 }
 
 const defaultFormData: IPOFormData = {
@@ -71,6 +73,7 @@ const defaultFormData: IPOFormData = {
   bse_scrip_code: '',
   bg_color: '#f0f9ff',
   fg_color: '#0369a1',
+  logo_url: '',
 }
 
 const exchanges = ['Mainboard', 'BSE SME', 'NSE SME', 'REIT']
@@ -84,6 +87,7 @@ interface IPOFormProps {
 export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
   const [formData, setFormData] = useState<IPOFormData>({
     ...defaultFormData,
     ...initialData,
@@ -135,6 +139,52 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
     }))
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size should be less than 2MB')
+      return
+    }
+
+    setUploadingLogo(true)
+    try {
+      const formDataUpload = new FormData()
+      formDataUpload.append('file', file)
+      formDataUpload.append('slug', formData.slug || 'temp')
+
+      const response = await fetch('/api/admin/upload-logo', {
+        method: 'POST',
+        body: formDataUpload,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to upload logo')
+      }
+
+      const { url } = await response.json()
+      setFormData((prev) => ({ ...prev, logo_url: url }))
+      toast.success('Logo uploaded successfully')
+    } catch (error) {
+      console.error('Logo upload error:', error)
+      toast.error('Failed to upload logo')
+    } finally {
+      setUploadingLogo(false)
+    }
+  }
+
+  const removeLogo = () => {
+    setFormData((prev) => ({ ...prev, logo_url: '' }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -171,6 +221,79 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {/* Company Logo */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <h2 className="text-lg font-semibold text-white mb-4">Company Logo</h2>
+        <div className="flex items-start gap-6">
+          {/* Logo Preview */}
+          <div 
+            className="w-24 h-24 rounded-lg border-2 border-dashed border-slate-600 flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: formData.bg_color }}
+          >
+            {formData.logo_url ? (
+              <Image
+                src={formData.logo_url}
+                alt="Company logo"
+                width={96}
+                height={96}
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <span
+                className="font-bold text-2xl"
+                style={{ color: formData.fg_color }}
+              >
+                {formData.abbr || 'AB'}
+              </span>
+            )}
+          </div>
+          
+          {/* Upload Controls */}
+          <div className="flex-1 space-y-3">
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                  disabled={uploadingLogo}
+                />
+                <div className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors">
+                  {uploadingLogo ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
+                  <span>{uploadingLogo ? 'Uploading...' : 'Upload Logo'}</span>
+                </div>
+              </label>
+              {formData.logo_url && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={removeLogo}
+                  className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Remove
+                </Button>
+              )}
+            </div>
+            <p className="text-sm text-slate-400">
+              Upload a company logo (PNG, JPG, SVG). Max 2MB. If no logo is uploaded, initials will be displayed.
+            </p>
+            {formData.logo_url && (
+              <div className="flex items-center gap-2 text-sm text-slate-400">
+                <ImageIcon className="h-4 w-4" />
+                <span className="truncate max-w-xs">{formData.logo_url}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Basic Information */}
       <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
         <h2 className="text-lg font-semibold text-white mb-4">Basic Information</h2>
