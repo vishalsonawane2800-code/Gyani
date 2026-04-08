@@ -12,7 +12,7 @@ import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
 import { PeerComparison } from '@/components/ipo-detail/peer-comparison';
 import { DetailSidebar } from '@/components/ipo-detail/detail-sidebar';
 import { PageFooter } from '@/components/ipo-detail/page-footer';
-import { getIPOBySlug, getAllIPOSlugs } from '@/lib/supabase/queries';
+import { getIPOBySlug } from '@/lib/supabase/queries';
 import { getIPOBySlug as getStaticIPOBySlug, currentIPOs } from '@/lib/data';
 import type { Metadata } from 'next';
 
@@ -23,10 +23,10 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   
-  // Try Supabase first, fallback to static data
-  let ipo = await getIPOBySlug(slug);
+  // Try static data first for build-time, then Supabase for runtime
+  let ipo = getStaticIPOBySlug(slug);
   if (!ipo) {
-    ipo = getStaticIPOBySlug(slug);
+    ipo = await getIPOBySlug(slug);
   }
   
   if (!ipo) {
@@ -47,17 +47,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export async function generateStaticParams() {
-  // Try Supabase first
-  const slugs = await getAllIPOSlugs();
-  
-  // Combine with static data slugs for fallback
+  // Use static data for build-time generation to avoid Supabase dependency
+  // Dynamic IPOs will be fetched at runtime
   const staticSlugs = currentIPOs.map((ipo) => ipo.slug);
-  const allSlugs = [...new Set([...slugs, ...staticSlugs])];
   
-  return allSlugs.map((slug) => ({
+  return staticSlugs.map((slug) => ({
     slug,
   }));
 }
+
+// Enable dynamic rendering for pages not in static params
+export const dynamicParams = true;
 
 export default async function IPODetailPage({ params }: PageProps) {
   const { slug } = await params;
