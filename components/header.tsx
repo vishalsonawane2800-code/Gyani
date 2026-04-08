@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { Menu, X, Search, Sparkles } from 'lucide-react';
+import { Menu, X, Search } from 'lucide-react';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -108,12 +108,6 @@ export function Header() {
             Log in
           </button>
 
-          {/* Pro+ Button */}
-          <button className="hidden sm:flex items-center gap-1.5 text-[12px] font-bold text-white px-3 py-1.5 rounded-lg transition-all hover:opacity-90 hover:-translate-y-0.5" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
-            <Sparkles className="w-3.5 h-3.5" />
-            Pro+
-          </button>
-
           {/* Mobile Menu Button */}
           <button
             className="lg:hidden p-1.5 rounded-lg"
@@ -161,10 +155,6 @@ export function Header() {
           <div className="flex gap-2 mt-3 pt-3 border-t border-border">
             <button className="flex-1 text-[13px] font-medium text-ink2 py-2 rounded-lg border border-border">
               Log in
-            </button>
-            <button className="flex-1 flex items-center justify-center gap-1.5 text-[13px] font-bold text-white py-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
-              <Sparkles className="w-3.5 h-3.5" />
-              Pro+
             </button>
           </div>
         </div>

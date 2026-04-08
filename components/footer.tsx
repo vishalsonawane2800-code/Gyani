@@ -14,7 +14,6 @@ const footerLinks = {
     { label: 'Live Subscription', href: '/#current' },
     { label: 'Allotment Check', href: '/allotment' },
     { label: 'AI Accuracy', href: '/accuracy' },
-    { label: 'IPO Calculator', href: '/calculator' },
   ],
   info: [
     { label: 'About IPOGyani', href: '/about' },
