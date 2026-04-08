@@ -485,8 +485,9 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
   )
-  }
+}
   
   function StatCard({
   icon: Icon,

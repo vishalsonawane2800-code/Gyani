@@ -74,13 +74,20 @@ export function IPOHero({ ipo }: IPOHeroProps) {
   };
 
   const statusBadge = getStatusBadge();
-  const isPositiveGMP = ipo.gmp > 0;
-  const minInvestment = ipo.priceMax * ipo.lotSize;
+  const gmp = ipo.gmp ?? 0;
+  const priceMax = ipo.priceMax ?? 0;
+  const priceMin = ipo.priceMin ?? 0;
+  const lotSize = ipo.lotSize ?? 1;
+  const gmpPercent = ipo.gmpPercent ?? 0;
+  const subscription = ipo.subscription ?? { total: 0, day: 0, isFinal: false };
+  
+  const isPositiveGMP = gmp > 0;
+  const minInvestment = priceMax * lotSize;
   
   // Dynamic calculations
-  const estimatedListingPrice = ipo.priceMax + ipo.gmp;
-  const estimatedProfit = ipo.gmp * ipo.lotSize;
-  const estimatedProfitPercent = ((ipo.gmp / ipo.priceMax) * 100).toFixed(1);
+  const estimatedListingPrice = priceMax + gmp;
+  const estimatedProfit = gmp * lotSize;
+  const estimatedProfitPercent = priceMax > 0 ? ((gmp / priceMax) * 100).toFixed(1) : '0';
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
@@ -118,11 +125,11 @@ export function IPOHero({ ipo }: IPOHeroProps) {
         <div className="text-right shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Price Band</p>
           <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold">
-            {ipo.priceMax >= 100000 ? formatPrice(ipo.priceMax) : `Rs ${ipo.priceMin} - ${ipo.priceMax}`}
+            {priceMax >= 100000 ? formatPrice(priceMax) : `Rs ${priceMin} - ${priceMax}`}
           </p>
-          <p className="text-[11px] text-ink3 mt-1">Cut-off: Rs {ipo.priceMax.toLocaleString()} per share</p>
+          <p className="text-[11px] text-ink3 mt-1">Cut-off: Rs {priceMax.toLocaleString()} per share</p>
           <p className="text-[11px] text-ink4 mt-0.5">
-            Lot: {ipo.lotSize.toLocaleString()} - Min Rs {minInvestment >= 100000 ? `${(minInvestment / 100000).toFixed(2)}L` : minInvestment.toLocaleString()}
+            Lot: {lotSize.toLocaleString()} - Min Rs {minInvestment >= 100000 ? `${(minInvestment / 100000).toFixed(2)}L` : minInvestment.toLocaleString()}
           </p>
         </div>
       </div>
@@ -158,9 +165,9 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             </div>
           </div>
           <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${isPositiveGMP ? 'text-emerald-mid' : 'text-destructive'}`}>
-            {isPositiveGMP ? '+' : ''}Rs {Math.abs(ipo.gmp).toLocaleString()}
+            {isPositiveGMP ? '+' : ''}Rs {Math.abs(gmp).toLocaleString()}
           </p>
-          <p className="text-[11px] text-ink3 mt-1">{isPositiveGMP ? '+' : ''}{ipo.gmpPercent}% premium</p>
+          <p className="text-[11px] text-ink3 mt-1">{isPositiveGMP ? '+' : ''}{gmpPercent}% premium</p>
           {/* Refresh Timer */}
           <div className="flex items-center gap-1 mt-2 text-[9px] text-ink4">
             <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
@@ -198,19 +205,19 @@ export function IPOHero({ ipo }: IPOHeroProps) {
             {estimatedProfit >= 0 ? '+' : ''}Rs {Math.abs(estimatedProfit).toLocaleString()}
           </p>
           <p className="text-[11px] text-ink3 mt-1">
-            {estimatedProfit >= 0 ? '+' : ''}{estimatedProfitPercent}% ({ipo.lotSize} shares)
+            {estimatedProfit >= 0 ? '+' : ''}{estimatedProfitPercent}% ({lotSize} shares)
           </p>
         </div>
         
         <div className="bg-secondary rounded-xl p-4">
           <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Subscription</p>
           <p className={`font-[family-name:var(--font-sora)] text-2xl font-extrabold ${
-            ipo.subscription.total > 1 ? 'text-emerald-mid' : ipo.subscription.total > 0 ? 'text-gold-mid' : 'text-ink4'
+            subscription.total > 1 ? 'text-emerald-mid' : subscription.total > 0 ? 'text-gold-mid' : 'text-ink4'
           }`}>
-            {ipo.subscription.total > 0 ? `${ipo.subscription.total}x` : '-'}
+            {subscription.total > 0 ? `${subscription.total}x` : '-'}
           </p>
           <p className="text-[11px] text-ink3 mt-1">
-            {ipo.subscription.isFinal ? 'Final' : ipo.subscription.day > 0 ? `Day ${ipo.subscription.day} - Live` : 'Not open'}
+            {subscription.isFinal ? 'Final' : subscription.day > 0 ? `Day ${subscription.day} - Live` : 'Not open'}
           </p>
           {/* Subscription Graph Button */}
           <div className="mt-3">
