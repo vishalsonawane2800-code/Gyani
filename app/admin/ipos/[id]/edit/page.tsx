@@ -12,6 +12,10 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
   const { id } = await params
   const supabase = await createClient()
 
+  if (!supabase) {
+    notFound()
+  }
+
   const { data: ipo, error } = await supabase
     .from('ipos')
     .select('*')
