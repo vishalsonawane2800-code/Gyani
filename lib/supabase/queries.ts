@@ -215,3 +215,20 @@ export async function getListedIPOs(options?: { limit?: number }): Promise<IPOSi
 
   return data ?? []
 }
+
+// Get all IPO slugs for static generation
+export async function getAllIPOSlugs(): Promise<string[]> {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase
+    .from('ipos')
+    .select('slug')
+    .not('slug', 'is', null)
+  
+  if (error) {
+    console.error('Error fetching IPO slugs:', error)
+    return []
+  }
+  
+  return data?.map(ipo => ipo.slug).filter(Boolean) ?? []
+}
