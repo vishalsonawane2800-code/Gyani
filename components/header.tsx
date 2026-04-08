@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { Menu, X, TrendingUp, Search, Sparkles } from 'lucide-react';
+import { Menu, X, Search, Sparkles } from 'lucide-react';
 
 const navLinks = [
   { href: '/', label: 'Home' },
@@ -46,13 +47,15 @@ export function Header() {
     <nav className="sticky top-0 z-50 bg-card border-b border-border">
       <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 mr-5 shrink-0">
-          <div className="w-[34px] h-[34px] rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #5b21b6 0%, #1d4ed8 100%)' }}>
-            <TrendingUp className="w-[18px] h-[18px] text-white" strokeWidth={2} />
-          </div>
-          <span className="font-heading font-black text-xl tracking-tight text-foreground">
-            IPO<span className="text-violet-600">Gyani</span>
-          </span>
+        <Link href="/" className="flex items-center mr-5 shrink-0">
+          <Image 
+            src="/images/logo.png" 
+            alt="IPOGyani - India's Smartest IPO Platform" 
+            width={140} 
+            height={36}
+            className="h-[36px] w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop Navigation */}

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 const footerLinks = {
   ipoLists: [
@@ -31,9 +32,13 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 mb-8">
           {/* Brand */}
           <div>
-            <div className="font-[family-name:var(--font-sora)] font-black text-[22px] text-white mb-3">
-              IPO<span className="text-primary">Gyani</span>
-            </div>
+            <Image 
+              src="/images/logo.png" 
+              alt="IPOGyani" 
+              width={150} 
+              height={40}
+              className="h-[40px] w-auto mb-3 brightness-0 invert"
+            />
             <p className="text-[12.5px] leading-relaxed max-w-[280px] text-white/50">
               {"India's most intelligent IPO research platform. Live GMP, AI predictions, and India's most complete listed IPO database."}
             </p>
