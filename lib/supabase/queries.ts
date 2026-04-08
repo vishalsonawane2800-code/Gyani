@@ -122,6 +122,9 @@ abbr: ipo.abbr || ipo.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUppe
 export async function getCurrentIPOs(): Promise<IPO[]> {
   const supabase = await createClient()
   
+  // Return empty if Supabase is not configured
+  if (!supabase) return []
+  
   // Get IPOs
   const { data: ipos, error } = await supabase
     .from('ipos')
@@ -167,6 +170,9 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
 export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_history: GMPHistory[] }) | null> {
   const supabase = await createClient()
   
+  // Return null if Supabase is not configured
+  if (!supabase) return null
+  
   const { data: ipo, error } = await supabase
     .from('ipos')
     .select('*')
@@ -196,6 +202,9 @@ export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_his
 export async function getListedIPOs(options?: { limit?: number }): Promise<IPOSimple[]> {
   const supabase = await createClient()
   
+  // Return empty if Supabase is not configured
+  if (!supabase) return []
+  
   let query = supabase
     .from('ipos')
     .select('*')
@@ -219,6 +228,9 @@ export async function getListedIPOs(options?: { limit?: number }): Promise<IPOSi
 // Get all IPO slugs for static generation
 export async function getAllIPOSlugs(): Promise<string[]> {
   const supabase = await createClient()
+  
+  // Return empty if Supabase is not configured (e.g., during build)
+  if (!supabase) return []
   
   const { data, error } = await supabase
     .from('ipos')
