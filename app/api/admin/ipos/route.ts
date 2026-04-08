@@ -65,6 +65,7 @@ export async function POST(request: Request) {
       chittorgarh_url: body.chittorgarh_url || null,
       nse_symbol: body.nse_symbol || null,
       bse_scrip_code: body.bse_scrip_code || null,
+      logo_url: body.logo_url || null,
     }
 
     const { data, error } = await supabase
