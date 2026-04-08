@@ -8,7 +8,8 @@ import {
   TrendingUp, 
   Settings,
   ChevronLeft,
-  Menu
+  Menu,
+  MessageSquareText
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ import { Toaster } from '@/components/ui/sonner'
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/admin/ipos/new', label: 'Add IPO', icon: PlusCircle },
+  { href: '/admin/reviews', label: 'Reviews', icon: MessageSquareText },
   { href: '/admin/gmp', label: 'GMP Management', icon: TrendingUp },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]

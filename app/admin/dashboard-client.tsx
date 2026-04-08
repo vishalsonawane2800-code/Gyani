@@ -131,6 +131,27 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     }
   }
 
+  // Manual trigger for GMP and subscription data refresh
+  const [refreshingData, setRefreshingData] = useState(false)
+  const handleRefreshData = async () => {
+    setRefreshingData(true)
+    try {
+      const response = await fetch('/api/cron/update-subscriptions', { method: 'POST' })
+      if (response.ok) {
+        const data = await response.json()
+        toast.success(`GMP & Subscription data refreshed for ${data.results?.length || 0} IPO(s)`)
+        router.refresh()
+      } else {
+        throw new Error('Failed to refresh')
+      }
+    } catch (error) {
+      toast.error('Failed to refresh GMP & subscription data')
+      console.error('Refresh error:', error)
+    } finally {
+      setRefreshingData(false)
+    }
+  }
+
   const openMigrateDialog = (ipo: IPOData) => {
     setMigratingIpo(ipo)
     setListingPrice('')
@@ -208,9 +229,24 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
+            onClick={handleRefreshData}
+            disabled={refreshingData}
+            className="border-cyan-600/50 text-cyan-300 hover:bg-cyan-700/20"
+            title="Manually refresh GMP and subscription data from Chittorgarh (auto-refreshes every 15 mins)"
+          >
+            {refreshingData ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            Refresh GMP/Sub
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleSyncStatus}
             disabled={syncingStatus}
             className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            title="Update IPO statuses based on dates"
           >
             {syncingStatus ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
