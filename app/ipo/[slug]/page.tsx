@@ -33,9 +33,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: 'IPO Not Found | IPOGyani' };
   }
   
+  const subscriptionTotal = ipo.subscription?.total ?? 0;
+  const gmp = ipo.gmp ?? 0;
+  const aiPrediction = ipo.aiPrediction ?? 0;
+  const priceMin = ipo.priceMin ?? 0;
+  const priceMax = ipo.priceMax ?? 0;
+
   return {
     title: `${ipo.name} IPO - GMP, Subscription, AI Prediction | IPOGyani`,
-    description: `${ipo.name} IPO details - Live GMP Rs ${ipo.gmp}, subscription ${ipo.subscription.total}x, AI predicted listing gain ${ipo.aiPrediction}%. Price band Rs ${ipo.priceMin}-${ipo.priceMax}.`,
+    description: `${ipo.name} IPO details - Live GMP Rs ${gmp}, subscription ${subscriptionTotal}x, AI predicted listing gain ${aiPrediction}%. Price band Rs ${priceMin}-${priceMax}.`,
     keywords: `${ipo.name} IPO, ${ipo.name} GMP, ${ipo.name} subscription, ${ipo.name} listing gain prediction`,
   };
 }
