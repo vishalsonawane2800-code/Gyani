@@ -29,18 +29,24 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
     return `${mins}m ${secs}s`;
   };
 
-  const isPositive = ipo.aiPrediction > 0;
+  const aiPrediction = ipo.aiPrediction ?? 0;
+  const aiConfidence = ipo.aiConfidence ?? 0;
+  const sentimentScore = ipo.sentimentScore ?? 0;
+  const subscriptionTotal = ipo.subscription?.total ?? 0;
+  const sector = ipo.sector ?? 'N/A';
+
+  const isPositive = aiPrediction > 0;
   const predRange = {
-    min: Math.max(0, ipo.aiPrediction - 4),
-    max: ipo.aiPrediction + 4,
+    min: Math.max(0, aiPrediction - 4),
+    max: aiPrediction + 4,
   };
 
   const factors = [
     { label: 'GMP Trend', icon: '📈', color: '#93c5fd', bg: 'rgba(96,165,250,.15)' },
     { label: 'Anchor Quality', icon: '⚓', color: '#86efac', bg: 'rgba(134,239,172,.12)' },
-    { label: `Sentiment ${ipo.sentimentScore}/100`, icon: '🧠', color: '#c4b5fd', bg: 'rgba(196,181,253,.12)' },
-    { label: `Sub ${ipo.subscription.total}x`, icon: '📊', color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
-    { label: ipo.sector, icon: '🏭', color: '#6ee7b7', bg: 'rgba(52,211,153,.12)' },
+    { label: `Sentiment ${sentimentScore}/100`, icon: '🧠', color: '#c4b5fd', bg: 'rgba(196,181,253,.12)' },
+    { label: `Sub ${subscriptionTotal}x`, icon: '📊', color: '#fbbf24', bg: 'rgba(251,191,36,.12)' },
+    { label: sector, icon: '🏭', color: '#6ee7b7', bg: 'rgba(52,211,153,.12)' },
   ];
 
   return (
@@ -55,14 +61,14 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
         {/* Left - Main Prediction */}
         <div className="min-w-[150px]">
           <div className={`font-[family-name:var(--font-sora)] text-5xl font-black ${isPositive ? 'text-emerald-mid' : 'text-destructive'}`}>
-            {isPositive ? '+' : ''}{ipo.aiPrediction}%
+            {isPositive ? '+' : ''}{aiPrediction}%
           </div>
           <p className="text-[13px] text-white/50 mt-2">
             Range: <strong className="text-white">{isPositive ? '+' : ''}{predRange.min}% to {isPositive ? '+' : ''}{predRange.max}%</strong>
           </p>
           <p className="text-[13px] text-white/50">
-            Confidence: <strong className={ipo.aiConfidence >= 70 ? 'text-[#86efac]' : 'text-[#fbbf24]'}>
-              {ipo.aiConfidence >= 70 ? 'High' : 'Moderate'} - {ipo.aiConfidence}%
+            Confidence: <strong className={aiConfidence >= 70 ? 'text-[#86efac]' : 'text-[#fbbf24]'}>
+              {aiConfidence >= 70 ? 'High' : 'Moderate'} - {aiConfidence}%
             </strong>
           </p>
         </div>
@@ -70,11 +76,11 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
         {/* Right - Confidence Bar & Factors */}
         <div className="flex-1 min-w-[250px]">
           <div className="mb-4">
-            <p className="text-[11px] text-white/50 mb-2">Confidence Score - {ipo.aiConfidence}%</p>
+            <p className="text-[11px] text-white/50 mb-2">Confidence Score - {aiConfidence}%</p>
             <div className="h-2 bg-white/10 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-primary rounded-full transition-all duration-500"
-                style={{ width: `${ipo.aiConfidence}%` }}
+                style={{ width: `${aiConfidence}%` }}
               />
             </div>
           </div>

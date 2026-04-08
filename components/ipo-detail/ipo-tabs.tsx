@@ -58,7 +58,11 @@ export function IPOTabs({ ipo }: IPOTabsProps) {
 }
 
 function OverviewTab({ ipo }: { ipo: IPO }) {
-  const minInvestment = ipo.priceMax * ipo.lotSize;
+  const priceMax = ipo.priceMax ?? 0;
+  const priceMin = ipo.priceMin ?? 0;
+  const lotSize = ipo.lotSize ?? 1;
+  const peRatio = ipo.peRatio ?? 0;
+  const minInvestment = priceMax * lotSize;
   
   const ipoDetails = [
     ['Open Date', formatDate(ipo.openDate)],
@@ -66,23 +70,23 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
     ['Allotment Date', formatDate(ipo.allotmentDate)],
     ['Listing Date', formatDate(ipo.listDate)],
     ['Issue Type', 'Book Build Issue'],
-    ['Issue Size', `Rs ${ipo.issueSize}`],
-    ['Fresh Issue', ipo.freshIssue],
-    ['OFS', ipo.ofs],
+    ['Issue Size', `Rs ${ipo.issueSize ?? 'N/A'}`],
+    ['Fresh Issue', ipo.freshIssue ?? 'N/A'],
+    ['OFS', ipo.ofs ?? 'N/A'],
     ['Face Value', 'Rs 10 per share'],
-    ['Price Band', `Rs ${ipo.priceMin} - ${ipo.priceMax}`],
-    ['Lot Size', `${ipo.lotSize.toLocaleString()} shares`],
+    ['Price Band', `Rs ${priceMin} - ${priceMax}`],
+    ['Lot Size', `${lotSize.toLocaleString()} shares`],
     ['Min Investment (Retail)', `Rs ${minInvestment >= 100000 ? `${(minInvestment / 100000).toFixed(2)}L` : minInvestment.toLocaleString()}`],
-    ['Listing Exchange', ipo.exchange],
+    ['Listing Exchange', ipo.exchange ?? 'N/A'],
   ];
 
   const companyInfo = [
     ['Company Name', `${ipo.name} Ltd`],
-    ['Industry', ipo.sector],
-    ['Registrar', ipo.registrar],
-    ['Lead Manager', ipo.leadManager],
-    ['Market Cap (Upper)', ipo.marketCap],
-    ['P/E (Upper Band)', ipo.peRatio > 0 ? `${ipo.peRatio}x` : 'N/A'],
+    ['Industry', ipo.sector ?? 'N/A'],
+    ['Registrar', ipo.registrar ?? 'N/A'],
+    ['Lead Manager', ipo.leadManager ?? 'N/A'],
+    ['Market Cap (Upper)', ipo.marketCap ?? 'N/A'],
+    ['P/E (Upper Band)', peRatio > 0 ? `${peRatio}x` : 'N/A'],
   ];
 
   return (
@@ -306,6 +310,7 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
 function SubscriptionTab({ ipo }: { ipo: IPO }) {
   // Use actual subscription history if available
   const subHistory = ipo.subscriptionHistory || [];
+  const subscription = ipo.subscription ?? { total: 0, retail: 0, nii: 0, qib: 0, isFinal: false, day: 0 };
 
   // Get last updated time from subscription history or use current time
   const lastUpdated = subHistory.length > 0 
@@ -347,7 +352,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
       {/* Category Breakdown */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-[family-name:var(--font-sora)] text-[14px] font-bold">
-          Subscription by Category {ipo.subscription.isFinal ? '(Final)' : '(Live)'}
+          Subscription by Category {subscription.isFinal ? '(Final)' : '(Live)'}
         </h3>
         <div className="flex items-center gap-1.5 text-[11px] text-ink3 bg-secondary px-2.5 py-1 rounded-lg">
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -358,26 +363,26 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-secondary rounded-xl p-4 text-center">
-          <div className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${ipo.subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
-            {ipo.subscription.total > 0 ? `${ipo.subscription.total}x` : '-'}
+          <div className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
+            {subscription.total > 0 ? `${subscription.total}x` : '-'}
           </div>
           <div className="text-[11px] text-ink3 mt-1">Total</div>
         </div>
         <div className="bg-secondary rounded-xl p-4 text-center">
           <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-cobalt-mid">
-            {ipo.subscription.retail || '-'}
+            {subscription.retail || '-'}
           </div>
           <div className="text-[11px] text-ink3 mt-1">Retail</div>
         </div>
         <div className="bg-secondary rounded-xl p-4 text-center">
           <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-primary-mid">
-            {ipo.subscription.nii || '-'}
+            {subscription.nii || '-'}
           </div>
           <div className="text-[11px] text-ink3 mt-1">NII (HNI)</div>
         </div>
         <div className="bg-secondary rounded-xl p-4 text-center">
           <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-emerald-mid">
-            {ipo.subscription.qib || '-'}
+            {subscription.qib || '-'}
           </div>
           <div className="text-[11px] text-ink3 mt-1">QIB</div>
         </div>
@@ -437,8 +442,8 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                         ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
                         : entry.date
                       }
-                      {index === 0 && !ipo.subscription.isFinal && ' (Live)'}
-                      {index === 0 && ipo.subscription.isFinal && ' (Final)'}
+                      {index === 0 && !subscription.isFinal && ' (Live)'}
+                      {index === 0 && subscription.isFinal && ' (Final)'}
                     </td>
                     <td className="py-2.5 px-3 text-right text-ink3">{entry.time}</td>
                     <td className="py-2.5 px-3 text-right text-cobalt-mid font-medium">{entry.retail}x</td>
