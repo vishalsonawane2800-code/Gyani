@@ -74,6 +74,8 @@ interface IPOFormData {
   lead_manager: string
   about_company: string
   chittorgarh_url: string
+  investorgain_gmp_url: string
+  investorgain_sub_url: string
   nse_symbol: string
   bse_scrip_code: string
   bg_color: string
@@ -108,6 +110,8 @@ const defaultFormData: IPOFormData = {
   lead_manager: '',
   about_company: '',
   chittorgarh_url: '',
+  investorgain_gmp_url: '',
+  investorgain_sub_url: '',
   nse_symbol: '',
   bse_scrip_code: '',
   bg_color: '#f0f9ff',
@@ -801,7 +805,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           <div className="md:col-span-3">
             <Label htmlFor="chittorgarh_url" className="text-slate-300">
               Chittorgarh URL
-              <span className="text-xs text-cyan-400 ml-2">Required for auto-refresh</span>
+              <span className="text-xs text-slate-500 ml-2">For basic IPO info (fallback)</span>
             </Label>
             <Input
               id="chittorgarh_url"
@@ -812,7 +816,41 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               placeholder="https://www.chittorgarh.com/ipo/company-name-ipo/123/"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Paste the Chittorgarh IPO page URL to enable automatic GMP and subscription updates
+              e.g., https://www.chittorgarh.com/ipo/propshare-celestia-ipo/2965/
+            </p>
+          </div>
+          <div className="md:col-span-3">
+            <Label htmlFor="investorgain_gmp_url" className="text-slate-300">
+              InvestorGain GMP URL
+              <span className="text-xs text-cyan-400 ml-2">Primary source for live GMP</span>
+            </Label>
+            <Input
+              id="investorgain_gmp_url"
+              name="investorgain_gmp_url"
+              value={formData.investorgain_gmp_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://www.investorgain.com/gmp/ipo-name-gmp/1234/"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              e.g., https://www.investorgain.com/gmp/propshare-celestia-ipo-gmp/2226/
+            </p>
+          </div>
+          <div className="md:col-span-3">
+            <Label htmlFor="investorgain_sub_url" className="text-slate-300">
+              InvestorGain Subscription URL
+              <span className="text-xs text-cyan-400 ml-2">Primary source for live subscription</span>
+            </Label>
+            <Input
+              id="investorgain_sub_url"
+              name="investorgain_sub_url"
+              value={formData.investorgain_sub_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://www.investorgain.com/subscription/ipo-name/1234/"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              e.g., https://www.investorgain.com/subscription/om-power-transmission-ipo/1941/
             </p>
           </div>
         </div>
