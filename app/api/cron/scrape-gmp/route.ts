@@ -1,16 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 
-// Verify cron secret to prevent unauthorized access
+/**
+ * GMP Scraper for IPOGyani
+ * 
+ * Scrapes GMP (Grey Market Premium) from InvestorGain and Chittorgarh
+ * 
+ * Table structure from these sites:
+ * | GMP Date    | IPO Price | GMP      | Subscription | Sub2 Sauda | Est. Listing | Est. Profit | Last Updated |
+ * | 10-04-2026  | 175.00    | Rs 2.5   | 0.71x        | 200/2800   | Rs177.5(1%)  | Rs212.5     | 10-Apr-2026  |
+ * 
+ * The GMP column (3rd) contains values like "Rs 2.5", "Rs -5", "Rs 50"
+ */
+
 const CRON_SECRET = process.env.CRON_SECRET
 
-// Create Supabase client for server-side
 function getSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   
   if (!url || !key) {
-    console.error('[v0] Supabase credentials not configured')
+    console.error('[GMP Scraper] Supabase credentials not configured')
     return null
   }
   
@@ -25,9 +35,139 @@ interface GMPScrapeResult {
 }
 
 /**
- * Scrape GMP data from InvestorGain
- * URL format: https://www.investorgain.com/gmp/{ipo-slug}-gmp/{id}/
- * Example: https://www.investorgain.com/gmp/propshare-celestia-ipo-gmp/2226/
+ * Parse GMP value from a cell's text content
+ * Handles formats: "Rs 2.5", "Rs-5", "Rs2.5", "2.5", "-5"
+ */
+function parseGMPValue(text: string): number | null {
+  if (!text) return null
+  
+  // Remove HTML tags and clean up
+  const clean = text
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/[₹Rs\.]/gi, '') // Remove currency symbols
+    .replace(/▼|▲|↓|↑/g, '') // Remove arrow indicators
+    .replace(/\s+/g, '') // Remove whitespace
+    .trim()
+  
+  // Match the number (possibly negative, possibly decimal)
+  const match = clean.match(/^([+-]?\d+(?:\.\d+)?)/)
+  if (match) {
+    const value = parseFloat(match[1])
+    // Sanity check: GMP values are typically between -500 and 500
+    if (!isNaN(value) && value >= -500 && value <= 500) {
+      return value
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Extract all table rows from HTML and parse GMP from the correct column
+ */
+function extractGMPFromTable(html: string): number | null {
+  // Strategy 1: Find table with GMP-related headers and extract first data row
+  // Look for tables that have "GMP" in a header cell
+  
+  // Find all tables
+  const tablePattern = /<table[^>]*>([\s\S]*?)<\/table>/gi
+  const tables = [...html.matchAll(tablePattern)]
+  
+  for (const tableMatch of tables) {
+    const tableContent = tableMatch[1]
+    
+    // Check if this table has GMP-related headers
+    if (!/gmp|grey\s*market/i.test(tableContent)) continue
+    
+    // Extract all rows
+    const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
+    const rows = [...tableContent.matchAll(rowPattern)]
+    
+    // Find header row to determine GMP column index
+    let gmpColumnIndex = -1
+    
+    for (const row of rows) {
+      const rowContent = row[1]
+      // Check if this is a header row (contains th elements)
+      if (/<th/i.test(rowContent)) {
+        // Extract all cells (th or td)
+        const cellPattern = /<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/gi
+        const cells = [...rowContent.matchAll(cellPattern)]
+        
+        for (let i = 0; i < cells.length; i++) {
+          const cellText = cells[i][1].replace(/<[^>]*>/g, '').trim()
+          // Find the GMP column (not "GMP Date", not "GMP Trend")
+          if (/^gmp$/i.test(cellText) || /^grey\s*market\s*premium$/i.test(cellText)) {
+            gmpColumnIndex = i
+            break
+          }
+        }
+        
+        if (gmpColumnIndex >= 0) break
+      }
+    }
+    
+    // If we found a GMP column, extract value from first data row
+    if (gmpColumnIndex >= 0) {
+      for (const row of rows) {
+        const rowContent = row[1]
+        
+        // Skip header rows
+        if (/<th/i.test(rowContent)) continue
+        
+        // Skip rows that don't look like data (e.g., no date pattern)
+        if (!/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(rowContent) && !/\d{1,2}[-\/][A-Za-z]{3}[-\/]\d{4}/.test(rowContent)) {
+          continue
+        }
+        
+        // Extract cells from this row
+        const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi
+        const cells = [...rowContent.matchAll(cellPattern)]
+        
+        if (cells.length > gmpColumnIndex) {
+          const gmpCell = cells[gmpColumnIndex][1]
+          const gmpValue = parseGMPValue(gmpCell)
+          
+          if (gmpValue !== null) {
+            console.log(`[GMP Scraper] Found GMP ${gmpValue} from table column ${gmpColumnIndex}`)
+            return gmpValue
+          }
+        }
+      }
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Fallback: Look for GMP in text patterns
+ */
+function extractGMPFromText(html: string): number | null {
+  // Pattern 1: "GMP: Rs 2.5" or "GMP Today: Rs 2.5"
+  const patterns = [
+    /GMP\s*(?:Today)?[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
+    /Current\s*GMP[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
+    /Latest\s*GMP[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
+    /Grey\s*Market\s*Premium[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
+  ]
+  
+  for (const pattern of patterns) {
+    const match = html.match(pattern)
+    if (match && match[1]) {
+      const value = parseFloat(match[1])
+      if (!isNaN(value) && value >= -500 && value <= 500) {
+        console.log(`[GMP Scraper] Found GMP ${value} from text pattern`)
+        return value
+      }
+    }
+  }
+  
+  return null
+}
+
+/**
+ * Scrape GMP from InvestorGain
  */
 async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
   const result: GMPScrapeResult = { gmp: null, gmpPercent: null, estListing: null, source: 'investorgain' }
@@ -46,123 +186,36 @@ async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
     })
 
     if (!response.ok) {
-      console.log(`InvestorGain GMP returned ${response.status} for ${url}`)
+      console.log(`[GMP Scraper] InvestorGain returned ${response.status} for ${url}`)
       return result
     }
 
     const html = await response.text()
     
-    // InvestorGain GMP table structure:
-    // The table has columns: GMP Date | IPO Price | GMP | Subscription | Sub2 Sauda Rate | Estimated Listing Price | Estimated Profit | Last Updated
-    // The FIRST data row (after header) contains today's/latest GMP
-    // GMP values appear as "₹2.5" or "₹-5" in the 3rd column (index 2)
+    // Try table extraction first (most reliable)
+    result.gmp = extractGMPFromTable(html)
     
-    // Method 1: Find the GMP trend table and extract first row's GMP value
-    // The table structure from InvestorGain/Chittorgarh:
-    // | GMP Date | IPO Price | GMP | Subscription | ... |
-    // | 10-04-2026 | 175.00 | ₹2.5 ▼ | 0.71x | ... |
-    // The GMP column shows values like "₹2.5", "₹50", "₹-5"
-    
-    // Improved regex: Match table rows with date pattern, then capture GMP from 3rd column
-    // The GMP cell contains: ₹{number} followed by optional arrow/indicator
-    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*(\d{2}-\d{2}-\d{4})\s*(?:<[^>]*>)*\s*<\/td>[\s\S]*?<td[^>]*>\s*([\d,.]+)\s*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
-    
-    const rowMatches = [...html.matchAll(tableRowPattern)]
-    if (rowMatches.length > 0) {
-      // First match is the latest/today's GMP - group 3 is the GMP value
-      const latestGmp = parseFloat(rowMatches[0][3])
-      if (!isNaN(latestGmp)) {
-        result.gmp = latestGmp
-        console.log(`Extracted GMP from table first row (date: ${rowMatches[0][1]}, price: ${rowMatches[0][2]}): ${latestGmp}`)
-      }
-    }
-    
-    // Method 1.5: Alternative pattern - look for GMP in dedicated GMP column cells
-    // Pattern matches: <td...>₹2.5</td> or <td...>₹2.5 <span class="down">▼</span></td>
+    // Fallback to text patterns
     if (result.gmp === null) {
-      const gmpCellPattern = /<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)\s*(?:<[^>]*>[▼▲▶◀\-]*<\/[^>]*>)?\s*<\/td>/gi
-      const gmpMatches = [...html.matchAll(gmpCellPattern)]
-      // Filter to likely GMP values (typically small numbers like 2.5, 50, -10)
-      for (const match of gmpMatches) {
-        const val = parseFloat(match[1])
-        // GMP values are typically between -500 and 500
-        if (!isNaN(val) && val >= -500 && val <= 500) {
-          result.gmp = val
-          console.log(`Extracted GMP from cell pattern: ${val}`)
-          break
-        }
-      }
+      result.gmp = extractGMPFromText(html)
     }
     
-    // Method 2: Fallback - look for "GMP Today" specific patterns
-    if (result.gmp === null) {
-      const todayPatterns = [
-        /GMP\s*Today[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
-        /Today['']?s?\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
-        /Current\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
-        /Latest\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
-      ]
-      
-      for (const pattern of todayPatterns) {
-        const match = html.match(pattern)
-        if (match && match[1]) {
-          result.gmp = parseFloat(match[1])
-          console.log(`Extracted GMP from today pattern: ${result.gmp}`)
-          break
-        }
-      }
-    }
-    
-    // Method 3: Look for GMP in a summary/highlight section (usually at top of page)
-    // These often have special styling like card or highlight class
-    if (result.gmp === null) {
-      // Look for GMP in card/highlight/summary sections
-      const highlightPattern = /<(?:div|span|td)[^>]*(?:class|id)=[^>]*(?:highlight|summary|current|today|card)[^>]*>[\s\S]*?[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/gi
-      const highlightMatch = html.match(highlightPattern)
-      if (highlightMatch) {
-        const numMatch = highlightMatch[0].match(/[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/)
-        if (numMatch) {
-          result.gmp = parseFloat(numMatch[1])
-          console.log(`Extracted GMP from highlight section: ${result.gmp}`)
-        }
-      }
-    }
-
-    // Parse GMP percentage from Estimated Listing Price column which shows "(X.XX%)"
-    const percentMatch = html.match(/<td[^>]*>[^<]*\(\s*([+-]?\d+(?:\.\d+)?)\s*%\s*\)/i)
+    // Extract GMP percentage if available
+    const percentMatch = html.match(/\(\s*([+-]?\d+(?:\.\d+)?)\s*%\s*\)/i)
     if (percentMatch) {
       result.gmpPercent = parseFloat(percentMatch[1])
     }
 
-    // Parse estimated listing price
-    const listingPatterns = [
-      /Estimated\s*Listing\s*Price[^₹₨Rs]*[₹₨Rs.]\s*(\d+(?:\.\d+)?)/i,
-      /Est\.?\s*List\.?\s*Price[^₹₨Rs]*[₹₨Rs.]\s*(\d+(?:\.\d+)?)/i,
-    ]
-    
-    for (const pattern of listingPatterns) {
-      const match = html.match(pattern)
-      if (match && match[1]) {
-        result.estListing = parseFloat(match[1].replace(/,/g, ''))
-        break
-      }
-    }
-
-    console.log(`Scraped GMP from ${url}: GMP=${result.gmp}, Percent=${result.gmpPercent}`)
+    console.log(`[GMP Scraper] InvestorGain result for ${url}: GMP=${result.gmp}`)
     return result
   } catch (error) {
-    console.error(`Error scraping InvestorGain GMP ${url}:`, error)
+    console.error(`[GMP Scraper] Error scraping InvestorGain ${url}:`, error)
     return result
   }
 }
 
 /**
- * Scrape GMP from Chittorgarh as fallback
- * URL format: https://www.chittorgarh.com/ipo/{slug}/{id}/
- * 
- * Chittorgarh GMP table structure (from screenshot):
- * | GMP Date    | IPO Price | GMP      | Subscription | Sub2 Sauda Rate | Estimated Listing Price | Estimated Profit | Last Updated |
- * | 10-04-2026  | 175.00    | ₹2.5 ▼   | 0.71x        | 200/2800        | ₹177.5 (1.43%)          | ₹212.5           | 10-Apr-2026  |
+ * Scrape GMP from Chittorgarh (fallback)
  */
 async function scrapeChittorgarhGMP(url: string): Promise<GMPScrapeResult> {
   const result: GMPScrapeResult = { gmp: null, gmpPercent: null, estListing: null, source: 'chittorgarh' }
@@ -178,63 +231,44 @@ async function scrapeChittorgarhGMP(url: string): Promise<GMPScrapeResult> {
 
     const html = await response.text()
     
-    // Method 1: Parse the GMP trend table - first data row has latest GMP
-    // The table shows: Date | Price | GMP | Subscription | etc.
-    // GMP column contains "₹2.5" or "₹2.5 ▼" format
-    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*(\d{2}-\d{2}-\d{4})\s*(?:<[^>]*>)*(?:Open)?<\/td>[\s\S]*?<td[^>]*>\s*([\d,.]+)\s*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
+    // Try table extraction first
+    result.gmp = extractGMPFromTable(html)
     
-    const rowMatches = [...html.matchAll(tableRowPattern)]
-    if (rowMatches.length > 0) {
-      // First row is the latest GMP entry
-      const latestGmp = parseFloat(rowMatches[0][3])
-      if (!isNaN(latestGmp)) {
-        result.gmp = latestGmp
-        console.log(`Chittorgarh: Extracted GMP from table (date: ${rowMatches[0][1]}, price: ${rowMatches[0][2]}): ${latestGmp}`)
-      }
-    }
-    
-    // Method 2: Look for GMP value directly in cells with rupee symbol
-    // Pattern: <td>₹2.5</td> or <td>₹2.5 <span>▼</span></td>
+    // Fallback to text patterns
     if (result.gmp === null) {
-      const gmpCellPattern = /<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)\s*(?:<[^>]*>[▼▲\s]*<\/[^>]*>)?\s*<\/td>/gi
-      const matches = [...html.matchAll(gmpCellPattern)]
-      
-      for (const match of matches) {
-        const val = parseFloat(match[1])
-        // GMP values are typically small (between -500 and 500)
-        if (!isNaN(val) && val >= -500 && val <= 500) {
-          result.gmp = val
-          console.log(`Chittorgarh: Extracted GMP from cell: ${val}`)
-          break
-        }
-      }
+      result.gmp = extractGMPFromText(html)
     }
     
-    // Method 3: Fallback - simple GMP text pattern
-    if (result.gmp === null) {
-      const gmpMatch = html.match(/GMP[:\s]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i)
-      if (gmpMatch) {
-        result.gmp = parseFloat(gmpMatch[1])
-        console.log(`Chittorgarh: Extracted GMP from text pattern: ${result.gmp}`)
-      }
-    }
-
-    // Extract GMP percentage from the Estimated Listing Price column "(X.XX%)"
+    // Extract percentage
     const percentMatch = html.match(/\(\s*([+-]?\d+(?:\.\d+)?)\s*%\s*\)/i)
     if (percentMatch) {
       result.gmpPercent = parseFloat(percentMatch[1])
     }
 
-    console.log(`Chittorgarh scrape result for ${url}: GMP=${result.gmp}, Percent=${result.gmpPercent}`)
+    console.log(`[GMP Scraper] Chittorgarh result for ${url}: GMP=${result.gmp}`)
     return result
   } catch (error) {
-    console.error(`[v0] Error scraping Chittorgarh ${url}:`, error)
+    console.error(`[GMP Scraper] Error scraping Chittorgarh ${url}:`, error)
     return result
   }
 }
 
+/**
+ * Determine time slot based on current IST time
+ */
+function getTimeSlot(): 'morning' | 'evening' {
+  const now = new Date()
+  const utcHour = now.getUTCHours()
+  const utcMinutes = now.getUTCMinutes()
+  
+  // IST is UTC + 5:30
+  // 3 PM IST = 9:30 AM UTC
+  const utcTime = utcHour + utcMinutes / 60
+  return utcTime < 9.5 ? 'morning' : 'evening'
+}
+
 export async function GET(request: Request) {
-  // Verify cron secret (optional - allows both authenticated and manual calls)
+  // Verify cron secret
   const authHeader = request.headers.get('authorization')
   if (CRON_SECRET && authHeader && authHeader !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -245,17 +279,18 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
   }
 
+  const timeSlot = getTimeSlot()
   const results: { name: string; gmp: number | null; updated: boolean; error?: string }[] = []
 
   try {
-    // Get all IPOs that need GMP tracking (not yet listed)
+    // Get all active IPOs
     const { data: ipos, error: fetchError } = await supabase
       .from('ipos')
       .select('id, company_name, slug, price_max, investorgain_gmp_url, chittorgarh_url')
       .in('status', ['open', 'lastday', 'upcoming', 'allot', 'listing'])
 
     if (fetchError) {
-      console.error('[v0] Error fetching IPOs for GMP scrape:', fetchError)
+      console.error('[GMP Scraper] Error fetching IPOs:', fetchError)
       return NextResponse.json({ error: 'Failed to fetch IPOs' }, { status: 500 })
     }
 
@@ -301,20 +336,54 @@ export async function GET(request: Request) {
           })
           .eq('id', ipo.id)
 
-        // Upsert into GMP history (one record per day per IPO)
-        await supabase
+        // Upsert into GMP history (with time_slot for twice-daily tracking)
+        const { error: historyError } = await supabase
           .from('gmp_history')
           .upsert({
             ipo_id: ipo.id,
             date: today,
+            time_slot: timeSlot,
             gmp: gmpResult.gmp,
             gmp_percent: gmpPercent,
             source: gmpResult.source,
             recorded_at: now,
           }, {
-            onConflict: 'ipo_id,date',
+            onConflict: 'ipo_id,date,time_slot',
             ignoreDuplicates: false,
           })
+
+        // If upsert fails (constraint might not exist yet), try manual approach
+        if (historyError) {
+          const { data: existing } = await supabase
+            .from('gmp_history')
+            .select('id')
+            .eq('ipo_id', ipo.id)
+            .eq('date', today)
+            .maybeSingle()
+
+          if (existing) {
+            await supabase
+              .from('gmp_history')
+              .update({
+                gmp: gmpResult.gmp,
+                gmp_percent: gmpPercent,
+                source: gmpResult.source,
+                recorded_at: now,
+              })
+              .eq('id', existing.id)
+          } else {
+            await supabase
+              .from('gmp_history')
+              .insert({
+                ipo_id: ipo.id,
+                date: today,
+                gmp: gmpResult.gmp,
+                gmp_percent: gmpPercent,
+                source: gmpResult.source,
+                recorded_at: now,
+              })
+          }
+        }
 
         if (updateError) {
           results.push({ name: ipo.company_name, gmp: gmpResult.gmp, updated: false, error: updateError.message })
@@ -331,6 +400,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       message: 'GMP scrape completed',
+      timeSlot,
       updatedAt: new Date().toISOString(),
       results,
       successCount: results.filter(r => r.updated).length,
@@ -338,7 +408,7 @@ export async function GET(request: Request) {
     })
 
   } catch (error) {
-    console.error('[v0] GMP scrape cron error:', error)
+    console.error('[GMP Scraper] Cron error:', error)
     return NextResponse.json({ 
       error: 'Internal server error',
       details: error instanceof Error ? error.message : 'Unknown error'
@@ -346,7 +416,7 @@ export async function GET(request: Request) {
   }
 }
 
-// Support POST for manual triggers from admin dashboard
+// Support POST for manual triggers
 export async function POST(request: Request) {
   return GET(request)
 }
