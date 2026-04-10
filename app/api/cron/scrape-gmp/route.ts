@@ -174,7 +174,7 @@ export async function GET(request: Request) {
     // Get all IPOs that need GMP tracking (not yet listed)
     const { data: ipos, error: fetchError } = await supabase
       .from('ipos')
-      .select('id, name, slug, price_max, investorgain_gmp_url, chittorgarh_url')
+      .select('id, company_name, slug, price_max, investorgain_gmp_url, chittorgarh_url')
       .in('status', ['open', 'lastday', 'upcoming', 'allot', 'listing'])
 
     if (fetchError) {
@@ -240,12 +240,12 @@ export async function GET(request: Request) {
           })
 
         if (updateError) {
-          results.push({ name: ipo.name, gmp: gmpResult.gmp, updated: false, error: updateError.message })
+          results.push({ name: ipo.company_name, gmp: gmpResult.gmp, updated: false, error: updateError.message })
         } else {
-          results.push({ name: ipo.name, gmp: gmpResult.gmp, updated: true })
+          results.push({ name: ipo.company_name, gmp: gmpResult.gmp, updated: true })
         }
       } else {
-        results.push({ name: ipo.name, gmp: null, updated: false, error: 'No GMP data found' })
+        results.push({ name: ipo.company_name, gmp: null, updated: false, error: 'No GMP data found' })
       }
 
       // Small delay to avoid rate limiting

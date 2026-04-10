@@ -64,11 +64,13 @@ export async function POST(request: Request) {
     }
 
     // Also update the main IPO table with latest GMP
+    const gmpPercent = body.gmp_percent ?? 0
     await supabase
       .from('ipos')
       .update({
         gmp: body.gmp,
-        last_gmp_update: new Date().toISOString(),
+        gmp_percent: gmpPercent,
+        gmp_last_updated: new Date().toISOString(),
       })
       .eq('id', body.ipo_id)
 

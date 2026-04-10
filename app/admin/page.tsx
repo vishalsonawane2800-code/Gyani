@@ -45,7 +45,7 @@ export default async function AdminDashboardPage() {
       open_date,
       close_date,
       allotment_date,
-      list_date,
+      listing_date,
       created_at,
       logo_url,
       bg_color,
