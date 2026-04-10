@@ -168,10 +168,14 @@ export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_his
     .from('ipos')
     .select('*')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
 
-  if (error || !ipo) {
+  if (error) {
     console.error('Error fetching IPO:', error)
+    return null
+  }
+  
+  if (!ipo) {
     return null
   }
 
