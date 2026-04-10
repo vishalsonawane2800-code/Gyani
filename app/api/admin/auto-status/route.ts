@@ -11,8 +11,8 @@ import { createClient } from '@/lib/supabase/server'
  * - open → lastday: When current date = close_date
  * - lastday → closed: When current date > close_date
  * - closed → allot: When current date >= allotment_date
- * - allot → listing: When current date >= list_date
- * - listing → migrate to listed_ipos: After listing day (manual or auto after 1 day)
+ * - allot → listing: When current date = list_date
+ * - listing → listed: AUTOMATICALLY the day AFTER list_date (no manual action needed)
  */
 
 export async function POST() {
@@ -43,8 +43,11 @@ export async function POST() {
       const listDate = ipo.list_date
 
       // Determine the correct status based on dates
-      if (today >= listDate) {
-        // Past or on listing date
+      if (listDate && today > listDate) {
+        // Day AFTER listing date → automatically mark as listed
+        newStatus = 'listed'
+      } else if (listDate && today === listDate) {
+        // On the exact listing date → listing today
         newStatus = 'listing'
       } else if (today >= allotmentDate) {
         // Past or on allotment date but before listing
@@ -120,7 +123,9 @@ export async function GET() {
       const allotmentDate = ipo.allotment_date
       const listDate = ipo.list_date
 
-      if (today >= listDate) {
+      if (listDate && today > listDate) {
+        expectedStatus = 'listed'
+      } else if (listDate && today === listDate) {
         expectedStatus = 'listing'
       } else if (today >= allotmentDate) {
         expectedStatus = 'allot'

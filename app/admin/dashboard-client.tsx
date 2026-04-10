@@ -26,8 +26,8 @@ function generateAbbr(name: string): string {
    - lastday: On close_date (last day to apply)
    - closed: After close_date, before allotment (processing)
    - allot: On/after allotment_date (allotment happening)
-   - listing: On/after list_date (stock is listing today)
-   - listed: Migrated to Listed IPOs directory (permanent record)
+   - listing: On list_date (stock is listing today)
+   - listed: AUTO-SET the next day after list_date — IPO moves to Listed section automatically
    
    SECTIONS ON THIS PAGE:
    ======================
@@ -622,6 +622,37 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                            disabled={deletingId === ipo.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-slate-800 border-slate-700">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white">Delete IPO</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-400">
+                              Are you sure you want to delete &quot;{ipo.name}&quot;? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(ipo.id)}
+                              className="bg-red-600 text-white hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </div>
@@ -799,6 +830,37 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                           <Pencil className="h-4 w-4" />
                         </Button>
                       </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-slate-400 hover:text-red-400 hover:bg-red-500/10"
+                            disabled={deletingId === ipo.id}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="bg-slate-800 border-slate-700">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="text-white">Delete IPO</AlertDialogTitle>
+                            <AlertDialogDescription className="text-slate-400">
+                              Are you sure you want to delete &quot;{ipo.name}&quot;? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="bg-slate-700 text-white border-slate-600 hover:bg-slate-600">
+                              Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(ipo.id)}
+                              className="bg-red-600 text-white hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </div>
