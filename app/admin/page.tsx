@@ -31,17 +31,19 @@ export default async function AdminDashboardPage() {
 
   // Fetch all IPOs for admin with all necessary fields
   // Order by open_date descending to show newest IPOs first
-  const { data: ipos, error } = await supabase
+  // Select fields that match the 000_fresh_start.sql schema
+  const { data: rawIpos, error } = await supabase
     .from('ipos')
     .select(`
       id,
-      name,
+      company_name,
       slug,
-      abbr,
       status,
       exchange,
+      sector,
       price_min,
       price_max,
+      lot_size,
       open_date,
       close_date,
       allotment_date,
@@ -55,13 +57,20 @@ export default async function AdminDashboardPage() {
       ai_prediction
     `)
     .order('open_date', { ascending: false })
+  
+  // Map company_name to name and create abbr for dashboard compatibility
+  const ipos = rawIpos?.map(ipo => ({
+    ...ipo,
+    name: ipo.company_name,
+    abbr: ipo.company_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase() || 'IPO'
+  })) || []
 
   if (error) {
     console.error('Error fetching IPOs:', error)
   }
 
   // Calculate stats for dashboard overview
-  const allIpos = ipos || []
+  const allIpos = ipos
   const stats = {
     total: allIpos.length,
     // Open includes both 'open' and 'lastday' statuses
