@@ -19,7 +19,7 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
   const { data: ipo, error } = await supabase
     .from('ipos')
     .select('*')
-    .eq('id', parseInt(id))
+    .eq('id', id)
     .single()
 
   if (error || !ipo) {
