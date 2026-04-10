@@ -5,82 +5,23 @@
 
 ---
 
-## Quick Start SQL
+## IMPORTANT: Refresh Schema Cache
 
-### Create Basic Tables
-Run this in Supabase SQL Editor to set up the essential tables:
+After creating tables, you MUST refresh Supabase's PostgREST schema cache:
 
-```sql
--- Simple IPO Database Schema
--- Run this in your Supabase SQL Editor
-
--- 1. IPOs table
-CREATE TABLE IF NOT EXISTS ipos (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  slug TEXT UNIQUE NOT NULL,
-  status TEXT NOT NULL DEFAULT 'upcoming',
-  price_band TEXT NOT NULL,
-  lot_size INT NOT NULL,
-  issue_size TEXT NOT NULL,
-  exchange TEXT NOT NULL,
-  open_date DATE NOT NULL,
-  close_date DATE NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- 2. GMP History table
-CREATE TABLE IF NOT EXISTS gmp_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
-  gmp INT NOT NULL,
-  recorded_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_ipos_slug ON ipos(slug);
-CREATE INDEX IF NOT EXISTS idx_ipos_status ON ipos(status);
-CREATE INDEX IF NOT EXISTS idx_gmp_history_ipo_id ON gmp_history(ipo_id);
-CREATE INDEX IF NOT EXISTS idx_gmp_history_recorded_at ON gmp_history(recorded_at DESC);
-
--- Enable RLS
-ALTER TABLE ipos ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gmp_history ENABLE ROW LEVEL SECURITY;
-
--- Public read policies
-CREATE POLICY "Public read ipos" ON ipos FOR SELECT USING (true);
-CREATE POLICY "Public read gmp_history" ON gmp_history FOR SELECT USING (true);
-```
-
-### Sample Seed Data
-```sql
--- Sample seed data for your Supabase
--- Run this after schema.sql
-
-INSERT INTO ipos (name, slug, status, price_band, lot_size, issue_size, exchange, open_date, close_date) VALUES
-('Emiac Technologies', 'emiac-technologies-ipo', 'open', '93-98', 1200, '31.75 Cr', 'BSE SME', '2026-03-27', '2026-04-08'),
-('Highness Microelectronics', 'highness-microelectronics-ipo', 'upcoming', '114-120', 1200, '21.67 Cr', 'BSE SME', '2026-03-31', '2026-04-03'),
-('Powerica Limited', 'powerica-limited-ipo', 'open', '375-395', 37, '1100 Cr', 'Mainboard', '2026-03-24', '2026-03-27'),
-('Fractal Analytics', 'fractal-analytics-ipo', 'upcoming', '540-565', 26, '2400 Cr', 'Mainboard', '2026-04-14', '2026-04-17');
-
--- Add GMP history
-INSERT INTO gmp_history (ipo_id, gmp, recorded_at)
-SELECT id, 5, NOW() - INTERVAL '2 days' FROM ipos WHERE slug = 'emiac-technologies-ipo'
-UNION ALL
-SELECT id, 8, NOW() - INTERVAL '1 day' FROM ipos WHERE slug = 'emiac-technologies-ipo'
-UNION ALL
-SELECT id, 10, NOW() FROM ipos WHERE slug = 'emiac-technologies-ipo'
-UNION ALL
-SELECT id, 15, NOW() FROM ipos WHERE slug = 'highness-microelectronics-ipo'
-UNION ALL
-SELECT id, 12, NOW() FROM ipos WHERE slug = 'powerica-limited-ipo'
-UNION ALL
-SELECT id, 35, NOW() FROM ipos WHERE slug = 'fractal-analytics-ipo';
-```
+1. Go to Supabase Dashboard > Project Settings > API > Click "Reload schema"
+2. OR run: `NOTIFY pgrst, 'reload schema';` in SQL Editor
+3. OR restart the project from Project Settings > General
 
 ---
 
-## Full Schema (All Tables)
+## Quick Start - Fresh Database Setup
+
+Run `scripts/000_fresh_start.sql` in Supabase SQL Editor. This creates all tables with correct UUID types.
+
+---
+
+## Current Database Schema (v2 - UUID-based)
 
 ### Table: `ipos`
 Main IPO data storage.
@@ -88,26 +29,20 @@ Main IPO data storage.
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | id | UUID | NO | gen_random_uuid() | Primary key |
-| name | TEXT | NO | - | Full IPO name |
+| **company_name** | TEXT | NO | - | Full IPO name |
 | slug | TEXT | NO | - | URL-friendly identifier (UNIQUE) |
-| abbr | TEXT | YES | - | Short abbreviation |
 | status | TEXT | NO | 'upcoming' | IPO status |
-| price_band | TEXT | NO | - | Display format "93-98" |
+| exchange | TEXT | NO | - | Exchange type |
+| sector | TEXT | YES | - | Industry sector |
 | price_min | NUMERIC(12,2) | YES | - | Minimum price |
 | price_max | NUMERIC(12,2) | YES | - | Maximum price |
 | lot_size | INT | NO | - | Lot size |
-| issue_size | TEXT | NO | - | Display "31.75 Cr" |
-| issue_size_cr | NUMERIC(10,2) | YES | - | Numeric value |
-| fresh_issue | TEXT | YES | - | Fresh issue portion |
-| ofs | TEXT | YES | - | OFS portion |
-| exchange | TEXT | NO | - | Exchange type |
-| sector | TEXT | YES | - | Industry sector |
+| issue_size | TEXT | YES | - | Display "31.75 Cr" |
 | open_date | DATE | NO | - | Subscription start |
 | close_date | DATE | NO | - | Subscription end |
 | allotment_date | DATE | YES | - | Allotment date |
-| list_date | DATE | YES | - | Listing date |
+| **listing_date** | DATE | YES | - | Listing date |
 | gmp | NUMERIC(10,2) | YES | 0 | Current GMP |
-| gmp_percent | NUMERIC(6,2) | YES | 0 | GMP percentage |
 | gmp_last_updated | TIMESTAMPTZ | YES | - | GMP update time |
 | subscription_total | NUMERIC(10,2) | YES | 0 | Total subscription |
 | subscription_retail | TEXT | YES | '-' | Retail subscription |
@@ -123,14 +58,25 @@ Main IPO data storage.
 | fg_color | TEXT | YES | '#0369a1' | Card foreground |
 | logo_url | TEXT | YES | - | Logo image URL |
 | registrar | TEXT | YES | - | Registrar name |
-| lead_manager | TEXT | YES | - | Lead manager |
-| market_cap | TEXT | YES | - | Market cap |
-| pe_ratio | NUMERIC(8,2) | YES | - | P/E ratio |
-| about_company | TEXT | YES | - | Company description |
-| chittorgarh_url | TEXT | YES | - | External link |
+| **brlm** | TEXT | YES | - | Book Running Lead Manager |
+| **description** | TEXT | YES | - | Company description |
+| chittorgarh_url | TEXT | YES | - | Chittorgarh.com URL |
+| investorgain_gmp_url | TEXT | YES | - | InvestorGain GMP URL |
+| investorgain_sub_url | TEXT | YES | - | InvestorGain Sub URL |
 | nse_symbol | TEXT | YES | - | NSE symbol |
 | bse_scrip_code | TEXT | YES | - | BSE scrip code |
 | created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+**IMPORTANT Column Name Mappings (Code → Database):**
+- `name` → `company_name`
+- `list_date` → `listing_date`
+- `lead_manager` → `brlm`
+- `about_company` → `description`
+- `abbr` - REMOVED (not in database)
+- `gmp_percent` - REMOVED (calculated in code)
+- `issue_size_cr` - REMOVED (use issue_size)
+- `fresh_issue` - REMOVED
+- `ofs` - REMOVED
 
 ### Table: `gmp_history`
 Grey Market Premium history tracking.
@@ -140,10 +86,49 @@ Grey Market Premium history tracking.
 | id | UUID | NO | gen_random_uuid() | Primary key |
 | ipo_id | UUID | NO | - | Foreign key to ipos |
 | gmp | INT | NO | - | GMP value |
-| gmp_percent | NUMERIC(6,2) | YES | - | GMP percentage |
-| date | DATE | YES | - | Record date |
-| source | TEXT | YES | - | Data source |
 | recorded_at | TIMESTAMPTZ | YES | NOW() | Timestamp |
+
+### Table: `listed_ipos`
+Archive of listed IPOs with performance data.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| company_name | TEXT | NO | - | Company name |
+| slug | TEXT | NO | - | URL slug (UNIQUE) |
+| exchange | TEXT | YES | - | Exchange type |
+| issue_price | NUMERIC(10,2) | YES | - | Issue price |
+| listing_price | NUMERIC(10,2) | YES | - | Listing price |
+| current_price | NUMERIC(10,2) | YES | - | Current market price |
+| listing_gain | NUMERIC(6,2) | YES | - | Listing gain % |
+| current_gain | NUMERIC(6,2) | YES | - | Current gain % |
+| listing_date | DATE | YES | - | Listing date |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+### Table: `reviews`
+Expert reviews for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| source | TEXT | NO | - | Review source |
+| rating | TEXT | YES | - | Rating (Subscribe, Avoid, etc.) |
+| summary | TEXT | YES | - | Review summary |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+### Table: `ipo_financials`
+Financial data for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| fiscal_year | TEXT | YES | - | Fiscal year |
+| revenue | NUMERIC(15,2) | YES | - | Revenue |
+| pat | NUMERIC(15,2) | YES | - | Profit After Tax |
+| net_worth | NUMERIC(15,2) | YES | - | Net Worth |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
 
 ---
 
@@ -168,71 +153,57 @@ Grey Market Premium history tracking.
 | `BSE SME` | BSE SME Platform |
 | `NSE SME` | NSE Emerge Platform |
 | `Mainboard` | Main exchange |
-| `REIT` | Real Estate Investment Trust |
-
----
-
-## Common Queries
-
-### Get All Current IPOs with Latest GMP
-```sql
-SELECT 
-  i.*,
-  (SELECT gmp FROM gmp_history WHERE ipo_id = i.id ORDER BY recorded_at DESC LIMIT 1) as latest_gmp
-FROM ipos i
-WHERE status IN ('open', 'upcoming', 'closed', 'lastday', 'allot', 'listing')
-ORDER BY open_date ASC;
-```
-
-### Get IPO by Slug with GMP History
-```sql
-SELECT 
-  i.*,
-  json_agg(
-    json_build_object('gmp', g.gmp, 'date', g.recorded_at)
-    ORDER BY g.recorded_at DESC
-  ) as gmp_history
-FROM ipos i
-LEFT JOIN gmp_history g ON g.ipo_id = i.id
-WHERE i.slug = 'emiac-technologies-ipo'
-GROUP BY i.id;
-```
-
-### Update GMP for IPO
-```sql
--- Add new GMP entry
-INSERT INTO gmp_history (ipo_id, gmp, gmp_percent, date, source)
-SELECT id, 15, 12.5, CURRENT_DATE, 'IPOWatch'
-FROM ipos WHERE slug = 'emiac-technologies-ipo';
-
--- Update main IPO table
-UPDATE ipos 
-SET gmp = 15, gmp_percent = 12.5, gmp_last_updated = NOW()
-WHERE slug = 'emiac-technologies-ipo';
-```
-
----
-
-## Row Level Security Policies
-
-All tables have RLS enabled with public read access:
-
-```sql
--- Allow anyone to read IPO data
-CREATE POLICY "Public read ipos" ON ipos FOR SELECT USING (true);
-CREATE POLICY "Public read gmp_history" ON gmp_history FOR SELECT USING (true);
-
--- For admin write access, add service role or authenticated policies
-```
 
 ---
 
 ## Migration Files
 
 Located in `/scripts/`:
-1. `schema.sql` - Basic schema (quick setup)
-2. `seed.sql` - Sample data
-3. `001_create_ipo_tables.sql` - Full schema with all tables
-4. `002_add_logo_url.sql` - Logo URL column
-5. `002_add_exchange_symbols.sql` - Exchange symbols
-6. `003_add_chittorgarh_url.sql` - External URL
+- `000_fresh_start.sql` - **USE THIS** - Complete fresh schema with all tables (UUID-based)
+- `schema.sql` - Old basic schema (deprecated)
+- `001_create_ipo_tables.sql` - Old full schema (deprecated - has type mismatches)
+
+---
+
+## Row Level Security Policies
+
+All tables have RLS enabled:
+
+```sql
+-- Public read access
+CREATE POLICY "Public read" ON ipos FOR SELECT USING (true);
+CREATE POLICY "Public read" ON gmp_history FOR SELECT USING (true);
+
+-- Service role has full access (for admin operations)
+CREATE POLICY "Service role full access" ON ipos FOR ALL USING (true) WITH CHECK (true);
+```
+
+---
+
+## Common Queries
+
+### Get All Current IPOs
+```sql
+SELECT * FROM ipos
+WHERE status IN ('open', 'upcoming', 'closed', 'lastday', 'allot', 'listing')
+ORDER BY open_date ASC;
+```
+
+### Get IPO by Slug with GMP History
+```sql
+SELECT i.*, 
+  (SELECT json_agg(json_build_object('gmp', g.gmp, 'recorded_at', g.recorded_at) 
+   ORDER BY g.recorded_at DESC) 
+   FROM gmp_history g WHERE g.ipo_id = i.id) as gmp_history
+FROM ipos i
+WHERE i.slug = 'powerica-limited-ipo';
+```
+
+### Add GMP Entry
+```sql
+INSERT INTO gmp_history (ipo_id, gmp) 
+VALUES ('uuid-of-ipo', 50);
+
+UPDATE ipos SET gmp = 50, gmp_last_updated = NOW() 
+WHERE id = 'uuid-of-ipo';
+```

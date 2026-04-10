@@ -139,34 +139,28 @@
 ```sql
 CREATE TABLE ipos (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
+  company_name TEXT NOT NULL,         -- Full IPO name (NOT "name")
   slug TEXT UNIQUE NOT NULL,          -- URL-friendly identifier
-  abbr TEXT,                          -- Short abbreviation (e.g., "ET")
   status TEXT NOT NULL DEFAULT 'upcoming',  -- open|lastday|allot|listing|upcoming|closed|listed
   
   -- Pricing
-  price_band TEXT NOT NULL,           -- Display string "93-98"
   price_min NUMERIC(12,2),            -- Min price (93)
   price_max NUMERIC(12,2),            -- Max price (98)
   lot_size INT NOT NULL,
-  issue_size TEXT NOT NULL,           -- Display "31.75 Cr"
-  issue_size_cr NUMERIC(10,2),        -- Numeric value
-  fresh_issue TEXT,
-  ofs TEXT,
+  issue_size TEXT,                    -- Display "31.75 Cr"
   
   -- Exchange & Sector
-  exchange TEXT NOT NULL,             -- 'BSE SME'|'NSE SME'|'Mainboard'|'REIT'
+  exchange TEXT NOT NULL,             -- 'BSE SME'|'NSE SME'|'Mainboard'
   sector TEXT,
   
   -- Dates
   open_date DATE NOT NULL,
   close_date DATE NOT NULL,
   allotment_date DATE,
-  list_date DATE,
+  listing_date DATE,                  -- NOT "list_date"
   
   -- GMP Data
   gmp NUMERIC(10,2) DEFAULT 0,
-  gmp_percent NUMERIC(6,2) DEFAULT 0,
   gmp_last_updated TIMESTAMPTZ,
   
   -- Subscription Data
@@ -190,17 +184,25 @@ CREATE TABLE ipos (
   
   -- Additional Info
   registrar TEXT,
-  lead_manager TEXT,
-  market_cap TEXT,
-  pe_ratio NUMERIC(8,2),
-  about_company TEXT,
+  brlm TEXT,                          -- Book Running Lead Manager (NOT "lead_manager")
+  description TEXT,                   -- Company description (NOT "about_company")
   chittorgarh_url TEXT,
+  investorgain_gmp_url TEXT,
+  investorgain_sub_url TEXT,
   nse_symbol TEXT,
   bse_scrip_code TEXT,
   
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 ```
+
+**CRITICAL: Column Name Mapping (TypeScript → Database)**
+| TypeScript Property | Database Column |
+|---------------------|-----------------|
+| `name` | `company_name` |
+| `listDate` | `listing_date` |
+| `leadManager` | `brlm` |
+| `aboutCompany` | `description` |
 
 #### `gmp_history` - GMP Price History
 ```sql
