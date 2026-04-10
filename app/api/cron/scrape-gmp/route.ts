@@ -210,27 +210,30 @@ export async function GET(request: Request) {
             ? Math.round((gmpResult.gmp / ipo.price_max) * 100 * 10) / 10 
             : 0)
 
+        const now = new Date().toISOString()
+        const today = now.split('T')[0]
+
         // Update IPO with new GMP
         const { error: updateError } = await supabase
           .from('ipos')
           .update({
             gmp: gmpResult.gmp,
             gmp_percent: gmpPercent,
-            gmp_last_updated: new Date().toISOString(),
-            last_scraped_at: new Date().toISOString(),
+            gmp_last_updated: now,
+            last_scraped_at: now,
           })
           .eq('id', ipo.id)
 
-        // Also insert into GMP history
+        // Upsert into GMP history (one record per day per IPO)
         await supabase
           .from('gmp_history')
           .upsert({
             ipo_id: ipo.id,
-            date: new Date().toISOString().split('T')[0],
+            date: today,
             gmp: gmpResult.gmp,
             gmp_percent: gmpPercent,
             source: gmpResult.source,
-            recorded_at: new Date().toISOString(),
+            recorded_at: now,
           }, {
             onConflict: 'ipo_id,date',
             ignoreDuplicates: false,

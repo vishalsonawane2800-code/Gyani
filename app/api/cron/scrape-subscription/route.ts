@@ -244,28 +244,28 @@ export async function GET(request: Request) {
       }
 
       if (subscriptionData) {
+        const now = new Date().toISOString()
+        const today = now.split('T')[0]
+        // Round to nearest 30-min slot for deduplication
+        const d = new Date()
+        const mins = d.getMinutes() < 30 ? '00' : '30'
+        const currentTime = `${String(d.getHours()).padStart(2, '0')}:${mins}`
+
         // Update IPO with subscription data
         const { error: updateError } = await supabase
           .from('ipos')
           .update({
             subscription_total: subscriptionData.total,
-            subscription_retail: subscriptionData.retail,
-            subscription_nii: subscriptionData.nii,
-            subscription_qib: subscriptionData.qib,
+            subscription_retail: parseFloat(subscriptionData.retail.replace('x', '')) || 0,
+            subscription_nii: parseFloat(subscriptionData.nii.replace('x', '')) || 0,
+            subscription_qib: parseFloat(subscriptionData.qib.replace('x', '')) || 0,
             subscription_day: subscriptionData.day,
             subscription_is_final: subscriptionData.isFinal,
-            last_scraped_at: new Date().toISOString(),
+            last_scraped_at: now,
           })
           .eq('id', ipo.id)
 
-        // Also insert into subscription history
-        const today = new Date().toISOString().split('T')[0]
-        const currentTime = new Date().toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit', 
-          hour12: false 
-        })
-
+        // Upsert into subscription history (one record per 30-min slot)
         await supabase
           .from('subscription_history')
           .upsert({
@@ -276,6 +276,7 @@ export async function GET(request: Request) {
             nii: parseFloat(subscriptionData.nii.replace('x', '')) || 0,
             qib: parseFloat(subscriptionData.qib.replace('x', '')) || 0,
             total: subscriptionData.total,
+            recorded_at: now,
           }, {
             onConflict: 'ipo_id,date,time',
             ignoreDuplicates: false,
