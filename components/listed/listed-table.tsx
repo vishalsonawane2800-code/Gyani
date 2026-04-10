@@ -8,6 +8,16 @@ import { useListedFilters } from '@/hooks/use-listed-filters';
 
 const PAGE_SIZE = 15;
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 export function ListedTable() {
   const { year, exchange, gainFilter, search, sort } = useListedFilters();
   const [page, setPage] = useState(1);
@@ -131,12 +141,12 @@ export function ListedTable() {
                 <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors">
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
-                        style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-                      >
-                        {ipo.abbr}
-                      </div>
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
+                  style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+                >
+                  {generateAbbr(ipo.name)}
+                </div>
                       <div>
                         <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
                           {ipo.name}

@@ -1,6 +1,16 @@
 import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import type { PeerCompany, IPO } from '@/lib/data';
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 interface PeerComparisonProps {
   ipo: IPO;
   peers?: PeerCompany[];
@@ -150,7 +160,7 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
                     style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                   >
-                    {ipo.abbr}
+                    {generateAbbr(ipo.name)}
                   </div>
                   <div>
                     <span className="font-bold text-primary-mid">{ipo.name}</span>

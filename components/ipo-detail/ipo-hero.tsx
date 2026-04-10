@@ -34,6 +34,16 @@ interface IPOHeroProps {
   ipo: IPO;
 }
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -95,10 +105,10 @@ export function IPOHero({ ipo }: IPOHeroProps) {
       <div className="flex flex-wrap gap-6 items-start mb-6">
         {/* Logo & Info */}
         <div
-          className="w-16 h-16 rounded-xl flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-2xl shrink-0"
-          style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-        >
-          {ipo.abbr}
+                  className="w-16 h-16 rounded-xl flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-2xl shrink-0"
+                  style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+                >
+                  {generateAbbr(ipo.name)}
         </div>
         
         <div className="flex-1 min-w-[200px]">

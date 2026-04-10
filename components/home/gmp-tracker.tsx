@@ -10,6 +10,16 @@ function formatDate(dateString: string): string {
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 // Only show active IPOs (not upcoming or closed)
 const activeStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
 
@@ -105,7 +115,7 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
                             style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                           >
-                            {ipo.abbr}
+                            {generateAbbr(ipo.name)}
                           </div>
                           <div>
                             <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
@@ -192,7 +202,7 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                             className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
                             style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                           >
-                            {ipo.abbr}
+                            {generateAbbr(ipo.name)}
                           </div>
                           <div>
                             <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">

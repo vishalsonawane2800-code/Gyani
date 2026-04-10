@@ -4,6 +4,16 @@ import Link from 'next/link';
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { ListedIPO } from '@/lib/data';
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 interface ListedIPOsProps {
   listedIpos: ListedIPO[];
 }
@@ -67,12 +77,12 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
                   >
                     <td className="py-3 px-4">
                       <Link href={`/ipo/${ipo.slug}`} className="flex items-center gap-2.5 group">
-                        <div 
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
-                          style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-                        >
-                          {ipo.abbr}
-                        </div>
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+              >
+                {generateAbbr(ipo.name)}
+              </div>
                         <div>
                           <p className="font-medium text-[13px] text-ink group-hover:text-primary transition-colors line-clamp-1">
                             {ipo.name}

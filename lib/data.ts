@@ -60,7 +60,6 @@ export interface IPO {
   id: number;
   name: string;
   slug: string;
-  abbr: string;
   bgColor: string;
   fgColor: string;
   logoUrl?: string;
