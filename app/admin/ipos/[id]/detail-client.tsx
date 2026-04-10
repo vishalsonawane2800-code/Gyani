@@ -70,7 +70,7 @@ interface IPOData {
   open_date: string
   close_date: string
   allotment_date: string
-  list_date: string
+  listing_date: string
   registrar: string
   lead_manager: string
   about_company: string
@@ -396,7 +396,7 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
               <DetailItem label="Open Date" value={formatDate(ipo.open_date)} />
               <DetailItem label="Close Date" value={formatDate(ipo.close_date)} />
               <DetailItem label="Allotment" value={formatDate(ipo.allotment_date)} />
-              <DetailItem label="Listing" value={formatDate(ipo.list_date)} />
+              <DetailItem label="Listing" value={formatDate(ipo.listing_date)} />
             </div>
           </div>
 

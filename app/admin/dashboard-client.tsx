@@ -125,7 +125,7 @@ interface IPOData {
   price_max: number
   open_date: string
   close_date: string
-  list_date: string
+  listing_date: string
   allotment_date: string
   created_at: string
   logo_url?: string
@@ -372,6 +372,139 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
       console.error('Delete error:', error)
     } finally {
       setDeletingId(null)
+    }
+  }
+
+  // Per-IPO Scrape Handler
+  const handleScrapeIpo = async (ipo: IPOData) => {
+    setScrapingId(ipo.id)
+    try {
+      const response = await fetch('/api/admin/scrape-ipo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipo_id: ipo.id, type: 'both' }),
+      })
+      const data = await response.json()
+      if (response.ok && data.success) {
+        const gmpResult = data.results?.find((r: { type: string }) => r.type === 'gmp')
+        const subResult = data.results?.find((r: { type: string }) => r.type === 'subscription')
+        if (gmpResult?.success || subResult?.success) {
+          toast.success(`${ipo.name}: GMP=${gmpResult?.value ?? 'N/A'}, Sub=${subResult?.value ?? 'N/A'}x`)
+        } else {
+          toast.warning(`${ipo.name}: No data scraped. Check URLs in IPO settings.`)
+        }
+        router.refresh()
+      } else {
+        toast.error(data.error || 'Scrape failed')
+      }
+    } catch (error) {
+      toast.error('Failed to scrape IPO data')
+      console.error('Scrape error:', error)
+    } finally {
+      setScrapingId(null)
+    }
+  }
+
+  // GMP Manual Entry Handlers
+  const openGmpDialog = (ipo: IPOData) => {
+    setGmpIpo(ipo)
+    setGmpValue(ipo.gmp?.toString() || '')
+    setGmpDialogOpen(true)
+  }
+
+  const handleSaveGmp = async () => {
+    if (!gmpIpo || !gmpValue) return
+    setSavingGmp(true)
+    try {
+      const gmpNum = parseFloat(gmpValue)
+      const gmpPercent = gmpIpo.price_max > 0 ? Math.round((gmpNum / gmpIpo.price_max) * 100 * 10) / 10 : 0
+      const response = await fetch('/api/admin/gmp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipo_id: gmpIpo.id, gmp: gmpNum, gmp_percent: gmpPercent }),
+      })
+      if (response.ok) {
+        toast.success(`GMP updated to Rs ${gmpNum} for ${gmpIpo.name}`)
+        setGmpDialogOpen(false)
+        router.refresh()
+      } else {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to update GMP')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save GMP')
+    } finally {
+      setSavingGmp(false)
+    }
+  }
+
+  // Financials Handlers
+  const openFinancialsDialog = async (ipo: IPOData) => {
+    setFinancialsIpo(ipo)
+    setFinancialsData([
+      { fiscal_year: 'FY23', revenue: '', pat: '', ebitda: '' },
+      { fiscal_year: 'FY24', revenue: '', pat: '', ebitda: '' },
+      { fiscal_year: 'FY25', revenue: '', pat: '', ebitda: '' },
+    ])
+    // Try to fetch existing financials
+    try {
+      const response = await fetch(`/api/admin/ipos/${ipo.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.financials && data.financials.length > 0) {
+          setFinancialsData(data.financials.map((f: { fiscal_year: string; revenue: number; pat: number; ebitda: number }) => ({
+            fiscal_year: f.fiscal_year,
+            revenue: f.revenue?.toString() || '',
+            pat: f.pat?.toString() || '',
+            ebitda: f.ebitda?.toString() || '',
+          })))
+        }
+      }
+    } catch {
+      // Ignore fetch errors, start with empty data
+    }
+    setFinancialsDialogOpen(true)
+  }
+
+  const updateFinancialRow = (index: number, field: string, value: string) => {
+    setFinancialsData(prev => {
+      const updated = [...prev]
+      updated[index] = { ...updated[index], [field]: value }
+      return updated
+    })
+  }
+
+  const handleSaveFinancials = async () => {
+    if (!financialsIpo) return
+    setSavingFinancials(true)
+    try {
+      // Filter out empty rows and convert to numbers
+      const validRows = financialsData
+        .filter(row => row.revenue || row.pat || row.ebitda)
+        .map(row => ({
+          fiscal_year: row.fiscal_year,
+          revenue: parseFloat(row.revenue) || 0,
+          pat: parseFloat(row.pat) || 0,
+          ebitda: parseFloat(row.ebitda) || 0,
+        }))
+      
+      const response = await fetch(`/api/admin/ipos/${financialsIpo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ financials: validRows }),
+      })
+      if (response.ok) {
+        toast.success(`Financials updated for ${financialsIpo.name}`)
+        setFinancialsDialogOpen(false)
+        router.refresh()
+      } else {
+        const err = await response.json()
+        throw new Error(err.error || 'Failed to update financials')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save financials')
+    } finally {
+      setSavingFinancials(false)
     }
   }
 
@@ -630,6 +763,41 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                     </div>
                     {/* Actions */}
                     <div className="flex items-center gap-1">
+                      {/* Scrape GMP/Sub for this IPO */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleScrapeIpo(ipo)}
+                        disabled={scrapingId === ipo.id}
+                        className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10"
+                        title="Scrape GMP & Subscription"
+                      >
+                        {scrapingId === ipo.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Zap className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {/* Manual GMP Entry */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openGmpDialog(ipo)}
+                        className="text-slate-400 hover:text-green-400 hover:bg-green-500/10"
+                        title="Edit GMP Manually"
+                      >
+                        <DollarSign className="h-4 w-4" />
+                      </Button>
+                      {/* Financials Entry */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openFinancialsDialog(ipo)}
+                        className="text-slate-400 hover:text-purple-400 hover:bg-purple-500/10"
+                        title="Edit Financials"
+                      >
+                        <BarChart3 className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -824,7 +992,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                         <span>•</span>
                         <span>Allotment: {formatShortDate(ipo.allotment_date)}</span>
                         <span>•</span>
-                        <span>Listing: {formatShortDate(ipo.list_date)}</span>
+                        <span>Listing: {formatShortDate(ipo.listing_date)}</span>
                       </div>
                     </div>
                   </div>
@@ -1176,6 +1344,148 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
             >
               {changingStatus && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Update Status
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* GMP Manual Entry Dialog */}
+      <Dialog open={gmpDialogOpen} onOpenChange={setGmpDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-green-400" />
+              Edit GMP
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {gmpIpo && (
+                <>
+                  Manually enter or update the Grey Market Premium for <strong className="text-white">{gmpIpo.name}</strong>.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="gmpValue" className="text-slate-300">
+                GMP (Rs)
+              </Label>
+              <Input
+                id="gmpValue"
+                type="number"
+                value={gmpValue}
+                onChange={(e) => setGmpValue(e.target.value)}
+                placeholder="e.g., 50 or -10"
+                className="bg-slate-700 border-slate-600 text-white"
+              />
+            </div>
+            {gmpValue && gmpIpo && gmpIpo.price_max > 0 && (
+              <div className="p-3 bg-slate-700/50 rounded-lg space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Issue Price:</span>
+                  <span className="text-white">Rs {gmpIpo.price_max}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">GMP %:</span>
+                  <span className={parseFloat(gmpValue) >= 0 ? 'text-green-400' : 'text-red-400'}>
+                    {((parseFloat(gmpValue) / gmpIpo.price_max) * 100).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Est. Listing:</span>
+                  <span className="text-white">Rs {gmpIpo.price_max + parseFloat(gmpValue)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setGmpDialogOpen(false)}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveGmp}
+              disabled={!gmpValue || savingGmp}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {savingGmp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save GMP
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Financials Entry Dialog */}
+      <Dialog open={financialsDialogOpen} onOpenChange={setFinancialsDialogOpen}>
+        <DialogContent className="bg-slate-800 border-slate-700 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-purple-400" />
+              Company Financials
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {financialsIpo && (
+                <>
+                  Enter financial data for <strong className="text-white">{financialsIpo.name}</strong>. 
+                  All values in Crores (Cr).
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-4 gap-3 text-xs font-medium text-slate-400 uppercase">
+              <div>Fiscal Year</div>
+              <div>Revenue (Cr)</div>
+              <div>PAT (Cr)</div>
+              <div>EBITDA (Cr)</div>
+            </div>
+            {financialsData.map((row, index) => (
+              <div key={index} className="grid grid-cols-4 gap-3">
+                <div className="flex items-center">
+                  <span className="text-slate-300 text-sm font-medium">{row.fiscal_year}</span>
+                </div>
+                <Input
+                  type="number"
+                  value={row.revenue}
+                  onChange={(e) => updateFinancialRow(index, 'revenue', e.target.value)}
+                  placeholder="0"
+                  className="bg-slate-700 border-slate-600 text-white text-sm"
+                />
+                <Input
+                  type="number"
+                  value={row.pat}
+                  onChange={(e) => updateFinancialRow(index, 'pat', e.target.value)}
+                  placeholder="0"
+                  className="bg-slate-700 border-slate-600 text-white text-sm"
+                />
+                <Input
+                  type="number"
+                  value={row.ebitda}
+                  onChange={(e) => updateFinancialRow(index, 'ebitda', e.target.value)}
+                  placeholder="0"
+                  className="bg-slate-700 border-slate-600 text-white text-sm"
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setFinancialsDialogOpen(false)}
+              className="border-slate-600 text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveFinancials}
+              disabled={savingFinancials}
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+            >
+              {savingFinancials && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Financials
             </Button>
           </DialogFooter>
         </DialogContent>

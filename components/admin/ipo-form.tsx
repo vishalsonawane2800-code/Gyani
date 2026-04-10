@@ -67,7 +67,7 @@ interface IPOFormData {
   open_date: string
   close_date: string
   allotment_date: string
-  list_date: string
+  listing_date: string
   status: string
   registrar: string
   lead_manager: string
@@ -102,7 +102,7 @@ const defaultFormData: IPOFormData = {
   open_date: '',
   close_date: '',
   allotment_date: '',
-  list_date: '',
+  listing_date: '',
   status: 'upcoming',
   registrar: '',
   lead_manager: '',
@@ -634,12 +634,12 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="list_date" className="text-slate-300">Listing Date *</Label>
+            <Label htmlFor="listing_date" className="text-slate-300">Listing Date *</Label>
             <Input
-              id="list_date"
-              name="list_date"
+              id="listing_date"
+              name="listing_date"
               type="date"
-              value={formData.list_date}
+              value={formData.listing_date}
               onChange={handleChange}
               required
               className="bg-slate-700 border-slate-600 text-white mt-1"

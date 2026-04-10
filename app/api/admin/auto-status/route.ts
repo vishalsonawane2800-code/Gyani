@@ -25,7 +25,7 @@ export async function POST() {
     // Fetch all non-listed IPOs
     const { data: ipos, error } = await supabase
       .from('ipos')
-      .select('id, name, slug, status, open_date, close_date, allotment_date, list_date')
+      .select('id, company_name, slug, status, open_date, close_date, allotment_date, listing_date')
       .not('status', 'in', '("listed")')
       .order('open_date', { ascending: true })
 
@@ -40,7 +40,7 @@ export async function POST() {
       const openDate = ipo.open_date
       const closeDate = ipo.close_date
       const allotmentDate = ipo.allotment_date
-      const listDate = ipo.list_date
+      const listDate = ipo.listing_date
 
       // Determine the correct status based on dates
       if (listDate && today > listDate) {
@@ -74,11 +74,11 @@ export async function POST() {
           .eq('id', ipo.id)
 
         if (updateError) {
-          console.error(`Error updating IPO ${ipo.name}:`, updateError)
+          console.error(`Error updating IPO ${ipo.company_name}:`, updateError)
         } else {
           updates.push({
             id: ipo.id,
-            name: ipo.name,
+            name: ipo.company_name,
             oldStatus: ipo.status,
             newStatus: newStatus,
           })
@@ -107,7 +107,7 @@ export async function GET() {
 
     const { data: ipos, error } = await supabase
       .from('ipos')
-      .select('id, name, status, open_date, close_date, allotment_date, list_date')
+      .select('id, company_name, status, open_date, close_date, allotment_date, listing_date')
       .not('status', 'in', '("listed")')
       .order('open_date', { ascending: true })
 
@@ -121,7 +121,7 @@ export async function GET() {
       const openDate = ipo.open_date
       const closeDate = ipo.close_date
       const allotmentDate = ipo.allotment_date
-      const listDate = ipo.list_date
+      const listDate = ipo.listing_date
 
       if (listDate && today > listDate) {
         expectedStatus = 'listed'
@@ -141,7 +141,7 @@ export async function GET() {
 
       preview.push({
         id: ipo.id,
-        name: ipo.name,
+        name: ipo.company_name,
         currentStatus: ipo.status,
         expectedStatus,
         needsUpdate: expectedStatus !== ipo.status,

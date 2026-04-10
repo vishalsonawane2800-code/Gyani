@@ -214,7 +214,7 @@ export async function GET(request: Request) {
     // Get all IPOs that are open or lastday (subscription tracking relevant)
     const { data: ipos, error: fetchError } = await supabase
       .from('ipos')
-      .select('id, name, slug, investorgain_sub_url, chittorgarh_url')
+      .select('id, company_name, slug, investorgain_sub_url, chittorgarh_url')
       .in('status', ['open', 'lastday'])
 
     if (fetchError) {
@@ -283,12 +283,12 @@ export async function GET(request: Request) {
           })
 
         if (updateError) {
-          results.push({ name: ipo.name, subscription: subscriptionData, updated: false, error: updateError.message })
+          results.push({ name: ipo.company_name, subscription: subscriptionData, updated: false, error: updateError.message })
         } else {
-          results.push({ name: ipo.name, subscription: subscriptionData, updated: true })
+          results.push({ name: ipo.company_name, subscription: subscriptionData, updated: true })
         }
       } else {
-        results.push({ name: ipo.name, subscription: null, updated: false, error: 'No subscription data found' })
+        results.push({ name: ipo.company_name, subscription: null, updated: false, error: 'No subscription data found' })
       }
 
       // Small delay to avoid rate limiting

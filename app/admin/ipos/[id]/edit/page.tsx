@@ -44,7 +44,7 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     open_date: ipo.open_date || '',
     close_date: ipo.close_date || '',
     allotment_date: ipo.allotment_date || '',
-    list_date: ipo.list_date || '',
+    listing_date: ipo.listing_date || '',
     status: ipo.status || 'upcoming',
     registrar: ipo.registrar || '',
     lead_manager: ipo.lead_manager || '',

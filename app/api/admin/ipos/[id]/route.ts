@@ -5,7 +5,7 @@ interface RouteParams {
   params: Promise<{ id: string }>
 }
 
-// GET /api/admin/ipos/[id] - Get single IPO
+// GET /api/admin/ipos/[id] - Get single IPO with financials
 export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { id } = await params
@@ -25,7 +25,14 @@ export async function GET(_request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: 'Failed to fetch IPO' }, { status: 500 })
     }
 
-    return NextResponse.json({ data })
+    // Also fetch financials for this IPO
+    const { data: financials } = await supabase
+      .from('ipo_financials')
+      .select('*')
+      .eq('ipo_id', id)
+      .order('fiscal_year', { ascending: true })
+
+    return NextResponse.json({ ...data, financials: financials || [] })
   } catch (error) {
     console.error('Server error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
@@ -90,6 +97,30 @@ export async function PUT(request: Request, { params }: RouteParams) {
         return NextResponse.json({ error: 'An IPO with this slug already exists' }, { status: 400 })
       }
       return NextResponse.json({ error: `Failed to update IPO: ${error.message}` }, { status: 500 })
+    }
+
+    // Handle financials update if provided
+    if (body.financials && Array.isArray(body.financials)) {
+      // Delete existing financials for this IPO
+      await supabase
+        .from('ipo_financials')
+        .delete()
+        .eq('ipo_id', id)
+
+      // Insert new financials
+      if (body.financials.length > 0) {
+        const financialsData = body.financials.map((f: { fiscal_year: string; revenue: number; pat: number; ebitda: number }) => ({
+          ipo_id: id,
+          fiscal_year: f.fiscal_year,
+          revenue: f.revenue || 0,
+          pat: f.pat || 0,
+          ebitda: f.ebitda || 0,
+        }))
+        
+        await supabase
+          .from('ipo_financials')
+          .insert(financialsData)
+      }
     }
 
     return NextResponse.json({ data })

@@ -258,7 +258,7 @@ export async function GET(request: Request) {
     // Get all open IPOs (including chittorgarh_url)
     const { data: openIPOs, error: fetchError } = await supabase
       .from('ipos')
-      .select('id, name, slug, exchange, nse_symbol, bse_scrip_code, chittorgarh_url')
+      .select('id, company_name, slug, exchange, nse_symbol, bse_scrip_code, chittorgarh_url')
       .in('status', ['open', 'lastday', 'upcoming', 'allot'])
 
     if (fetchError) {
@@ -280,7 +280,7 @@ export async function GET(request: Request) {
 
       // PRIORITY 1: Try Chittorgarh URL if available (best source for both GMP and subscription)
       if (ipo.chittorgarh_url) {
-        console.log(`[v0] Fetching from Chittorgarh for ${ipo.name}: ${ipo.chittorgarh_url}`)
+        console.log(`[v0] Fetching from Chittorgarh for ${ipo.company_name}: ${ipo.chittorgarh_url}`)
         const chittorgarhData = await fetchFromChittorgarh(ipo.chittorgarh_url)
         
         if (chittorgarhData.subscription) {
@@ -338,16 +338,16 @@ export async function GET(request: Request) {
         }
 
         if (updateError) {
-          results.push({ name: ipo.name, updated: false, error: updateError.message })
+          results.push({ name: ipo.company_name, updated: false, error: updateError.message })
         } else {
           results.push({ 
-            name: ipo.name, 
+            name: ipo.company_name, 
             updated: !!subscriptionData, 
             gmpUpdated: gmpValue !== null 
           })
         }
       } else {
-        results.push({ name: ipo.name, updated: false, error: 'No data found from any source' })
+        results.push({ name: ipo.company_name, updated: false, error: 'No data found from any source' })
       }
 
       // Small delay to avoid rate limiting

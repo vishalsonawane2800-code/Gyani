@@ -37,7 +37,7 @@ export async function POST(
 
     // Prepare data for listed_ipos table
     const listedIpoData = {
-      name: ipo.name,
+      company_name: ipo.company_name,
       slug: ipo.slug,
       abbr: ipo.abbr,
       bg_color: ipo.bg_color,
@@ -45,15 +45,15 @@ export async function POST(
       logo_url: ipo.logo_url,
       exchange: ipo.exchange,
       sector: ipo.sector,
-      list_date: ipo.list_date,
+      listing_date: ipo.listing_date,
       issue_price: issuePrice,
-      list_price: list_price,
-      gain_pct: parseFloat(calculatedGainPct),
+      listing_price: list_price,
+      listing_gain_pct: parseFloat(calculatedGainPct),
       sub_times: ipo.subscription_total || null,
       gmp_peak: ipo.gmp ? `₹${ipo.gmp}` : null,
       ai_pred: ipo.ai_prediction ? `${ipo.ai_prediction}%` : null,
       ai_err: null,
-      year: new Date(ipo.list_date).getFullYear().toString(),
+      year: ipo.listing_date ? new Date(ipo.listing_date).getFullYear().toString() : null,
     }
 
     // Insert into listed_ipos
