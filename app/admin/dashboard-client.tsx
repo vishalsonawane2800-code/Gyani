@@ -76,7 +76,10 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  Eye
+  Eye,
+  Zap,
+  DollarSign,
+  BarChart3,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -187,6 +190,25 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
   const [newStatus, setNewStatus] = useState('')
   const [changingStatus, setChangingStatus] = useState(false)
   
+  // Per-IPO scrape state
+  const [scrapingId, setScrapingId] = useState<number | null>(null)
+  
+  // GMP manual entry dialog
+  const [gmpDialogOpen, setGmpDialogOpen] = useState(false)
+  const [gmpIpo, setGmpIpo] = useState<IPOData | null>(null)
+  const [gmpValue, setGmpValue] = useState('')
+  const [savingGmp, setSavingGmp] = useState(false)
+
+  // Financials dialog
+  const [financialsDialogOpen, setFinancialsDialogOpen] = useState(false)
+  const [financialsIpo, setFinancialsIpo] = useState<IPOData | null>(null)
+  const [financialsData, setFinancialsData] = useState([
+    { fiscal_year: 'FY23', revenue: '', pat: '', ebitda: '' },
+    { fiscal_year: 'FY24', revenue: '', pat: '', ebitda: '' },
+    { fiscal_year: 'FY25', revenue: '', pat: '', ebitda: '' },
+  ])
+  const [savingFinancials, setSavingFinancials] = useState(false)
+
   // Section collapse states
   const [showAllIpos, setShowAllIpos] = useState(false)
 
