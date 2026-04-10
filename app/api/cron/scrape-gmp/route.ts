@@ -36,26 +36,37 @@ interface GMPScrapeResult {
 
 /**
  * Parse GMP value from a cell's text content
- * Handles formats: "Rs 2.5", "Rs-5", "Rs2.5", "2.5", "-5"
+ * Handles formats: "Rs 2.5", "Rs-5", "Rs2.5", "2.5", "-5", "₹ 50", "Rs. 2.50"
  */
 function parseGMPValue(text: string): number | null {
   if (!text) return null
   
   // Remove HTML tags and clean up
-  const clean = text
+  let clean = text
     .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/[₹Rs\.]/gi, '') // Remove currency symbols
-    .replace(/▼|▲|↓|↑/g, '') // Remove arrow indicators
-    .replace(/\s+/g, '') // Remove whitespace
+    .replace(/₹|Rs\.?/gi, '') // Remove currency symbols (Rs, Rs., ₹)
+    .replace(/▼|▲|↓|↑|&nbsp;/gi, '') // Remove arrow indicators and nbsp
+    .replace(/,/g, '') // Remove commas from numbers
     .trim()
   
+  // Handle negative values with spaces: "- 5" -> "-5"
+  clean = clean.replace(/^-\s+/, '-')
+  
   // Match the number (possibly negative, possibly decimal)
-  const match = clean.match(/^([+-]?\d+(?:\.\d+)?)/)
-  if (match) {
-    const value = parseFloat(match[1])
-    // Sanity check: GMP values are typically between -500 and 500
-    if (!isNaN(value) && value >= -500 && value <= 500) {
-      return value
+  // Try multiple patterns for robustness
+  const patterns = [
+    /^([+-]?\d+(?:\.\d+)?)/, // Standard: "2.5", "-5", "+10.5"
+    /([+-]?\d+(?:\.\d+)?)\s*$/, // Trailing: "GMP 2.5"
+  ]
+  
+  for (const pattern of patterns) {
+    const match = clean.match(pattern)
+    if (match) {
+      const value = parseFloat(match[1])
+      // Sanity check: GMP values are typically between -500 and 500
+      if (!isNaN(value) && value >= -500 && value <= 500) {
+        return value
+      }
     }
   }
   
@@ -64,11 +75,16 @@ function parseGMPValue(text: string): number | null {
 
 /**
  * Extract all table rows from HTML and parse GMP from the correct column
+ * 
+ * InvestorGain table structure (typical):
+ * | GMP Date | IPO Price | GMP | Subscription | ... |
+ * | 10-04-26 | 175.00   | Rs 2.5 | 0.71x      | ... |
+ * 
+ * Chittorgarh table structure:
+ * | Date | GMP (Rs) | % | Est Listing |
+ * | 10-Apr | 50 | 28% | 225 |
  */
 function extractGMPFromTable(html: string): number | null {
-  // Strategy 1: Find table with GMP-related headers and extract first data row
-  // Look for tables that have "GMP" in a header cell
-  
   // Find all tables
   const tablePattern = /<table[^>]*>([\s\S]*?)<\/table>/gi
   const tables = [...html.matchAll(tablePattern)]
@@ -85,20 +101,30 @@ function extractGMPFromTable(html: string): number | null {
     
     // Find header row to determine GMP column index
     let gmpColumnIndex = -1
+    let hasHeaderRow = false
     
     for (const row of rows) {
       const rowContent = row[1]
       // Check if this is a header row (contains th elements)
       if (/<th/i.test(rowContent)) {
+        hasHeaderRow = true
         // Extract all cells (th or td)
         const cellPattern = /<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/gi
         const cells = [...rowContent.matchAll(cellPattern)]
         
         for (let i = 0; i < cells.length; i++) {
-          const cellText = cells[i][1].replace(/<[^>]*>/g, '').trim()
-          // Find the GMP column (not "GMP Date", not "GMP Trend")
-          if (/^gmp$/i.test(cellText) || /^grey\s*market\s*premium$/i.test(cellText)) {
+          const cellText = cells[i][1].replace(/<[^>]*>/g, '').trim().toLowerCase()
+          // Find the GMP column - be more permissive
+          // Match "gmp", "gmp (rs)", "grey market premium", but NOT "gmp date" or "gmp trend"
+          if (
+            cellText === 'gmp' || 
+            cellText === 'gmp (rs)' ||
+            cellText === 'gmp(rs)' ||
+            /^grey\s*market\s*premium$/i.test(cellText) ||
+            (cellText.includes('gmp') && !cellText.includes('date') && !cellText.includes('trend'))
+          ) {
             gmpColumnIndex = i
+            console.log(`[GMP Scraper] Found GMP column at index ${i} with header "${cellText}"`)
             break
           }
         }
@@ -107,7 +133,12 @@ function extractGMPFromTable(html: string): number | null {
       }
     }
     
-    // If we found a GMP column, extract value from first data row
+    // If no explicit GMP column found but table has GMP data, try column 2 (common position)
+    if (gmpColumnIndex < 0 && !hasHeaderRow) {
+      gmpColumnIndex = 2 // Default to 3rd column (index 2) which is common for GMP tables
+    }
+    
+    // If we found a potential GMP column, extract value from first data row
     if (gmpColumnIndex >= 0) {
       for (const row of rows) {
         const rowContent = row[1]
@@ -115,22 +146,40 @@ function extractGMPFromTable(html: string): number | null {
         // Skip header rows
         if (/<th/i.test(rowContent)) continue
         
-        // Skip rows that don't look like data (e.g., no date pattern)
-        if (!/\d{2}[-\/]\d{2}[-\/]\d{4}/.test(rowContent) && !/\d{1,2}[-\/][A-Za-z]{3}[-\/]\d{4}/.test(rowContent)) {
-          continue
-        }
-        
         // Extract cells from this row
         const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi
         const cells = [...rowContent.matchAll(cellPattern)]
         
-        if (cells.length > gmpColumnIndex) {
-          const gmpCell = cells[gmpColumnIndex][1]
-          const gmpValue = parseGMPValue(gmpCell)
-          
-          if (gmpValue !== null) {
-            console.log(`[GMP Scraper] Found GMP ${gmpValue} from table column ${gmpColumnIndex}`)
-            return gmpValue
+        // Skip if not enough columns
+        if (cells.length <= gmpColumnIndex) continue
+        
+        // Check if this row has a date (indicates it's a data row)
+        const rowText = rowContent.replace(/<[^>]*>/g, '')
+        const hasDate = /\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/.test(rowText) || 
+                       /\d{1,2}[-\/][A-Za-z]{3}[-\/]?\d{2,4}?/.test(rowText) ||
+                       /[A-Za-z]{3}[-\/]\d{1,2}/.test(rowText)
+        
+        // Only process rows that look like data rows
+        if (!hasDate && cells.length < 3) continue
+        
+        const gmpCell = cells[gmpColumnIndex][1]
+        const gmpValue = parseGMPValue(gmpCell)
+        
+        if (gmpValue !== null) {
+          console.log(`[GMP Scraper] Found GMP ${gmpValue} from table column ${gmpColumnIndex}`)
+          return gmpValue
+        }
+        
+        // If first attempt fails, try adjacent columns (GMP might be off by one)
+        for (let offset = -1; offset <= 1; offset++) {
+          if (offset === 0) continue // Already tried
+          const tryIndex = gmpColumnIndex + offset
+          if (tryIndex >= 0 && tryIndex < cells.length) {
+            const tryValue = parseGMPValue(cells[tryIndex][1])
+            if (tryValue !== null) {
+              console.log(`[GMP Scraper] Found GMP ${tryValue} from adjusted column ${tryIndex}`)
+              return tryValue
+            }
           }
         }
       }
@@ -142,18 +191,30 @@ function extractGMPFromTable(html: string): number | null {
 
 /**
  * Fallback: Look for GMP in text patterns
+ * Handles various formats from different sources
  */
 function extractGMPFromText(html: string): number | null {
-  // Pattern 1: "GMP: Rs 2.5" or "GMP Today: Rs 2.5"
+  // Remove HTML tags for cleaner matching
+  const cleanHtml = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
+  
+  // Try multiple patterns in order of specificity
   const patterns = [
-    /GMP\s*(?:Today)?[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
-    /Current\s*GMP[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
-    /Latest\s*GMP[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
-    /Grey\s*Market\s*Premium[\s:]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 1: "GMP: Rs 2.5" or "GMP Today: Rs 2.5" or "GMP is Rs 50"
+    /GMP\s*(?:Today|is)?[\s:]+(?:Rs\.?|₹)?\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 2: "Current GMP: 2.5" or "Current GMP Rs. 50"
+    /Current\s*GMP[\s:]+(?:Rs\.?|₹)?\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 3: "Latest GMP: 2.5"
+    /Latest\s*GMP[\s:]+(?:Rs\.?|₹)?\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 4: "Grey Market Premium: Rs 2.5"
+    /Grey\s*Market\s*Premium[\s:]+(?:Rs\.?|₹)?\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 5: "GMP Rs 50" or "GMP ₹50" (without colon)
+    /GMP\s+(?:Rs\.?|₹)\s*([+-]?\d+(?:\.\d+)?)/i,
+    // Pattern 6: Look for Rs value after GMP mention within 50 chars
+    /GMP.{0,30}?(?:Rs\.?|₹)\s*([+-]?\d+(?:\.\d+)?)/i,
   ]
   
   for (const pattern of patterns) {
-    const match = html.match(pattern)
+    const match = cleanHtml.match(pattern)
     if (match && match[1]) {
       const value = parseFloat(match[1])
       if (!isNaN(value) && value >= -500 && value <= 500) {

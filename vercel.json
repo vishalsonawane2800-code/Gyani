@@ -3,6 +3,18 @@
     {
       "path": "/api/cron/update-subscriptions",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/scrape-gmp",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/scrape-subscription",
+      "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/cron/scrape-gmp-history",
+      "schedule": "30 6,16 * * *"
     }
   ]
 }
