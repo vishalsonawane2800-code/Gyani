@@ -9,7 +9,8 @@ import { useListedFilters } from '@/hooks/use-listed-filters';
 const PAGE_SIZE = 15;
 
 // Generate abbreviation from company name
-function generateAbbr(name: string): string {
+function generateAbbr(name: string | undefined | null): string {
+  if (!name) return 'IP';
   return name
     .split(' ')
     .map(w => w[0])

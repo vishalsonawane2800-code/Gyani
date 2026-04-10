@@ -382,7 +382,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
                 className="font-bold text-2xl"
                 style={{ color: formData.fg_color }}
               >
-                {formData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'}
+                {(formData.name || 'IP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'}
               </span>
             )}
           </div>
