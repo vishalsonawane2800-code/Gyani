@@ -64,6 +64,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
       bg_color: body.bg_color || '#f0f9ff',
       fg_color: body.fg_color || '#0369a1',
       chittorgarh_url: body.chittorgarh_url || null,
+      investorgain_gmp_url: body.investorgain_gmp_url || null,
+      investorgain_sub_url: body.investorgain_sub_url || null,
       nse_symbol: body.nse_symbol || null,
       bse_scrip_code: body.bse_scrip_code || null,
       logo_url: body.logo_url || null,

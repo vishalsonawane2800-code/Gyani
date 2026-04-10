@@ -50,10 +50,17 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     lead_manager: ipo.lead_manager || '',
     about_company: ipo.about_company || '',
     chittorgarh_url: ipo.chittorgarh_url || '',
+    investorgain_gmp_url: ipo.investorgain_gmp_url || '',
+    investorgain_sub_url: ipo.investorgain_sub_url || '',
     nse_symbol: ipo.nse_symbol || '',
     bse_scrip_code: ipo.bse_scrip_code || '',
     bg_color: ipo.bg_color || '#f0f9ff',
     fg_color: ipo.fg_color || '#0369a1',
+    logo_url: ipo.logo_url || '',
+    ai_prediction: ipo.ai_prediction || 0,
+    ai_confidence: ipo.ai_confidence || 50,
+    sentiment_score: ipo.sentiment_score || 50,
+    sentiment_label: ipo.sentiment_label || 'Neutral',
   }
 
   return (
