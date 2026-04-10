@@ -64,8 +64,8 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
   const gmp = latestGmp ?? ipo.gmp ?? 0
   const gmpPercent = priceMax > 0 ? Math.round((gmp / priceMax) * 100 * 10) / 10 : 0
   
-  // Generate abbreviation from company name
-  const abbr = ipo.company_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+  // Generate abbreviation from company name (with null safety)
+  const abbr = (ipo.company_name || 'IP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'
   
   return {
     id: typeof ipo.id === 'string' ? parseInt(ipo.id) || 0 : ipo.id as unknown as number,

@@ -7,7 +7,8 @@ interface HeroSectionProps {
 }
 
 // Generate abbreviation from company name
-function generateAbbr(name: string): string {
+function generateAbbr(name: string | undefined | null): string {
+  if (!name) return 'IP';
   return name
     .split(' ')
     .map(w => w[0])
