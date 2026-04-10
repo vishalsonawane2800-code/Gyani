@@ -58,19 +58,39 @@ async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
     // GMP values appear as "₹2.5" or "₹-5" in the 3rd column (index 2)
     
     // Method 1: Find the GMP trend table and extract first row's GMP value
-    // The table typically has id or class containing "gmp" and rows with date patterns
+    // The table structure from InvestorGain/Chittorgarh:
+    // | GMP Date | IPO Price | GMP | Subscription | ... |
+    // | 10-04-2026 | 175.00 | ₹2.5 ▼ | 0.71x | ... |
+    // The GMP column shows values like "₹2.5", "₹50", "₹-5"
     
-    // Look for table rows with date pattern (DD-MM-YYYY) - first row after header is latest
-    // Pattern: <tr>...<td>10-04-2026</td>...<td>175.00</td>...<td>₹2.5...</td>...
-    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*\d{2}-\d{2}-\d{4}\s*<\/td>[\s\S]*?<td[^>]*>[^<]*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
+    // Improved regex: Match table rows with date pattern, then capture GMP from 3rd column
+    // The GMP cell contains: ₹{number} followed by optional arrow/indicator
+    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*(\d{2}-\d{2}-\d{4})\s*(?:<[^>]*>)*\s*<\/td>[\s\S]*?<td[^>]*>\s*([\d,.]+)\s*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
     
     const rowMatches = [...html.matchAll(tableRowPattern)]
     if (rowMatches.length > 0) {
-      // First match is the latest/today's GMP
-      const latestGmp = parseFloat(rowMatches[0][1])
+      // First match is the latest/today's GMP - group 3 is the GMP value
+      const latestGmp = parseFloat(rowMatches[0][3])
       if (!isNaN(latestGmp)) {
         result.gmp = latestGmp
-        console.log(`Extracted GMP from table first row: ${latestGmp}`)
+        console.log(`Extracted GMP from table first row (date: ${rowMatches[0][1]}, price: ${rowMatches[0][2]}): ${latestGmp}`)
+      }
+    }
+    
+    // Method 1.5: Alternative pattern - look for GMP in dedicated GMP column cells
+    // Pattern matches: <td...>₹2.5</td> or <td...>₹2.5 <span class="down">▼</span></td>
+    if (result.gmp === null) {
+      const gmpCellPattern = /<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)\s*(?:<[^>]*>[▼▲▶◀\-]*<\/[^>]*>)?\s*<\/td>/gi
+      const gmpMatches = [...html.matchAll(gmpCellPattern)]
+      // Filter to likely GMP values (typically small numbers like 2.5, 50, -10)
+      for (const match of gmpMatches) {
+        const val = parseFloat(match[1])
+        // GMP values are typically between -500 and 500
+        if (!isNaN(val) && val >= -500 && val <= 500) {
+          result.gmp = val
+          console.log(`Extracted GMP from cell pattern: ${val}`)
+          break
+        }
       }
     }
     
@@ -139,6 +159,10 @@ async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
 /**
  * Scrape GMP from Chittorgarh as fallback
  * URL format: https://www.chittorgarh.com/ipo/{slug}/{id}/
+ * 
+ * Chittorgarh GMP table structure (from screenshot):
+ * | GMP Date    | IPO Price | GMP      | Subscription | Sub2 Sauda Rate | Estimated Listing Price | Estimated Profit | Last Updated |
+ * | 10-04-2026  | 175.00    | ₹2.5 ▼   | 0.71x        | 200/2800        | ₹177.5 (1.43%)          | ₹212.5           | 10-Apr-2026  |
  */
 async function scrapeChittorgarhGMP(url: string): Promise<GMPScrapeResult> {
   const result: GMPScrapeResult = { gmp: null, gmpPercent: null, estListing: null, source: 'chittorgarh' }
@@ -154,17 +178,54 @@ async function scrapeChittorgarhGMP(url: string): Promise<GMPScrapeResult> {
 
     const html = await response.text()
     
-    // Chittorgarh GMP patterns
-    const gmpMatch = html.match(/GMP[:\s]*[₹Rs.]*\s*([+-]?\d+)/i)
-    if (gmpMatch) {
-      result.gmp = parseFloat(gmpMatch[1])
+    // Method 1: Parse the GMP trend table - first data row has latest GMP
+    // The table shows: Date | Price | GMP | Subscription | etc.
+    // GMP column contains "₹2.5" or "₹2.5 ▼" format
+    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*(\d{2}-\d{2}-\d{4})\s*(?:<[^>]*>)*(?:Open)?<\/td>[\s\S]*?<td[^>]*>\s*([\d,.]+)\s*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
+    
+    const rowMatches = [...html.matchAll(tableRowPattern)]
+    if (rowMatches.length > 0) {
+      // First row is the latest GMP entry
+      const latestGmp = parseFloat(rowMatches[0][3])
+      if (!isNaN(latestGmp)) {
+        result.gmp = latestGmp
+        console.log(`Chittorgarh: Extracted GMP from table (date: ${rowMatches[0][1]}, price: ${rowMatches[0][2]}): ${latestGmp}`)
+      }
+    }
+    
+    // Method 2: Look for GMP value directly in cells with rupee symbol
+    // Pattern: <td>₹2.5</td> or <td>₹2.5 <span>▼</span></td>
+    if (result.gmp === null) {
+      const gmpCellPattern = /<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)\s*(?:<[^>]*>[▼▲\s]*<\/[^>]*>)?\s*<\/td>/gi
+      const matches = [...html.matchAll(gmpCellPattern)]
+      
+      for (const match of matches) {
+        const val = parseFloat(match[1])
+        // GMP values are typically small (between -500 and 500)
+        if (!isNaN(val) && val >= -500 && val <= 500) {
+          result.gmp = val
+          console.log(`Chittorgarh: Extracted GMP from cell: ${val}`)
+          break
+        }
+      }
+    }
+    
+    // Method 3: Fallback - simple GMP text pattern
+    if (result.gmp === null) {
+      const gmpMatch = html.match(/GMP[:\s]*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/i)
+      if (gmpMatch) {
+        result.gmp = parseFloat(gmpMatch[1])
+        console.log(`Chittorgarh: Extracted GMP from text pattern: ${result.gmp}`)
+      }
     }
 
-    const percentMatch = html.match(/([+-]?\d+(?:\.\d+)?)\s*%\s*(?:premium|gain)/i)
+    // Extract GMP percentage from the Estimated Listing Price column "(X.XX%)"
+    const percentMatch = html.match(/\(\s*([+-]?\d+(?:\.\d+)?)\s*%\s*\)/i)
     if (percentMatch) {
       result.gmpPercent = parseFloat(percentMatch[1])
     }
 
+    console.log(`Chittorgarh scrape result for ${url}: GMP=${result.gmp}, Percent=${result.gmpPercent}`)
     return result
   } catch (error) {
     console.error(`[v0] Error scraping Chittorgarh ${url}:`, error)
