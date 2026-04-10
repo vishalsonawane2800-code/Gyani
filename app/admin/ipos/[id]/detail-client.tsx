@@ -1,5 +1,15 @@
 'use client'
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -261,7 +271,7 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
                 className="w-14 h-14 rounded-lg flex items-center justify-center font-bold text-xl"
                 style={{ backgroundColor: ipo.bg_color || '#f0f9ff', color: ipo.fg_color || '#0369a1' }}
               >
-                {ipo.abbr || ipo.name?.substring(0, 2)}
+                {generateAbbr(ipo.name || 'IP')}
               </div>
             )}
             <div>

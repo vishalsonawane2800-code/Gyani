@@ -6,6 +6,16 @@ interface HeroSectionProps {
   ipos: IPO[];
 }
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 const stats = [
   { value: '95%+', label: 'AI Accuracy', color: 'text-emerald-400' },
   { value: '500+', label: 'IPOs Tracked', color: 'text-violet-400' },
@@ -127,7 +137,7 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold font-heading shrink-0"
                     style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                   >
-                    {ipo.abbr}
+                    {generateAbbr(ipo.name)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-white text-[12px] sm:text-[13px] font-semibold truncate group-hover:text-violet-400 transition-colors">

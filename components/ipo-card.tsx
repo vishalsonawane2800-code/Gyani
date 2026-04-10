@@ -22,8 +22,19 @@ function formatTimeAgo(dateString: string): string {
   return `${Math.floor(diffHours / 24)}d ago`;
 }
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 export function IPOCard({ ipo }: IPOCardProps) {
   const [timeAgo, setTimeAgo] = useState<string>('');
+  const abbr = generateAbbr(ipo.name);
   
   useEffect(() => {
     setTimeAgo(formatTimeAgo(ipo.gmpLastUpdated));
@@ -79,7 +90,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
           className="w-10 h-10 rounded-[10px] flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-[13px] shrink-0"
           style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
         >
-          {ipo.abbr}
+          {abbr}
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-[13.5px] truncate">{ipo.name}</h3>

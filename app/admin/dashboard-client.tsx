@@ -1,5 +1,15 @@
 'use client'
 
+// Generate abbreviation from company name
+function generateAbbr(name: string): string {
+  return name
+    .split(' ')
+    .map(w => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+}
+
 /* =========================================================================
    ADMIN DASHBOARD - IPO Management Guide
    =========================================================================
@@ -483,7 +493,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       className="w-12 h-12 rounded-lg flex items-center justify-center font-bold"
                       style={{ backgroundColor: ipo.bg_color || '#f0f9ff', color: ipo.fg_color || '#0369a1' }}
                     >
-                      {ipo.abbr || ipo.name?.substring(0, 2)}
+                      {generateAbbr(ipo.name || 'IP')}
                     </div>
                     <div>
                       <h3 className="font-medium text-white">{ipo.name}</h3>
@@ -552,7 +562,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm"
                       style={{ backgroundColor: ipo.bg_color || '#f0f9ff', color: ipo.fg_color || '#0369a1' }}
                     >
-                      {ipo.abbr || ipo.name?.substring(0, 2)}
+                      {generateAbbr(ipo.name || 'IP')}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
@@ -649,7 +659,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm"
                       style={{ backgroundColor: ipo.bg_color || '#f0f9ff', color: ipo.fg_color || '#0369a1' }}
                     >
-                      {ipo.abbr || ipo.name?.substring(0, 2)}
+                      {generateAbbr(ipo.name || 'IP')}
                     </div>
                     <div>
                       <h3 className="font-medium text-white">{ipo.name}</h3>
@@ -744,7 +754,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm"
                       style={{ backgroundColor: ipo.bg_color || '#f0f9ff', color: ipo.fg_color || '#0369a1' }}
                     >
-                      {ipo.abbr || ipo.name?.substring(0, 2)}
+                      {generateAbbr(ipo.name || 'IP')}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
