@@ -1,5 +1,7 @@
 import { IPOForm } from '@/components/admin/ipo-form'
 
+export const dynamic = 'force-dynamic'
+
 export default function NewIPOPage() {
   return (
     <div className="p-6 lg:p-8">

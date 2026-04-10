@@ -65,7 +65,8 @@ import {
   ArrowDownRight,
   AlertCircle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Eye
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -879,6 +880,17 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
+                          {/* View details button */}
+                          <Link href={`/admin/ipos/${ipo.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10"
+                              title="View IPO Details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
                           {/* Migrate to Listed button - show only for listing status */}
                           {ipo.status === 'listing' && (
                             <Button
