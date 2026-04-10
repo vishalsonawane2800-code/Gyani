@@ -2,49 +2,52 @@
 import { createClient } from './server'
 import type { IPO } from '@/lib/data'
 
-// Types matching your simple schema
+// Types matching the database schema
 export interface IPOSimple {
   id: string
-  name: string
+  company_name: string
   slug: string
   status: string
-  price_band: string
-  lot_size: number
-  issue_size: string
   exchange: string
+  sector: string | null
+  price_min: number
+  price_max: number
+  lot_size: number
+  issue_size: string | null
   open_date: string
   close_date: string
+  allotment_date: string | null
+  listing_date: string | null
+  gmp: number
+  subscription_retail: number
+  subscription_shni: number
+  subscription_bhni: number
+  subscription_qib: number
+  subscription_total: number
+  subscription_nii: number
+  subscription_employee: number
+  ai_prediction: number
+  ai_confidence: number
+  sentiment_score: number
+  sentiment_label: string
+  description: string | null
+  registrar: string | null
+  brlm: string | null
+  logo_url: string | null
+  bg_color: string
+  fg_color: string
+  chittorgarh_url: string | null
+  investorgain_gmp_url: string | null
+  investorgain_sub_url: string | null
+  nse_symbol: string | null
+  bse_scrip_code: string | null
+  listing_price: number | null
+  current_price: number | null
+  listing_gain_percent: number | null
   created_at: string
-  latest_gmp?: number
-  // Additional fields from database
-  abbr?: string
-  bg_color?: string
-  fg_color?: string
-  logo_url?: string
-  sector?: string
-  allotment_date?: string
-  list_date?: string
-  price_min?: number
-  price_max?: number
-  issue_size_cr?: number
-  fresh_issue?: string
-  ofs?: string
-  gmp_last_updated?: string
-  subscription_total?: number
-  subscription_retail?: string
-  subscription_nii?: string
-  subscription_qib?: string
-  subscription_day?: number
-  subscription_is_final?: boolean
-  ai_prediction?: number
-  ai_confidence?: number
-  sentiment_score?: number
-  sentiment_label?: string
-  registrar?: string
-  lead_manager?: string
-  market_cap?: string
-  pe_ratio?: number
-  about_company?: string
+  updated_at: string
+  last_gmp_update: string | null
+  last_subscription_update: string | null
 }
 
 export interface GMPHistory {
@@ -52,58 +55,50 @@ export interface GMPHistory {
   ipo_id: string
   gmp: number
   recorded_at: string
-}
-
-// Helper to parse price band string like "Rs 100-120" into min/max
-function parsePriceBand(priceBand: string): { min: number; max: number } {
-  const match = priceBand?.match(/(\d+)-(\d+)/) || priceBand?.match(/(\d+)/)
-  if (match && match[2]) {
-    return { min: parseInt(match[1]), max: parseInt(match[2]) }
-  } else if (match && match[1]) {
-    const price = parseInt(match[1])
-    return { min: price, max: price }
-  }
-  return { min: 0, max: 0 }
+  source: string
 }
 
 // Transform Supabase IPO to match the IPO interface expected by components
-function transformIPO(ipo: IPOSimple, gmp: number): IPO {
-  const priceBand = parsePriceBand(ipo.price_band)
-  const priceMax = ipo.price_max ?? priceBand.max
+function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: string): IPO {
+  const priceMax = ipo.price_max || 0
+  const gmp = latestGmp ?? ipo.gmp ?? 0
   const gmpPercent = priceMax > 0 ? Math.round((gmp / priceMax) * 100 * 10) / 10 : 0
+  
+  // Generate abbreviation from company name
+  const abbr = ipo.company_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
   
   return {
     id: typeof ipo.id === 'string' ? parseInt(ipo.id) || 0 : ipo.id as unknown as number,
-    name: ipo.name,
+    name: ipo.company_name,
     slug: ipo.slug,
-abbr: ipo.abbr || ipo.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-  bgColor: ipo.bg_color || '#f0f9ff',
-  fgColor: ipo.fg_color || '#0369a1',
-  logoUrl: ipo.logo_url || undefined,
-  exchange: (ipo.exchange as IPO['exchange']) || 'BSE SME',
+    abbr: abbr,
+    bgColor: ipo.bg_color || '#f0f9ff',
+    fgColor: ipo.fg_color || '#0369a1',
+    logoUrl: ipo.logo_url || undefined,
+    exchange: (ipo.exchange as IPO['exchange']) || 'BSE SME',
     sector: ipo.sector || 'General',
     openDate: ipo.open_date,
     closeDate: ipo.close_date,
     allotmentDate: ipo.allotment_date || '',
-    listDate: ipo.list_date || '',
-    priceMin: ipo.price_min ?? priceBand.min,
+    listDate: ipo.listing_date || '',
+    priceMin: ipo.price_min || 0,
     priceMax: priceMax,
     lotSize: ipo.lot_size || 0,
     issueSize: ipo.issue_size || '0 Cr',
-    issueSizeCr: ipo.issue_size_cr || parseFloat(ipo.issue_size?.replace(/[^\d.]/g, '') || '0'),
-    freshIssue: ipo.fresh_issue || ipo.issue_size || '0 Cr',
-    ofs: ipo.ofs || 'Nil',
+    issueSizeCr: parseFloat(ipo.issue_size?.replace(/[^\d.]/g, '') || '0'),
+    freshIssue: ipo.issue_size || '0 Cr',
+    ofs: 'Nil',
     gmp: gmp,
     gmpPercent: gmpPercent,
-    gmpLastUpdated: ipo.gmp_last_updated || new Date().toISOString(),
+    gmpLastUpdated: gmpLastUpdated || ipo.last_gmp_update || new Date().toISOString(),
     estListPrice: priceMax + gmp,
     subscription: {
       total: ipo.subscription_total || 0,
-      retail: ipo.subscription_retail || '0x',
-      nii: ipo.subscription_nii || '0x',
-      qib: ipo.subscription_qib || '0x',
-      day: ipo.subscription_day || 0,
-      isFinal: ipo.subscription_is_final || false,
+      retail: `${ipo.subscription_retail || 0}x`,
+      nii: `${ipo.subscription_nii || 0}x`,
+      qib: `${ipo.subscription_qib || 0}x`,
+      day: 0,
+      isFinal: false,
     },
     aiPrediction: ipo.ai_prediction || 0,
     aiConfidence: ipo.ai_confidence || 50,
@@ -111,10 +106,10 @@ abbr: ipo.abbr || ipo.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUppe
     sentimentLabel: (ipo.sentiment_label as IPO['sentimentLabel']) || 'Neutral',
     status: (ipo.status as IPO['status']) || 'upcoming',
     registrar: ipo.registrar || 'Link Intime',
-    leadManager: ipo.lead_manager || 'TBD',
-    marketCap: ipo.market_cap || 'TBD',
-    peRatio: ipo.pe_ratio || 0,
-    aboutCompany: ipo.about_company || '',
+    leadManager: ipo.brlm || 'TBD',
+    marketCap: 'TBD',
+    peRatio: 0,
+    aboutCompany: ipo.description || '',
   }
 }
 
@@ -158,11 +153,7 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
 
   return ipos.map((ipo) => {
     const gmpInfo = latestGmpMap.get(ipo.id)
-    const ipoWithGmpDate = {
-      ...ipo,
-      gmp_last_updated: gmpInfo?.recorded_at || new Date().toISOString(),
-    }
-    return transformIPO(ipoWithGmpDate as IPOSimple, gmpInfo?.gmp ?? 0)
+    return transformIPO(ipo as IPOSimple, gmpInfo?.gmp, gmpInfo?.recorded_at)
   })
 }
 
@@ -193,7 +184,6 @@ export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_his
 
   return {
     ...ipo,
-    latest_gmp: gmpHistory?.[0]?.gmp ?? 0,
     gmp_history: gmpHistory ?? [],
   }
 }
