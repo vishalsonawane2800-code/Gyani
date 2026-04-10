@@ -157,7 +157,7 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
   })
 }
 
-// Fetch single IPO by slug with GMP history - returns transformed IPO object
+// Fetch single IPO by slug with GMP history, financials, and reviews - returns transformed IPO object
 export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const supabase = await createClient()
   
@@ -179,15 +179,36 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     return null
   }
 
-  // Get GMP history
-  const { data: gmpHistory } = await supabase
-    .from('gmp_history')
-    .select('*')
-    .eq('ipo_id', ipo.id)
-    .order('recorded_at', { ascending: false })
+  // Fetch related data in parallel
+  const [gmpHistoryResult, financialsResult, reviewsResult] = await Promise.all([
+    // Get GMP history
+    supabase
+      .from('gmp_history')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('recorded_at', { ascending: false }),
+    
+    // Get financials
+    supabase
+      .from('ipo_financials')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('fiscal_year', { ascending: true }),
+    
+    // Get expert reviews
+    supabase
+      .from('reviews')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('created_at', { ascending: false })
+  ])
+
+  const gmpHistory = gmpHistoryResult.data ?? []
+  const financialsData = financialsResult.data ?? []
+  const reviewsData = reviewsResult.data ?? []
 
   // Get latest GMP from history if available
-  const latestGmp = gmpHistory && gmpHistory.length > 0 ? gmpHistory[0] : null
+  const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
   
   // Transform to IPO interface expected by components
   const transformedIPO = transformIPO(
@@ -196,16 +217,69 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     latestGmp?.recorded_at
   )
   
+  // Parse financials from database rows into the expected format
+  const financials = parseFinancials(financialsData)
+  
+  // Parse expert reviews
+  const expertReviews = reviewsData.map(r => ({
+    source: r.source || 'Unknown',
+    rating: r.rating || 'Neutral',
+    summary: r.summary || '',
+    url: r.url || undefined,
+  }))
+  
   // Add GMP history data for charts - match GMPHistoryEntry interface
   const priceMax = ipo.price_max || 0
   return {
     ...transformedIPO,
-    gmpHistory: (gmpHistory ?? []).map(g => ({
+    financials: financials || undefined,
+    expertReviews: expertReviews.length > 0 ? expertReviews : undefined,
+    gmpHistory: gmpHistory.map(g => ({
       date: g.recorded_at,
       gmp: g.gmp,
       gmpPercent: priceMax > 0 ? Math.round((g.gmp / priceMax) * 100 * 10) / 10 : 0,
       source: g.source || 'investorgain',
     })),
+  }
+}
+
+// Parse financials from database rows into the expected structure
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseFinancials(financialsData: any[]): IPO['financials'] | null {
+  if (!financialsData || financialsData.length === 0) {
+    return null
+  }
+  
+  // Extract data by fiscal year
+  const fy23 = financialsData.find(f => f.fiscal_year === 'FY23' || f.fiscal_year === '2023')
+  const fy24 = financialsData.find(f => f.fiscal_year === 'FY24' || f.fiscal_year === '2024')
+  const fy25 = financialsData.find(f => f.fiscal_year === 'FY25' || f.fiscal_year === '2025')
+  
+  // Get the latest entry for ratios
+  const latest = financialsData[financialsData.length - 1]
+  
+  // Helper to get PAT (profit after tax) - database may have 'pat' or 'profit' column
+  const getPat = (row: { pat?: number; profit?: number } | undefined) => row?.pat || row?.profit || 0
+  
+  return {
+    revenue: {
+      fy23: fy23?.revenue || 0,
+      fy24: fy24?.revenue || 0,
+      fy25: fy25?.revenue || latest?.revenue || 0,
+    },
+    pat: {
+      fy23: getPat(fy23),
+      fy24: getPat(fy24),
+      fy25: getPat(fy25) || getPat(latest),
+    },
+    ebitda: {
+      fy23: fy23?.ebitda || 0,
+      fy24: fy24?.ebitda || 0,
+      fy25: fy25?.ebitda || latest?.ebitda || 0,
+    },
+    roe: latest?.roe || 0,
+    roce: latest?.roce || 0,
+    debtEquity: latest?.debt_equity || 0,
   }
 }
 
