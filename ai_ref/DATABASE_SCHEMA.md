@@ -2,16 +2,31 @@
 
 > **Database:** Supabase (PostgreSQL)
 > **Last Updated:** 2026-04-10
+> **Version:** 2.1 (abbr column removed)
 
 ---
 
-## IMPORTANT: Refresh Schema Cache
+## CRITICAL FIX REQUIRED - 2026-04-10
 
-After creating tables, you MUST refresh Supabase's PostgREST schema cache:
+**Issue:** "Could not find the 'abbr' column of 'ipos' in the schema cache" error
 
-1. Go to Supabase Dashboard > Project Settings > API > Click "Reload schema"
-2. OR run: `NOTIFY pgrst, 'reload schema';` in SQL Editor
-3. OR restart the project from Project Settings > General
+**Root Cause:** 
+- Old migration `001_create_ipo_tables.sql` defined `abbr` column
+- New schema doesn't have `abbr` (removed in v2)
+- Database schema cache is out of sync
+
+**Solution - DO THIS NOW:**
+
+1. Go to Supabase Dashboard > Project Settings > API > Click **"Reload schema"**
+2. OR run in SQL Editor: `NOTIFY pgrst, 'reload schema';`
+3. If still failing, restart project from Project Settings > General
+
+**Changes Made (2026-04-10):**
+- ✅ Removed `abbr` field from IPO admin form (components/admin/ipo-form.tsx)
+- ✅ Removed `generateAbbr()` function 
+- ✅ Abbreviation now generated on-the-fly from company name in logo preview
+- ✅ API routes (POST/PUT) never sent `abbr` - already correct
+- ✅ Logo upload API working correctly with Vercel Blob
 
 ---
 
@@ -159,9 +174,50 @@ Financial data for IPOs.
 ## Migration Files
 
 Located in `/scripts/`:
-- `000_fresh_start.sql` - **USE THIS** - Complete fresh schema with all tables (UUID-based)
+- `000_fresh_start.sql` - **USE THIS** - Complete fresh schema with all tables (UUID-based) - DOES NOT INCLUDE abbr
 - `schema.sql` - Old basic schema (deprecated)
-- `001_create_ipo_tables.sql` - Old full schema (deprecated - has type mismatches)
+- `001_create_ipo_tables.sql` - Old full schema (deprecated - has `abbr` column, causes schema cache errors)
+
+**NOTE:** If you used `001_create_ipo_tables.sql` before, you MUST refresh the Supabase schema cache after removing the old migration.
+
+---
+
+## Troubleshooting
+
+### Error: "Could not find the 'abbr' column of 'ipos' in the schema cache"
+
+**Steps to fix:**
+1. **Reload Supabase Schema Cache** (REQUIRED):
+   - Go to: Supabase Dashboard → Project Settings → API → "Reload schema" button
+   - OR run in SQL Editor: `NOTIFY pgrst, 'reload schema';`
+   
+2. **Verify Database State**:
+   - In Supabase SQL Editor, run: `SELECT column_name FROM information_schema.columns WHERE table_name='ipos' AND column_name='abbr';`
+   - If it returns nothing, the `abbr` column is already removed ✓
+   - If it returns a row, you need to run a migration to drop it
+
+3. **If column still exists in database**:
+   ```sql
+   -- Run this in Supabase SQL Editor
+   ALTER TABLE ipos DROP COLUMN IF EXISTS abbr;
+   NOTIFY pgrst, 'reload schema';
+   ```
+
+4. **Verify the fix**:
+   - Try creating a new IPO in admin dashboard
+   - Logo should upload successfully now
+
+### Logo Upload Not Working
+
+**Likely cause:** IPO creation is failing due to the `abbr` column error above
+
+**Fix:** Reload Supabase schema cache (see steps above), then retry
+
+**Upload details:**
+- Uses Vercel Blob storage (public access)
+- Max file size: 2MB
+- Accepted formats: PNG, JPG, GIF, WebP, etc.
+- Files stored in: `ipos` bucket under `logos/` folder
 
 ---
 
