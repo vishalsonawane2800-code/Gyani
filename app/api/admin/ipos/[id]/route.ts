@@ -14,7 +14,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     const { data, error } = await supabase
       .from('ipos')
       .select('*')
-      .eq('id', parseInt(id))
+      .eq('id', id)
       .single()
 
     if (error) {
@@ -39,37 +39,35 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const supabase = await createClient()
     const body = await request.json()
 
-    // Prepare update data
+    // Prepare update data - matching database column names exactly
     const updateData = {
-      name: body.name,
+      company_name: body.name,
       slug: body.slug,
-      abbr: body.abbr,
       exchange: body.exchange,
-      sector: body.sector,
+      sector: body.sector || null,
       price_min: body.price_min,
       price_max: body.price_max,
       lot_size: body.lot_size,
-      issue_size: body.issue_size || `${body.issue_size_cr} Cr`,
-      issue_size_cr: body.issue_size_cr,
-      fresh_issue: body.fresh_issue || null,
-      ofs: body.ofs || 'Nil',
+      issue_size: body.issue_size || (body.issue_size_cr ? `${body.issue_size_cr} Cr` : null),
       open_date: body.open_date,
       close_date: body.close_date,
-      allotment_date: body.allotment_date,
-      list_date: body.list_date,
+      allotment_date: body.allotment_date || null,
+      listing_date: body.list_date || body.listing_date || null,
       status: body.status,
       registrar: body.registrar || null,
-      lead_manager: body.lead_manager || null,
-      about_company: body.about_company || null,
+      brlm: body.lead_manager || body.brlm || null,
+      description: body.about_company || body.description || null,
       bg_color: body.bg_color || '#f0f9ff',
       fg_color: body.fg_color || '#0369a1',
+      // Scraper URLs
       chittorgarh_url: body.chittorgarh_url || null,
       investorgain_gmp_url: body.investorgain_gmp_url || null,
       investorgain_sub_url: body.investorgain_sub_url || null,
+      // Exchange symbols
       nse_symbol: body.nse_symbol || null,
       bse_scrip_code: body.bse_scrip_code || null,
       logo_url: body.logo_url || null,
-      // AI Prediction fields (manually entered)
+      // AI Prediction fields
       ai_prediction: body.ai_prediction || 0,
       ai_confidence: body.ai_confidence || 50,
       sentiment_score: body.sentiment_score || 50,
@@ -79,7 +77,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const { data, error } = await supabase
       .from('ipos')
       .update(updateData)
-      .eq('id', parseInt(id))
+      .eq('id', id)
       .select()
       .single()
 
@@ -91,7 +89,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       if (error.code === '23505') {
         return NextResponse.json({ error: 'An IPO with this slug already exists' }, { status: 400 })
       }
-      return NextResponse.json({ error: 'Failed to update IPO' }, { status: 500 })
+      return NextResponse.json({ error: `Failed to update IPO: ${error.message}` }, { status: 500 })
     }
 
     return NextResponse.json({ data })
@@ -110,7 +108,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     const { error } = await supabase
       .from('ipos')
       .delete()
-      .eq('id', parseInt(id))
+      .eq('id', id)
 
     if (error) {
       console.error('Error deleting IPO:', error)

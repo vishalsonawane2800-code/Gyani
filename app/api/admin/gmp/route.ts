@@ -12,16 +12,14 @@ export async function GET() {
         id,
         ipo_id,
         gmp,
-        gmp_percent,
-        date,
+        recorded_at,
         source,
-        created_at,
         ipos (
-          name,
+          company_name,
           slug
         )
       `)
-      .order('created_at', { ascending: false })
+      .order('recorded_at', { ascending: false })
       .limit(100)
 
     if (error) {
@@ -43,49 +41,26 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     // Validate required fields
-    if (!body.ipo_id || body.gmp === undefined || !body.date) {
-      return NextResponse.json({ error: 'Missing required fields: ipo_id, gmp, date' }, { status: 400 })
+    if (!body.ipo_id || body.gmp === undefined) {
+      return NextResponse.json({ error: 'Missing required fields: ipo_id, gmp' }, { status: 400 })
     }
 
     const gmpData = {
       ipo_id: body.ipo_id,
       gmp: body.gmp,
-      gmp_percent: body.gmp_percent || 0,
-      date: body.date,
-      source: body.source || null,
+      recorded_at: body.date || new Date().toISOString(),
+      source: body.source || 'manual',
     }
 
-    // Use upsert to handle duplicate date entries
+    // Insert new GMP entry
     const { data, error } = await supabase
       .from('gmp_history')
-      .upsert([gmpData], { 
-        onConflict: 'ipo_id,date',
-        ignoreDuplicates: false 
-      })
+      .insert([gmpData])
       .select()
 
     if (error) {
       console.error('Error adding GMP entry:', error)
-      // If upsert doesn't work, try insert
-      if (error.code === '42501' || error.code === '23505') {
-        // Try updating existing entry
-        const { data: updateData, error: updateError } = await supabase
-          .from('gmp_history')
-          .update({
-            gmp: body.gmp,
-            gmp_percent: body.gmp_percent || 0,
-            source: body.source || null,
-          })
-          .eq('ipo_id', body.ipo_id)
-          .eq('date', body.date)
-          .select()
-
-        if (updateError) {
-          return NextResponse.json({ error: 'Failed to add/update GMP entry' }, { status: 500 })
-        }
-        return NextResponse.json({ data: updateData, updated: true }, { status: 200 })
-      }
-      return NextResponse.json({ error: 'Failed to add GMP entry' }, { status: 500 })
+      return NextResponse.json({ error: `Failed to add GMP entry: ${error.message}` }, { status: 500 })
     }
 
     // Also update the main IPO table with latest GMP
@@ -93,8 +68,7 @@ export async function POST(request: Request) {
       .from('ipos')
       .update({
         gmp: body.gmp,
-        gmp_percent: body.gmp_percent || 0,
-        gmp_last_updated: new Date().toISOString(),
+        last_gmp_update: new Date().toISOString(),
       })
       .eq('id', body.ipo_id)
 
