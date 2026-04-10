@@ -157,8 +157,8 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
   })
 }
 
-// Fetch single IPO by slug with GMP history
-export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_history: GMPHistory[] }) | null> {
+// Fetch single IPO by slug with GMP history - returns transformed IPO object
+export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const supabase = await createClient()
   
   // Return null if Supabase is not configured
@@ -186,9 +186,26 @@ export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_his
     .eq('ipo_id', ipo.id)
     .order('recorded_at', { ascending: false })
 
+  // Get latest GMP from history if available
+  const latestGmp = gmpHistory && gmpHistory.length > 0 ? gmpHistory[0] : null
+  
+  // Transform to IPO interface expected by components
+  const transformedIPO = transformIPO(
+    ipo as IPOSimple, 
+    latestGmp?.gmp, 
+    latestGmp?.recorded_at
+  )
+  
+  // Add GMP history data for charts - match GMPHistoryEntry interface
+  const priceMax = ipo.price_max || 0
   return {
-    ...ipo,
-    gmp_history: gmpHistory ?? [],
+    ...transformedIPO,
+    gmpHistory: (gmpHistory ?? []).map(g => ({
+      date: g.recorded_at,
+      gmp: g.gmp,
+      gmpPercent: priceMax > 0 ? Math.round((g.gmp / priceMax) * 100 * 10) / 10 : 0,
+      source: g.source || 'investorgain',
+    })),
   }
 }
 
