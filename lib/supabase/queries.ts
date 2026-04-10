@@ -1,6 +1,6 @@
 // Simple Supabase queries for IPOGyani
 import { createClient } from './server'
-import type { IPO } from '@/lib/data'
+import type { IPO, ListedIPO } from '@/lib/data'
 
 // Types matching the database schema
 export interface IPOSimple {
@@ -188,8 +188,40 @@ export async function getIPOBySlug(slug: string): Promise<(IPOSimple & { gmp_his
   }
 }
 
+// Transform Supabase IPO to ListedIPO interface expected by components
+function transformToListedIPO(ipo: IPOSimple): ListedIPO {
+  const priceMax = ipo.price_max || 0
+  const listingPrice = ipo.listing_price || priceMax
+  const issuePrice = priceMax
+  const listingGainPercent = ipo.listing_gain_percent ?? (issuePrice > 0 ? ((listingPrice - issuePrice) / issuePrice) * 100 : 0)
+  
+  // Generate abbreviation from company name (with null safety)
+  const abbr = (ipo.company_name || 'IP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'
+  
+  return {
+    id: typeof ipo.id === 'string' ? parseInt(ipo.id) || 0 : ipo.id as unknown as number,
+    name: ipo.company_name,
+    slug: ipo.slug,
+    abbr: abbr,
+    bgColor: ipo.bg_color || '#f0f9ff',
+    fgColor: ipo.fg_color || '#0369a1',
+    logoUrl: ipo.logo_url || undefined,
+    exchange: (ipo.exchange as ListedIPO['exchange']) || 'BSE SME',
+    sector: ipo.sector || 'General',
+    listDate: ipo.listing_date || ipo.close_date || '',
+    issuePrice: issuePrice,
+    listPrice: listingPrice,
+    gainPct: Math.round(listingGainPercent * 10) / 10,
+    subTimes: ipo.subscription_total || 0,
+    gmpPeak: `${ipo.gmp >= 0 ? '+' : ''}${ipo.gmp}`,
+    aiPred: `${ipo.ai_prediction >= 0 ? '+' : ''}${ipo.ai_prediction}%`,
+    aiErr: Math.abs((ipo.ai_prediction || 0) - listingGainPercent),
+    year: ipo.listing_date ? new Date(ipo.listing_date).getFullYear().toString() : new Date().getFullYear().toString(),
+  }
+}
+
 // Fetch all listed IPOs (for backward compatibility)
-export async function getListedIPOs(options?: { limit?: number }): Promise<IPOSimple[]> {
+export async function getListedIPOs(options?: { limit?: number }): Promise<ListedIPO[]> {
   const supabase = await createClient()
   
   // Return empty if Supabase is not configured
@@ -212,7 +244,7 @@ export async function getListedIPOs(options?: { limit?: number }): Promise<IPOSi
     return []
   }
 
-  return data ?? []
+  return (data ?? []).map(ipo => transformToListedIPO(ipo as IPOSimple))
 }
 
 // Get all IPO slugs for static generation
