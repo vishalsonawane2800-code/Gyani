@@ -46,62 +46,78 @@ async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
     })
 
     if (!response.ok) {
-      console.log(`[v0] InvestorGain GMP returned ${response.status} for ${url}`)
+      console.log(`InvestorGain GMP returned ${response.status} for ${url}`)
       return result
     }
 
     const html = await response.text()
     
-    // Parse GMP value from InvestorGain HTML
-    // Common patterns on InvestorGain:
-    // - "GMP: ₹35" or "GMP ₹35"
-    // - "IPO GMP Today: ₹35"
-    // - Table cells with GMP values
-    // - "Grey Market Premium: ₹35"
+    // InvestorGain GMP table structure:
+    // The table has columns: GMP Date | IPO Price | GMP | Subscription | Sub2 Sauda Rate | Estimated Listing Price | Estimated Profit | Last Updated
+    // The FIRST data row (after header) contains today's/latest GMP
+    // GMP values appear as "₹2.5" or "₹-5" in the 3rd column (index 2)
     
-    const gmpPatterns = [
-      // Table row patterns (most reliable on InvestorGain)
-      /GMP[^<]*?[₹Rs.\s]*([+-]?\d+(?:\.\d+)?)/i,
-      /Grey\s*Market\s*Premium[^<]*?[₹Rs.\s]*([+-]?\d+(?:\.\d+)?)/i,
-      /Current\s*GMP[^<]*?[₹Rs.\s]*([+-]?\d+(?:\.\d+)?)/i,
-      /IPO\s*GMP\s*Today[^<]*?[₹Rs.\s]*([+-]?\d+(?:\.\d+)?)/i,
-      // JSON-like patterns
-      /"gmp"[:\s]*"?([+-]?\d+(?:\.\d+)?)/i,
-      /"currentGmp"[:\s]*"?([+-]?\d+(?:\.\d+)?)/i,
-      // Structured data patterns
-      /data-gmp="([+-]?\d+(?:\.\d+)?)"/i,
-      // Text patterns
-      /GMP\s*[:=]\s*[₹Rs.\s]*([+-]?\d+(?:\.\d+)?)/i,
-    ]
+    // Method 1: Find the GMP trend table and extract first row's GMP value
+    // The table typically has id or class containing "gmp" and rows with date patterns
     
-    for (const pattern of gmpPatterns) {
-      const match = html.match(pattern)
-      if (match && match[1]) {
-        result.gmp = parseFloat(match[1])
-        break
+    // Look for table rows with date pattern (DD-MM-YYYY) - first row after header is latest
+    // Pattern: <tr>...<td>10-04-2026</td>...<td>175.00</td>...<td>₹2.5...</td>...
+    const tableRowPattern = /<tr[^>]*>[\s\S]*?<td[^>]*>\s*\d{2}-\d{2}-\d{4}\s*<\/td>[\s\S]*?<td[^>]*>[^<]*<\/td>[\s\S]*?<td[^>]*>\s*[₹Rs.]*\s*([+-]?\d+(?:\.\d+)?)/gi
+    
+    const rowMatches = [...html.matchAll(tableRowPattern)]
+    if (rowMatches.length > 0) {
+      // First match is the latest/today's GMP
+      const latestGmp = parseFloat(rowMatches[0][1])
+      if (!isNaN(latestGmp)) {
+        result.gmp = latestGmp
+        console.log(`Extracted GMP from table first row: ${latestGmp}`)
+      }
+    }
+    
+    // Method 2: Fallback - look for "GMP Today" specific patterns
+    if (result.gmp === null) {
+      const todayPatterns = [
+        /GMP\s*Today[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
+        /Today['']?s?\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
+        /Current\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
+        /Latest\s*GMP[^₹₨Rs]*[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/i,
+      ]
+      
+      for (const pattern of todayPatterns) {
+        const match = html.match(pattern)
+        if (match && match[1]) {
+          result.gmp = parseFloat(match[1])
+          console.log(`Extracted GMP from today pattern: ${result.gmp}`)
+          break
+        }
+      }
+    }
+    
+    // Method 3: Look for GMP in a summary/highlight section (usually at top of page)
+    // These often have special styling like card or highlight class
+    if (result.gmp === null) {
+      // Look for GMP in card/highlight/summary sections
+      const highlightPattern = /<(?:div|span|td)[^>]*(?:class|id)=[^>]*(?:highlight|summary|current|today|card)[^>]*>[\s\S]*?[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/gi
+      const highlightMatch = html.match(highlightPattern)
+      if (highlightMatch) {
+        const numMatch = highlightMatch[0].match(/[₹₨Rs.]\s*([+-]?\d+(?:\.\d+)?)/)
+        if (numMatch) {
+          result.gmp = parseFloat(numMatch[1])
+          console.log(`Extracted GMP from highlight section: ${result.gmp}`)
+        }
       }
     }
 
-    // Parse GMP percentage
-    const percentPatterns = [
-      /GMP[^<]*?([+-]?\d+(?:\.\d+)?)\s*%/i,
-      /([+-]?\d+(?:\.\d+)?)\s*%\s*(?:listing\s*)?gain/i,
-      /"gmpPercent"[:\s]*"?([+-]?\d+(?:\.\d+)?)/i,
-    ]
-    
-    for (const pattern of percentPatterns) {
-      const match = html.match(pattern)
-      if (match && match[1]) {
-        result.gmpPercent = parseFloat(match[1])
-        break
-      }
+    // Parse GMP percentage from Estimated Listing Price column which shows "(X.XX%)"
+    const percentMatch = html.match(/<td[^>]*>[^<]*\(\s*([+-]?\d+(?:\.\d+)?)\s*%\s*\)/i)
+    if (percentMatch) {
+      result.gmpPercent = parseFloat(percentMatch[1])
     }
 
     // Parse estimated listing price
     const listingPatterns = [
-      /Est(?:imated)?\s*List(?:ing)?\s*Price[^<]*?[₹Rs.\s]*(\d+(?:,\d+)*(?:\.\d+)?)/i,
-      /Expected\s*List(?:ing)?[^<]*?[₹Rs.\s]*(\d+(?:,\d+)*(?:\.\d+)?)/i,
-      /"estimatedListing"[:\s]*"?(\d+(?:\.\d+)?)/i,
+      /Estimated\s*Listing\s*Price[^₹₨Rs]*[₹₨Rs.]\s*(\d+(?:\.\d+)?)/i,
+      /Est\.?\s*List\.?\s*Price[^₹₨Rs]*[₹₨Rs.]\s*(\d+(?:\.\d+)?)/i,
     ]
     
     for (const pattern of listingPatterns) {
@@ -112,10 +128,10 @@ async function scrapeInvestorGainGMP(url: string): Promise<GMPScrapeResult> {
       }
     }
 
-    console.log(`[v0] Scraped GMP from ${url}: GMP=${result.gmp}, Percent=${result.gmpPercent}`)
+    console.log(`Scraped GMP from ${url}: GMP=${result.gmp}, Percent=${result.gmpPercent}`)
     return result
   } catch (error) {
-    console.error(`[v0] Error scraping InvestorGain GMP ${url}:`, error)
+    console.error(`Error scraping InvestorGain GMP ${url}:`, error)
     return result
   }
 }
