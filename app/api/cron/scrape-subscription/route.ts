@@ -51,90 +51,113 @@ async function scrapeInvestorGainSubscription(url: string): Promise<Subscription
     }
 
     const html = await response.text()
+    // Clean HTML for easier parsing
+    const cleanHtml = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
     
     let total = 0, retail = '0x', nii = '0x', qib = '0x', day = 1
     let isFinal = false
 
-    // Parse total subscription
+    // Parse total subscription - try table first, then text patterns
+    // InvestorGain typically shows: "Total: 1.23x" or "1.23 times subscribed"
     const totalPatterns = [
-      /Total[^<]*?Subscription[^<]*?([0-9.]+)\s*(?:x|times)/i,
-      /Overall[^<]*?([0-9.]+)\s*(?:x|times)/i,
+      /Total[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /Overall[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
       /"totalSubscription"[:\s]*"?([0-9.]+)/i,
-      /Total[:\s]*([0-9.]+)\s*times/i,
-      /Application\s*Received[^<]*?([0-9.]+)\s*times/i,
+      /Total\s*Subscription[^0-9]*?([0-9]+\.?[0-9]*)/i,
+      /subscribed[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /([0-9]+\.?[0-9]*)\s*times\s*subscribed/i,
     ]
 
     for (const pattern of totalPatterns) {
-      const match = html.match(pattern)
+      const match = cleanHtml.match(pattern)
       if (match && match[1]) {
-        total = parseFloat(match[1])
-        break
+        const val = parseFloat(match[1])
+        if (!isNaN(val) && val > 0 && val < 1000) {
+          total = val
+          break
+        }
       }
     }
 
-    // Parse retail subscription
+    // Parse retail subscription (RII - Retail Individual Investors)
     const retailPatterns = [
-      /Retail[^<]*?([0-9.]+)\s*(?:x|times)/i,
-      /RII[^<]*?([0-9.]+)\s*(?:x|times)/i,
-      /Retail\s*Individual[^<]*?([0-9.]+)\s*(?:x|times)/i,
+      /Retail[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /RII[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /Retail\s*Individual[^0-9]*?([0-9]+\.?[0-9]*)/i,
       /"retailSubscription"[:\s]*"?([0-9.]+)/i,
+      /Retail\s*Portion[^0-9]*?([0-9]+\.?[0-9]*)/i,
     ]
 
     for (const pattern of retailPatterns) {
-      const match = html.match(pattern)
+      const match = cleanHtml.match(pattern)
       if (match && match[1]) {
-        retail = `${parseFloat(match[1]).toFixed(2)}x`
-        break
+        const val = parseFloat(match[1])
+        if (!isNaN(val) && val > 0 && val < 1000) {
+          retail = `${val.toFixed(2)}x`
+          break
+        }
       }
     }
 
     // Parse NII subscription (may have sNII and bNII separately)
     const niiPatterns = [
-      /(?:s)?NII[^<]*?([0-9.]+)\s*(?:x|times)/i,
-      /Non[- ]Institutional[^<]*?([0-9.]+)\s*(?:x|times)/i,
+      /(?:s)?NII[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /Non[- ]?Institutional[^0-9]*?([0-9]+\.?[0-9]*)/i,
+      /HNI[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
       /"niiSubscription"[:\s]*"?([0-9.]+)/i,
     ]
 
     for (const pattern of niiPatterns) {
-      const match = html.match(pattern)
+      const match = cleanHtml.match(pattern)
       if (match && match[1]) {
-        nii = `${parseFloat(match[1]).toFixed(2)}x`
-        break
+        const val = parseFloat(match[1])
+        if (!isNaN(val) && val > 0 && val < 1000) {
+          nii = `${val.toFixed(2)}x`
+          break
+        }
       }
     }
 
     // Parse QIB subscription
     const qibPatterns = [
-      /QIB[^<]*?([0-9.]+)\s*(?:x|times)/i,
-      /Qualified\s*Institutional[^<]*?([0-9.]+)\s*(?:x|times)/i,
+      /QIB[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
+      /Qualified\s*Institutional[^0-9]*?([0-9]+\.?[0-9]*)/i,
+      /Anchor[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
       /"qibSubscription"[:\s]*"?([0-9.]+)/i,
     ]
 
     for (const pattern of qibPatterns) {
-      const match = html.match(pattern)
+      const match = cleanHtml.match(pattern)
       if (match && match[1]) {
-        qib = `${parseFloat(match[1]).toFixed(2)}x`
-        break
+        const val = parseFloat(match[1])
+        if (!isNaN(val) && val > 0 && val < 1000) {
+          qib = `${val.toFixed(2)}x`
+          break
+        }
       }
     }
 
     // Parse day information
     const dayPatterns = [
+      /Day\s*(\d+)\s*(?:of|\/|\-)/i,
       /Day\s*(\d+)/i,
-      /Day[:\s]*(\d+)\s*(?:of|\/)/i,
       /"day"[:\s]*"?(\d+)/i,
+      /(\d+)(?:st|nd|rd|th)\s*Day/i,
     ]
 
     for (const pattern of dayPatterns) {
-      const match = html.match(pattern)
+      const match = cleanHtml.match(pattern)
       if (match && match[1]) {
-        day = parseInt(match[1])
-        break
+        const val = parseInt(match[1])
+        if (!isNaN(val) && val >= 1 && val <= 5) {
+          day = val
+          break
+        }
       }
     }
 
     // Check if subscription is final
-    isFinal = /subscription\s*closed|final\s*subscription|status[:\s]*closed|bidding\s*closed/i.test(html)
+    isFinal = /subscription\s*closed|final\s*subscription|status[:\s]*closed|bidding\s*closed|issue\s*closed/i.test(cleanHtml)
 
     // Only return if we found some data
     if (total > 0 || retail !== '0x') {

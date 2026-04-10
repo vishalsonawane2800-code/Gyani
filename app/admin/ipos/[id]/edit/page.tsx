@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { IPOForm } from '@/components/admin/ipo-form'
+import { BulkDataEntry } from '@/components/admin/bulk-data-entry'
 import { notFound } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
@@ -71,11 +72,23 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
           Edit IPO
         </h1>
         <p className="text-slate-400 mt-1">
-          Update details for {ipo.name}
+          Update details for {ipo.name || ipo.company_name}
         </p>
       </div>
 
-      <IPOForm initialData={formData} isEditing />
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Main Form */}
+        <div className="xl:col-span-2">
+          <IPOForm initialData={formData} isEditing />
+        </div>
+        
+        {/* Bulk Data Entry Sidebar */}
+        <div className="xl:col-span-1">
+          <div className="sticky top-6">
+            <BulkDataEntry ipoId={ipo.id} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

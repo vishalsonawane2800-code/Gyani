@@ -24,7 +24,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
-import { Loader2, Plus, Trash2, TrendingUp } from 'lucide-react'
+import { Loader2, Plus, Trash2, TrendingUp, RefreshCw, Clock } from 'lucide-react'
 
 interface IPO {
   id: number
@@ -40,11 +40,13 @@ interface GMPHistoryEntry {
   gmp: number
   gmp_percent: number
   date: string
+  time_slot: 'morning' | 'evening' | null
   source: string | null
   created_at: string
   ipos: {
     name: string
     slug: string
+    company_name?: string
   } | null
 }
 
@@ -56,10 +58,12 @@ interface GMPManagementClientProps {
 export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [scraping, setScraping] = useState(false)
   const [selectedIpoId, setSelectedIpoId] = useState<string>('')
   const [gmpValue, setGmpValue] = useState<string>('')
   const [gmpDate, setGmpDate] = useState<string>(new Date().toISOString().split('T')[0])
-  const [gmpSource, setGmpSource] = useState<string>('')
+  const [gmpTimeSlot, setGmpTimeSlot] = useState<'morning' | 'evening'>('morning')
+  const [gmpSource, setGmpSource] = useState<string>('manual')
 
   const selectedIpo = ipos.find(i => i.id.toString() === selectedIpoId)
 
@@ -89,7 +93,8 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
           gmp: parseFloat(gmpValue),
           gmp_percent: calculateGmpPercent(),
           date: gmpDate,
-          source: gmpSource || null,
+          time_slot: gmpTimeSlot,
+          source: gmpSource || 'manual',
         }),
       })
 
@@ -103,7 +108,7 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
       // Reset form
       setSelectedIpoId('')
       setGmpValue('')
-      setGmpSource('')
+      setGmpSource('manual')
       
       router.refresh()
     } catch (error) {
@@ -111,6 +116,29 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
       console.error('GMP submit error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleManualScrape = async () => {
+    setScraping(true)
+    try {
+      const response = await fetch('/api/cron/scrape-gmp', {
+        method: 'POST',
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to scrape GMP data')
+      }
+
+      toast.success(`GMP scrape completed: ${result.successCount}/${result.totalCount} IPOs updated`)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to scrape GMP data')
+      console.error('Scrape error:', error)
+    } finally {
+      setScraping(false)
     }
   }
 
@@ -221,8 +249,35 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
                 />
               </div>
 
-              <div>
-                <Label htmlFor="source" className="text-slate-300">Source (optional)</Label>
+<div>
+  <Label htmlFor="time_slot" className="text-slate-300">Time Slot *</Label>
+  <Select
+    value={gmpTimeSlot}
+    onValueChange={(value: 'morning' | 'evening') => setGmpTimeSlot(value)}
+  >
+    <SelectTrigger className="bg-slate-700 border-slate-600 text-white mt-1">
+      <SelectValue placeholder="Select time slot" />
+    </SelectTrigger>
+    <SelectContent className="bg-slate-700 border-slate-600">
+      <SelectItem value="morning" className="text-white hover:bg-slate-600">
+        <div className="flex items-center gap-2">
+          <Clock className="h-3 w-3" />
+          <span>Morning (12 PM IST)</span>
+        </div>
+      </SelectItem>
+      <SelectItem value="evening" className="text-white hover:bg-slate-600">
+        <div className="flex items-center gap-2">
+          <Clock className="h-3 w-3" />
+          <span>Evening (10 PM IST)</span>
+        </div>
+      </SelectItem>
+    </SelectContent>
+  </Select>
+  <p className="text-xs text-slate-500 mt-1">Morning: 12 PM IST | Evening: 10 PM IST</p>
+  </div>
+
+  <div>
+  <Label htmlFor="source" className="text-slate-300">Source</Label>
                 <Input
                   id="source"
                   value={gmpSource}
@@ -247,10 +302,25 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
 
         {/* GMP History Table */}
         <div className="lg:col-span-2">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-700">
-              <h2 className="font-semibold text-white">Recent GMP History</h2>
-            </div>
+<div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+  <div className="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
+  <h2 className="font-semibold text-white">Recent GMP History</h2>
+  <Button
+    type="button"
+    variant="outline"
+    size="sm"
+    onClick={handleManualScrape}
+    disabled={scraping}
+    className="border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10"
+  >
+    {scraping ? (
+      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+    ) : (
+      <RefreshCw className="h-4 w-4 mr-2" />
+    )}
+    {scraping ? 'Scraping...' : 'Scrape GMP Now'}
+  </Button>
+  </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -262,10 +332,13 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
                     <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
                       GMP
                     </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
-                      Date
-                    </th>
-                    <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+<th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+  Date
+  </th>
+  <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
+  Slot
+  </th>
+  <th className="text-left px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
                       Source
                     </th>
                     <th className="text-right px-6 py-3 text-xs font-medium text-slate-400 uppercase tracking-wider">
@@ -276,7 +349,7 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
                 <tbody className="divide-y divide-slate-700">
                   {gmpHistory.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
+                      <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
                         No GMP entries found. Add your first entry to get started.
                       </td>
                     </tr>
@@ -296,12 +369,24 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
                             </span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-300">
-                          {formatDate(entry.date)}
-                        </td>
-                        <td className="px-6 py-4 text-slate-400">
-                          {entry.source || '-'}
-                        </td>
+<td className="px-6 py-4 text-slate-300">
+  {formatDate(entry.date)}
+  </td>
+  <td className="px-6 py-4">
+  {entry.time_slot && (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+      entry.time_slot === 'morning' 
+        ? 'bg-yellow-500/20 text-yellow-400' 
+        : 'bg-blue-500/20 text-blue-400'
+    }`}>
+      {entry.time_slot === 'morning' ? '12 PM' : '10 PM'}
+    </span>
+  )}
+  {!entry.time_slot && <span className="text-slate-500">-</span>}
+  </td>
+  <td className="px-6 py-4 text-slate-400">
+  {entry.source || '-'}
+  </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center justify-end">
                             <AlertDialog>

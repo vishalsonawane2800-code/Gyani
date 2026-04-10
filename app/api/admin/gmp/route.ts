@@ -12,6 +12,9 @@ export async function GET() {
         id,
         ipo_id,
         gmp,
+        gmp_percent,
+        date,
+        time_slot,
         recorded_at,
         source,
         ipos (
@@ -19,7 +22,8 @@ export async function GET() {
           slug
         )
       `)
-      .order('recorded_at', { ascending: false })
+      .order('date', { ascending: false })
+      .order('time_slot', { ascending: false })
       .limit(100)
 
     if (error) {
@@ -45,10 +49,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields: ipo_id, gmp' }, { status: 400 })
     }
 
+    const now = new Date().toISOString()
+    const today = body.date || now.split('T')[0]
+    
     const gmpData = {
       ipo_id: body.ipo_id,
       gmp: body.gmp,
-      recorded_at: body.date || new Date().toISOString(),
+      gmp_percent: body.gmp_percent || 0,
+      date: today,
+      time_slot: body.time_slot || 'morning',
+      recorded_at: now,
       source: body.source || 'manual',
     }
 
