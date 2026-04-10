@@ -13,6 +13,48 @@
 
 ---
 
+## [2026-04-10] - Database Schema Fix & Column Alignment
+
+### Database
+- Created `000_fresh_start.sql` - Complete fresh schema with consistent UUID types
+- Fixed foreign key type mismatch (INTEGER vs UUID) that caused creation errors
+- All tables now use UUID primary keys consistently
+
+### Changed - IMPORTANT Column Name Updates
+The following column names were updated to match the database schema:
+
+| Old Name (Code) | New Name (Database) | Files Updated |
+|-----------------|---------------------|---------------|
+| `name` | `company_name` | queries.ts, API routes |
+| `list_date` | `listing_date` | queries.ts, API routes |
+| `lead_manager` | `brlm` | queries.ts, API routes |
+| `about_company` | `description` | queries.ts, API routes |
+
+### Removed Columns (not in database)
+- `abbr` - Short abbreviation (removed from API)
+- `gmp_percent` - Now calculated in code from GMP and price
+- `issue_size_cr` - Use `issue_size` text field
+- `fresh_issue` - Removed
+- `ofs` - Removed
+
+### Fixed
+- `app/api/admin/ipos/route.ts` - Updated to use correct column names
+- `app/api/admin/ipos/[id]/route.ts` - Fixed UUID handling and column names
+- `app/api/admin/gmp/route.ts` - Fixed to use `company_name` instead of `name`
+- `lib/supabase/queries.ts` - Updated all queries to use correct column names
+
+### Admin Panel
+- Added IPO Detail View page (`/admin/ipos/[id]`)
+- Added "View" button (Eye icon) to dashboard IPO table
+- Added `investorgain_gmp_url` and `investorgain_sub_url` fields to edit form
+
+### Required User Action
+After running `000_fresh_start.sql`, you MUST refresh Supabase schema cache:
+1. Supabase Dashboard > Project Settings > API > "Reload schema"
+2. OR run: `NOTIFY pgrst, 'reload schema';` in SQL Editor
+
+---
+
 ## [Initial Setup] - 2026-04-10
 
 ### Project Structure
