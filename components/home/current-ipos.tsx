@@ -16,7 +16,7 @@ const statusPriority: Record<string, number> = {
   closed: 0,
 };
 
-// Only show open IPOs
+// Only show open/active IPOs (not listed - they move to listed section)
 const openStatuses: string[] = ['open', 'lastday', 'allot', 'listing'];
 
 interface IPO {
