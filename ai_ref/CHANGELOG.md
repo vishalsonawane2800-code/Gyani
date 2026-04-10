@@ -13,6 +13,29 @@
 
 ---
 
+## [2026-04-10 - Session 2] - Cron Routes & Migrate Listed Fix
+
+### Fixed - Column Name Alignment in API Routes
+The following files were updated to use correct database column names:
+
+| File | Changes Made |
+|------|-------------|
+| `app/api/admin/ipos/[id]/migrate-listed/route.ts` | Removed `abbr`, `name`, `list_date` - now uses `company_name`, `listing_date`, `original_ipo_id` |
+| `app/api/cron/update-subscriptions/route.ts` | Changed `name` to `company_name` in select query and references |
+| `app/api/cron/scrape-gmp/route.ts` | Changed `name` to `company_name` in select query and references |
+| `app/api/cron/scrape-subscription/route.ts` | Changed `name` to `company_name` in select query and references |
+| `app/api/admin/auto-status/route.ts` | Changed `name` to `company_name`, `list_date` to `listing_date` |
+
+### Changed - Migrate Listed Route
+Complete rewrite of `listedIpoData` object to match `listed_ipos` table schema:
+- Added: `original_ipo_id`, `company_name`, `listing_price`, `current_price`, `listing_date`, `listing_gain_percent`, `nse_symbol`, `bse_scrip_code`
+- Removed: `abbr`, `name`, `list_date`, `gain_pct`, `sub_times`, `gmp_peak`, `ai_pred`, `ai_err`, `year`
+
+### Required User Action
+User MUST run `scripts/000_fresh_start.sql` in Supabase SQL Editor to create the database tables with correct schema.
+
+---
+
 ## [2026-04-10] - Database Schema Fix & Column Alignment
 
 ### Database
