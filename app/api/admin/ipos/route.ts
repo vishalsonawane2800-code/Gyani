@@ -82,12 +82,16 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      console.error('Error creating IPO:', error)
+      console.error('[v0] Error creating IPO:', error)
+      console.error('[v0] Error message:', error.message)
+      console.error('[v0] Error code:', error.code)
+      console.error('[v0] Error details:', error.details)
+      console.error('[v0] IPO data attempted:', JSON.stringify(ipoData, null, 2))
       // Check for duplicate slug
       if (error.code === '23505') {
         return NextResponse.json({ error: 'An IPO with this slug already exists' }, { status: 400 })
       }
-      return NextResponse.json({ error: 'Failed to create IPO' }, { status: 500 })
+      return NextResponse.json({ error: `Failed to create IPO: ${error.message}` }, { status: 500 })
     }
 
     return NextResponse.json({ data }, { status: 201 })
