@@ -55,7 +55,6 @@ interface IPOFormData {
   id?: number
   name: string
   slug: string
-  abbr: string
   exchange: string
   sector: string
   price_min: number
@@ -91,7 +90,6 @@ interface IPOFormData {
 const defaultFormData: IPOFormData = {
   name: '',
   slug: '',
-  abbr: '',
   exchange: 'BSE SME',
   sector: '',
   price_min: 0,
@@ -151,22 +149,11 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
       .concat('-ipo')
   }
 
-  // Auto-generate abbreviation from name
-  const generateAbbr = (name: string) => {
-    return name
-      .split(' ')
-      .map((w) => w[0])
-      .join('')
-      .slice(0, 3)
-      .toUpperCase()
-  }
-
   const handleNameChange = (name: string) => {
     setFormData((prev) => ({
       ...prev,
       name,
       slug: generateSlug(name),
-      abbr: generateAbbr(name),
     }))
   }
 
@@ -279,7 +266,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* IPO Name - Most Important Field */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <Label htmlFor="name" className="text-slate-300">
               IPO Name *
               <span className="text-xs text-slate-500 ml-2">Full company name</span>
@@ -292,21 +279,6 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               required
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
               placeholder="e.g., Fractal Analytics Limited"
-            />
-          </div>
-          
-          <div>
-            <Label htmlFor="abbr" className="text-slate-300">
-              Abbreviation
-              <span className="text-xs text-slate-500 ml-2">Auto-generated</span>
-            </Label>
-            <Input
-              id="abbr"
-              name="abbr"
-              value={formData.abbr}
-              onChange={handleChange}
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="e.g., FA"
             />
           </div>
           
@@ -410,7 +382,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
                 className="font-bold text-2xl"
                 style={{ color: formData.fg_color }}
               >
-                {formData.abbr || 'AB'}
+                {formData.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'}
               </span>
             )}
           </div>
