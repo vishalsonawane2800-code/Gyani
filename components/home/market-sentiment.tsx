@@ -41,39 +41,42 @@ function CategoryStats({
   return (
     <div className="space-y-3">
       {/* Extra stats row - Chittorgarh-style */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-cobalt leading-none">
             {stats.total}
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">{label} Listed</div>
         </div>
-        <div className="col-span-2 sm:col-span-3 lg:col-span-2 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-4 py-4 text-center shadow-sm min-h-[80px] sm:min-h-[96px] lg:min-h-[88px] flex flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[22px] sm:text-[26px] lg:text-[24px] font-black text-emerald leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 py-4 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[18px] sm:text-[20px] font-black text-emerald leading-none">
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-[10px] sm:text-[12px] lg:text-[11px] text-ink3 mt-2 leading-tight">Avg Listing Gains</div>
-          <div className="text-[9px] sm:text-[11px] lg:text-[10px] text-ink3/90 mt-1.5 leading-tight">
-            Medium: {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight">Avg</div>
+        </div>
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 py-4 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[18px] sm:text-[20px] font-black text-sky-600 leading-none">
+            {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight">Median</div>
         </div>
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Subscription</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Sub</div>
         </div>
-        <div className="hidden sm:block bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Gain on Listing</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">Gain</div>
         </div>
-        <div className="hidden lg:block bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Loss on Listing</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">Loss</div>
         </div>
       </div>
 
