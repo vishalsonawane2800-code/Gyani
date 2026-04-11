@@ -87,18 +87,18 @@ export function MarketSentimentScore({
         <div className="flex-1 flex flex-col justify-center gap-2 sm:gap-3">
           {/* Badge */}
           <div className="inline-flex w-fit">
-            <span className="bg-primary-bg text-primary text-[8px] sm:text-[9px] font-bold px-2.5 py-1 rounded-full">
+            <span className="bg-primary-bg text-primary text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
               IPOGYANI AI - MARKET PULSE
             </span>
           </div>
 
           {/* Title */}
-          <h2 className="text-[13px] sm:text-[14px] font-bold font-[family-name:var(--font-sora)] text-ink leading-tight">
+          <h2 className="text-[15px] sm:text-[16px] font-bold font-[family-name:var(--font-sora)] text-ink leading-tight">
             Overall Market Sentiment
           </h2>
 
           {/* Description */}
-          <p className="text-[11px] sm:text-[13px] text-ink3 font-[family-name:var(--font-sans)] leading-relaxed max-w-sm">
+          <p className="text-[13px] sm:text-[14px] text-ink3 font-[family-name:var(--font-sans)] leading-relaxed max-w-sm">
             {description}
           </p>
         </div>
