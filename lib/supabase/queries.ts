@@ -342,6 +342,87 @@ export async function getListedIPOs(options?: { limit?: number }): Promise<Liste
   return (data ?? []).map(ipo => transformToListedIPO(ipo as IPOSimple))
 }
 
+// Stats for Mainboard and SME IPO summary (used in MarketSentiment)
+export interface IPOCategoryStats {
+  total: number
+  upcoming: number
+  inGainOnListing: number
+  inLossOnListing: number
+  currentlyInGain: number
+  currentlyInLoss: number
+  totalRaisedCr: number
+  avgListingGain: number
+  avgSubscription: number
+}
+
+export async function getIPOStats(): Promise<{ mainboard: IPOCategoryStats; sme: IPOCategoryStats }> {
+  const supabase = await createClient()
+
+  const empty: IPOCategoryStats = {
+    total: 0, upcoming: 0, inGainOnListing: 0, inLossOnListing: 0,
+    currentlyInGain: 0, currentlyInLoss: 0, totalRaisedCr: 0, avgListingGain: 0, avgSubscription: 0
+  }
+
+  if (!supabase) return { mainboard: empty, sme: empty }
+
+  const { data, error } = await supabase
+    .from('ipos')
+    .select('exchange, status, listing_gain_percent, current_price, price_max, issue_size, subscription_total')
+    .not('exchange', 'is', null)
+
+  if (error || !data) return { mainboard: empty, sme: empty }
+
+  function calcStats(ipos: typeof data): IPOCategoryStats {
+    const listed = ipos.filter(i => ['listed', 'allot', 'listing'].includes(i.status))
+    const upcoming = ipos.filter(i => ['upcoming', 'open', 'lastday'].includes(i.status))
+
+    const inGainOnListing = listed.filter(i => (i.listing_gain_percent ?? 0) > 0).length
+    const inLossOnListing = listed.filter(i => (i.listing_gain_percent ?? 0) < 0).length
+
+    // Currently in gain = current price > issue price
+    const currentlyInGain = listed.filter(i => i.current_price && i.price_max && i.current_price > i.price_max).length
+    const currentlyInLoss = listed.filter(i => i.current_price && i.price_max && i.current_price < i.price_max).length
+
+    // Total raised
+    const totalRaisedCr = ipos.reduce((sum, i) => {
+      const val = parseFloat(String(i.issue_size ?? '').replace(/[^\d.]/g, '') || '0')
+      return sum + (isNaN(val) ? 0 : val)
+    }, 0)
+
+    // Avg listing gain across listed IPOs
+    const validGains = listed.filter(i => i.listing_gain_percent !== null)
+    const avgListingGain = validGains.length > 0
+      ? validGains.reduce((s, i) => s + (i.listing_gain_percent ?? 0), 0) / validGains.length
+      : 0
+
+    // Avg subscription
+    const validSubs = ipos.filter(i => (i.subscription_total ?? 0) > 0)
+    const avgSubscription = validSubs.length > 0
+      ? validSubs.reduce((s, i) => s + (i.subscription_total ?? 0), 0) / validSubs.length
+      : 0
+
+    return {
+      total: listed.length,
+      upcoming: upcoming.length,
+      inGainOnListing,
+      inLossOnListing,
+      currentlyInGain,
+      currentlyInLoss,
+      totalRaisedCr: Math.round(totalRaisedCr),
+      avgListingGain: Math.round(avgListingGain * 10) / 10,
+      avgSubscription: Math.round(avgSubscription * 10) / 10,
+    }
+  }
+
+  const mainboardIpos = data.filter(i => i.exchange === 'Mainboard' || i.exchange === 'NSE' || i.exchange === 'BSE')
+  const smeIpos = data.filter(i => i.exchange === 'BSE SME' || i.exchange === 'NSE SME')
+
+  return {
+    mainboard: calcStats(mainboardIpos),
+    sme: calcStats(smeIpos),
+  }
+}
+
 // Get all IPO slugs for static generation
 export async function getAllIPOSlugs(): Promise<string[]> {
   const supabase = await createClient()
