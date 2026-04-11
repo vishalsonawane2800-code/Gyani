@@ -1,6 +1,7 @@
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { HeroSection } from '@/components/home/hero-section';
+import { MarketSentimentScore } from '@/components/home/market-sentiment-score';
 import { MarketSentiment } from '@/components/home/market-sentiment';
 import { CurrentIPOs } from '@/components/home/current-ipos';
 import { ListedIPOs } from '@/components/home/listed-ipos';
@@ -54,6 +55,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div className="min-w-0">
+            <MarketSentimentScore />
             <MarketSentiment ipoStats={ipoStats} />
             <CurrentIPOs ipos={ipos} />
             <ListedIPOs listedIpos={listedIpos} />
