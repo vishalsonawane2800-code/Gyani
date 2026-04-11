@@ -39,66 +39,63 @@ function CategoryStats({
   category: 'mainboard' | 'sme';
 }) {
   return (
-    <div className="space-y-3">
-      {/* Top row - 3 boxes */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+    <div>
+      {/* All 6 boxes - 3 columns on mobile, 6 columns on desktop */}
+      <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {/* 1. Mainboard Listed IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-cobalt leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-cobalt leading-none">
             {stats.total}
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-2 leading-tight font-semibold">{label} Listed</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">{label} Listed</div>
         </div>
 
         {/* 2. Upcoming IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-cobalt-mid leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-cobalt-mid leading-none">
             {stats.upcoming}
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-2 leading-tight font-semibold">Upcoming IPOs</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
 
         {/* 3. Avg Subscription */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-gold-mid leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-2 leading-tight font-semibold">Avg Subscription</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Avg Subscription</div>
         </div>
-      </div>
 
-      {/* Bottom row - 3 boxes */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {/* 4. Avg Listing Gains with Median (combined box) */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className={`font-[family-name:var(--font-sora)] text-[24px] sm:text-[32px] font-black leading-none ${
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className={`font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black leading-none ${
             stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
-          <div className={`text-[12px] sm:text-[14px] font-black mt-1 ${
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
+          <div className={`text-[11px] sm:text-[12px] font-black mt-0.5 ${
             manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
-          <div className="text-[8px] sm:text-[9px] text-ink3 mt-0.5 leading-tight font-semibold">Median Listing Gains</div>
+          <div className="text-[8px] sm:text-[9px] text-ink3 leading-tight font-semibold">Median Listing Gains</div>
         </div>
 
         {/* 5. IPOs Open in Profit */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-emerald leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-2 leading-tight font-semibold">IPOs Open in Profit</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Profit</div>
         </div>
 
         {/* 6. IPOs Open in Loss */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-3 sm:p-4 text-center shadow-sm flex flex-col items-center justify-center min-h-[100px] sm:min-h-[110px]">
-          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-destructive leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
-          <div className="text-[10px] sm:text-[11px] text-ink3 mt-2 leading-tight font-semibold">IPOs Open in Loss</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Loss</div>
         </div>
       </div>
 
