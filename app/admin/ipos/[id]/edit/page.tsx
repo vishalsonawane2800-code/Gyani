@@ -40,7 +40,6 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     price_max: ipo.price_max || 0,
     lot_size: ipo.lot_size || 0,
     issue_size: ipo.issue_size || '',
-    issue_size_cr: ipo.issue_size_cr || 0,
     fresh_issue: ipo.fresh_issue || '',
     ofs: ipo.ofs || 'Nil',
     open_date: ipo.open_date || '',
