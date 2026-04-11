@@ -11,9 +11,9 @@ export default async function GMPManagementPage() {
   }
 
   // Fetch all active IPOs (not closed)
-  const { data: ipos, error: iposError } = await supabase
+  const { data: iposData, error: iposError } = await supabase
     .from('ipos')
-    .select('id, name, slug, status, price_max')
+    .select('id, company_name, slug, status, price_max')
     .in('status', ['open', 'upcoming', 'lastday', 'allot', 'listing'])
     .order('open_date', { ascending: false })
 
@@ -21,8 +21,17 @@ export default async function GMPManagementPage() {
     console.error('Error fetching IPOs:', iposError)
   }
 
+  // Transform company_name to name for component compatibility
+  const ipos = (iposData || []).map(ipo => ({
+    id: ipo.id,
+    name: ipo.company_name,
+    slug: ipo.slug,
+    status: ipo.status,
+    price_max: ipo.price_max
+  }))
+
   // Fetch GMP history with IPO names
-  const { data: gmpHistory, error: gmpError } = await supabase
+  const { data: gmpHistoryData, error: gmpError } = await supabase
     .from('gmp_history')
     .select(`
       id,
@@ -33,7 +42,7 @@ export default async function GMPManagementPage() {
       source,
       created_at,
       ipos (
-        name,
+        company_name,
         slug
       )
     `)
@@ -43,6 +52,15 @@ export default async function GMPManagementPage() {
   if (gmpError) {
     console.error('Error fetching GMP history:', gmpError)
   }
+
+  // Transform company_name to name in gmpHistory for component compatibility
+  const gmpHistory = (gmpHistoryData || []).map(entry => ({
+    ...entry,
+    ipos: entry.ipos ? {
+      name: (entry.ipos as { company_name: string; slug: string }).company_name,
+      slug: (entry.ipos as { company_name: string; slug: string }).slug
+    } : null
+  }))
 
   return (
     <GMPManagementClient 

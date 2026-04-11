@@ -23,14 +23,21 @@ export default async function IPODetailPage({ params }: IPODetailPageProps) {
   }
 
   // Fetch IPO details
-  const { data: ipo, error: ipoError } = await supabase
+  const { data: ipoData, error: ipoError } = await supabase
     .from('ipos')
     .select('*')
     .eq('id', parseInt(id))
     .single()
 
-  if (ipoError || !ipo) {
+  if (ipoError || !ipoData) {
     notFound()
+  }
+
+  // Transform database fields to match component expectations
+  // Database uses company_name, component uses name
+  const ipo = {
+    ...ipoData,
+    name: ipoData.company_name || ipoData.name || '',
   }
 
   // Fetch GMP history for this IPO
