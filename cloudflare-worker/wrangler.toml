@@ -1,0 +1,19 @@
+name = "ipo-cron-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# Cron Triggers
+[triggers]
+crons = [
+  "*/15 * * * *",   # Every 15 minutes - main cron jobs
+  "30 6 * * *",     # 6:30 AM daily - GMP history scrape (morning)
+  "30 16 * * *"     # 4:30 PM daily - GMP history scrape (evening)
+]
+
+# Environment Variables (set these in Cloudflare Dashboard or use wrangler secret)
+# CRON_SECRET = "your-secret-here"
+# API_BASE_URL = "https://your-domain.com"
+
+[vars]
+# Default values (override in Cloudflare Dashboard for production)
+API_BASE_URL = "https://your-domain.com"
