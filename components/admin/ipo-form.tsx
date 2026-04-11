@@ -61,7 +61,6 @@ interface IPOFormData {
   price_max: number
   lot_size: number
   issue_size: string
-  issue_size_cr: number
   fresh_issue: string
   ofs: string
   open_date: string
@@ -96,7 +95,6 @@ const defaultFormData: IPOFormData = {
   price_max: 0,
   lot_size: 0,
   issue_size: '',
-  issue_size_cr: 0,
   fresh_issue: '',
   ofs: 'Nil',
   open_date: '',
@@ -598,29 +596,16 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
-            <Label htmlFor="issue_size_cr" className="text-slate-300">
-              Issue Size (Cr) *
-              <span className="text-xs text-slate-500 ml-1">Total size</span>
+            <Label htmlFor="issue_size" className="text-slate-300">
+              Issue Size *
+              <span className="text-xs text-slate-500 ml-1">e.g., 100.5 Cr</span>
             </Label>
-            <Input
-              id="issue_size_cr"
-              name="issue_size_cr"
-              type="number"
-              step="0.01"
-              value={formData.issue_size_cr || ''}
-              onChange={handleChange}
-              required
-              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="100.5"
-            />
-          </div>
-          <div>
-            <Label htmlFor="issue_size" className="text-slate-300">Issue Size (Display)</Label>
             <Input
               id="issue_size"
               name="issue_size"
               value={formData.issue_size}
               onChange={handleChange}
+              required
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
               placeholder="e.g., 100.5 Cr"
             />

@@ -64,7 +64,6 @@ interface IPOData {
   price_max: number
   lot_size: number
   issue_size: string
-  issue_size_cr: number
   fresh_issue: string
   ofs: string
   open_date: string
@@ -379,7 +378,7 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <DetailItem label="Price Band" value={`Rs ${ipo.price_min} - ${ipo.price_max}`} />
               <DetailItem label="Lot Size" value={`${ipo.lot_size} shares`} />
-              <DetailItem label="Issue Size" value={`Rs ${ipo.issue_size_cr} Cr`} />
+              <DetailItem label="Issue Size" value={ipo.issue_size || '-'} />
               <DetailItem label="Fresh Issue" value={ipo.fresh_issue || '-'} />
               <DetailItem label="OFS" value={ipo.ofs || 'Nil'} />
               <DetailItem label="Est. List Price" value={latestGmp ? `Rs ${ipo.price_max + latestGmp.gmp}` : '-'} />

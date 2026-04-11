@@ -47,6 +47,9 @@ export async function POST(request: Request) {
       price_max: body.price_max,
       lot_size: body.lot_size,
       issue_size: body.issue_size || (body.issue_size_cr ? `${body.issue_size_cr} Cr` : null),
+      // Fresh Issue and OFS fields
+      fresh_issue: body.fresh_issue || null,
+      ofs: body.ofs || 'Nil',
       open_date: body.open_date,
       close_date: body.close_date,
       allotment_date: body.allotment_date || null,

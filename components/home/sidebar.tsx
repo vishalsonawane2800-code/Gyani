@@ -1,55 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Calendar, ExternalLink, Brain } from 'lucide-react';
-import { upcomingEvents } from '@/lib/data';
+import { ExternalLink, Brain } from 'lucide-react';
 
 export function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
-      {/* Upcoming Events */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
-          <h3 className="text-[13px] font-bold flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-primary" />
-            Upcoming Events
-          </h3>
-          <Link href="/events" className="text-[11.5px] font-semibold text-primary">
-            View All
-          </Link>
-        </div>
-        <div className="p-4">
-          {upcomingEvents.map((event, index) => (
-            <div 
-              key={index}
-              className={`flex gap-3 items-start py-2.5 ${
-                index !== upcomingEvents.length - 1 ? 'border-b border-border' : ''
-              }`}
-            >
-              {/* Date */}
-              <div 
-                className="w-10 h-10 rounded-lg flex flex-col items-center justify-center text-[9px] font-extrabold tracking-tight shrink-0 leading-tight"
-                style={{ backgroundColor: event.dateColor.bg, color: event.dateColor.text }}
-              >
-                <span className="text-[14px]">{event.date}</span>
-                <span>{event.month}</span>
-              </div>
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-semibold mb-0.5 truncate">{event.title}</p>
-                <p className="text-[11px] text-ink3 mb-1">{event.desc}</p>
-                <span 
-                  className="text-[9.5px] font-bold px-2 py-0.5 rounded-xl"
-                  style={{ backgroundColor: event.tagColor.bg, color: event.tagColor.text }}
-                >
-                  {event.tag}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* AI Accuracy Quick */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
         <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
