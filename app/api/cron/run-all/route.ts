@@ -25,6 +25,9 @@ import { NextResponse } from 'next/server'
 
 const CRON_SECRET = process.env.CRON_SECRET
 
+// Note: Authorization is now handled by middleware.ts
+// This CRON_SECRET is still used for internal API calls
+
 // Helper to call internal API endpoints
 async function callInternalAPI(path: string, baseUrl: string): Promise<{
   success: boolean
@@ -57,12 +60,7 @@ async function callInternalAPI(path: string, baseUrl: string): Promise<{
 }
 
 export async function GET(request: Request) {
-  // Verify cron secret
-  const authHeader = request.headers.get('authorization')
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+  // Authorization is handled by middleware.ts
   const startTime = Date.now()
   const baseUrl = new URL(request.url).origin
 
