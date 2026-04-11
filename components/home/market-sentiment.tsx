@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, List, Clock, ArrowUp, ArrowDown } from 'lucide-react';
+import { List, TrendingUp } from 'lucide-react';
 import type { IPOCategoryStats } from '@/lib/supabase/queries';
 
 interface MarketSentimentProps {
@@ -22,30 +22,6 @@ const fallbackStats = {
     currentlyInGain: 22, currentlyInLoss: 19, totalRaisedCr: 4120, avgListingGain: 18.7, avgSubscription: 112.4,
   },
 };
-
-function StatPill({
-  icon,
-  value,
-  label,
-  color,
-}: {
-  icon: React.ReactNode;
-  value: string | number;
-  label: string;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-1.5 bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg px-2 py-1.5 shadow-sm">
-      <span className={`${color} flex-shrink-0`}>{icon}</span>
-      <div className="min-w-0">
-        <div className={`font-[family-name:var(--font-sora)] text-[13px] font-black leading-none ${color}`}>
-          {value}
-        </div>
-        <div className="text-[9px] text-ink3 mt-0.5 whitespace-nowrap leading-none">{label}</div>
-      </div>
-    </div>
-  );
-}
 
 function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: string }) {
   const gainPct = stats.total > 0
@@ -156,35 +132,10 @@ export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
               </p>
             </div>
 
-            {/* Mini stat pills — top-right corner */}
-            <div className="hidden sm:flex flex-col gap-1 shrink-0">
-              <StatPill
-                icon={<ArrowUp className="w-3 h-3" />}
-                value={active.currentlyInGain}
-                label="In Gain"
-                color="text-emerald"
-              />
-              <StatPill
-                icon={<ArrowDown className="w-3 h-3" />}
-                value={active.currentlyInLoss}
-                label="In Loss"
-                color="text-destructive"
-              />
-              <StatPill
-                icon={<Clock className="w-3 h-3" />}
-                value={active.upcoming}
-                label="Upcoming"
-                color="text-gold-mid"
-              />
-            </div>
+
           </div>
 
-          {/* Mobile: mini pills in a row below text */}
-          <div className="flex sm:hidden gap-1.5 mt-2 flex-wrap">
-            <StatPill icon={<ArrowUp className="w-3 h-3" />} value={active.currentlyInGain} label="In Gain" color="text-emerald" />
-            <StatPill icon={<ArrowDown className="w-3 h-3" />} value={active.currentlyInLoss} label="In Loss" color="text-destructive" />
-            <StatPill icon={<Clock className="w-3 h-3" />} value={active.upcoming} label="Upcoming" color="text-gold-mid" />
-          </div>
+
         </div>
       </div>
 
