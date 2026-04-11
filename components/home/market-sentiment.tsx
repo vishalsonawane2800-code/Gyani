@@ -40,47 +40,83 @@ function CategoryStats({
 }) {
   return (
     <div className="space-y-3">
-      {/* Extra stats row - Chittorgarh-style */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-cobalt leading-none">
+      {/* Extra stats row - All 9 boxes visible on all screen sizes */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+        {/* 1. Total Listed */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-cobalt leading-none">
             {stats.total}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">{label} Listed</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">{label} Listed</div>
         </div>
-        <div className="col-span-1 sm:col-span-2 lg:col-span-1 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 sm:px-4 py-4 sm:py-6 text-center shadow-sm flex flex-col items-center justify-center">
-          <div className={`font-[family-name:var(--font-sora)] text-[20px] sm:text-[26px] lg:text-[24px] font-black leading-none ${
+
+        {/* 2. Avg Listing Gains */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className={`font-[family-name:var(--font-sora)] text-[18px] sm:text-[22px] font-black leading-none ${
             stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-[10px] sm:text-[12px] lg:text-[10px] text-ink3 mt-2 sm:mt-3 leading-tight font-semibold">Avg Listing Gains</div>
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1.5 leading-tight font-semibold">Avg Listing Gains</div>
         </div>
-        <div className="col-span-1 sm:col-span-2 lg:col-span-1 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 sm:px-4 py-4 sm:py-6 text-center shadow-sm flex flex-col items-center justify-center">
-          <div className={`font-[family-name:var(--font-sora)] text-[20px] sm:text-[26px] lg:text-[24px] font-black leading-none ${
+
+        {/* 3. Medium Listing Gains */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className={`font-[family-name:var(--font-sora)] text-[18px] sm:text-[22px] font-black leading-none ${
             manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
-          <div className="text-[10px] sm:text-[12px] lg:text-[10px] text-ink3 mt-2 sm:mt-3 leading-tight font-semibold">Medium Listing Gains</div>
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1.5 leading-tight font-semibold">Medium Listing Gains</div>
         </div>
-        <div className="hidden sm:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-gold-mid leading-none">
+
+        {/* 4. Avg Subscription */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Subscription</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Avg Subscription</div>
         </div>
-        <div className="hidden sm:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-emerald leading-none">
+
+        {/* 5. IPOs Open in Profit */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">IPOs Open in Profit</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Profit</div>
         </div>
-        <div className="hidden lg:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-destructive leading-none">
+
+        {/* 6. IPOs Open in Loss */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">IPOs Open in Loss</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Loss</div>
+        </div>
+
+        {/* Extra boxes - currently hidden, can add more stats here */}
+        {/* 7. Currently In Gain */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-emerald leading-none">
+            {stats.currentlyInGain}
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Currently In Gain</div>
+        </div>
+
+        {/* 8. Currently In Loss */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-destructive leading-none">
+            {stats.currentlyInLoss}
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Currently In Loss</div>
+        </div>
+
+        {/* 9. Upcoming IPOs */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[14px] sm:text-[16px] font-black text-cobalt-mid leading-none">
+            {stats.upcoming}
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
       </div>
 

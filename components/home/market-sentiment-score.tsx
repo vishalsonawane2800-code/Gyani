@@ -40,9 +40,9 @@ export function MarketSentimentScore({
   return (
     <div className="w-full bg-gradient-to-r from-sky-50/80 to-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-3 sm:p-5 shadow-sm mb-4">
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
-        {/* LEFT SECTION - Score Gauge */}
-        <div className="flex flex-col items-center justify-center flex-shrink-0">
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28">
+        {/* LEFT SECTION - Score Gauge - Centered on mobile, left on desktop */}
+        <div className="flex flex-col items-center sm:items-center justify-center flex-shrink-0 order-first sm:order-none">
+          <div className="relative w-28 h-28 sm:w-32 sm:h-32">
             <svg className="w-full h-full" viewBox="0 0 120 120">
               {/* Background arc */}
               <circle
@@ -87,18 +87,18 @@ export function MarketSentimentScore({
         <div className="flex-1 flex flex-col justify-center gap-2 sm:gap-3">
           {/* Badge */}
           <div className="inline-flex w-fit">
-            <span className="bg-primary-bg text-primary text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
+            <span className="bg-primary-bg text-primary text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full">
               IPOGYANI AI - MARKET PULSE
             </span>
           </div>
 
           {/* Title */}
-          <h2 className="text-sm sm:text-lg font-bold font-[family-name:var(--font-sora)] text-ink leading-tight">
+          <h2 className="text-base sm:text-lg font-bold font-[family-name:var(--font-sora)] text-ink leading-tight">
             Overall Market Sentiment
           </h2>
 
           {/* Description */}
-          <p className="text-[11px] sm:text-sm text-ink3 font-[family-name:var(--font-sans)] leading-relaxed max-w-sm">
+          <p className="text-sm sm:text-base text-ink3 font-[family-name:var(--font-sans)] leading-relaxed max-w-sm">
             {description}
           </p>
         </div>
