@@ -28,9 +28,10 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
   }
 
   // Transform database fields to form fields
+  // Database uses company_name, form uses name
   const formData = {
     id: ipo.id,
-    name: ipo.name || '',
+    name: ipo.company_name || ipo.name || '',
     slug: ipo.slug || '',
     abbr: ipo.abbr || '',
     exchange: ipo.exchange || 'BSE SME',

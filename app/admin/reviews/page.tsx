@@ -14,14 +14,19 @@ async function getIPOs() {
     if (!supabase) return []
     const { data, error } = await supabase
       .from('ipos')
-      .select('id, name, slug')
+      .select('id, company_name, slug')
       .order('open_date', { ascending: false })
     
     if (error) {
       console.error('Error fetching IPOs:', error)
       return []
     }
-    return data || []
+    // Transform company_name to name for component compatibility
+    return (data || []).map(ipo => ({
+      id: ipo.id,
+      name: ipo.company_name,
+      slug: ipo.slug
+    }))
   } catch (error) {
     console.error('Error in getIPOs:', error)
     return []
@@ -36,7 +41,7 @@ async function getReviews() {
       .from('expert_reviews')
       .select(`
         *,
-        ipos (id, name, slug)
+        ipos (id, company_name, slug)
       `)
       .order('created_at', { ascending: false })
     
@@ -44,7 +49,15 @@ async function getReviews() {
       console.error('Error fetching reviews:', error)
       return []
     }
-    return data || []
+    // Transform company_name to name in the nested ipos object
+    return (data || []).map(review => ({
+      ...review,
+      ipos: review.ipos ? {
+        id: (review.ipos as { id: number; company_name: string; slug: string }).id,
+        name: (review.ipos as { id: number; company_name: string; slug: string }).company_name,
+        slug: (review.ipos as { id: number; company_name: string; slug: string }).slug
+      } : null
+    }))
   } catch (error) {
     console.error('Error in getReviews:', error)
     return []
