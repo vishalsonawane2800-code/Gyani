@@ -23,8 +23,8 @@ const fallbackStats = {
   },
 };
 
-// Manual median values for quick UI editing without backend changes
-const manualMedianListingGain: Record<'mainboard' | 'sme', number> = {
+// Manual "medium" values for quick UI editing without backend changes
+const manualMediumListingGain: Record<'mainboard' | 'sme', number> = {
   mainboard: 7.8,
   sme: 12.6,
 };
@@ -54,7 +54,7 @@ function CategoryStats({
           </div>
           <div className="text-[10px] sm:text-[11px] text-ink3 mt-1 leading-tight">Avg Listing Gains</div>
           <div className="text-[9px] sm:text-[10px] text-ink3/90 mt-1 leading-tight">
-            Median: {manualMedianListingGain[category] >= 0 ? '+' : ''}{manualMedianListingGain[category]}%
+            Medium: {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
         </div>
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
