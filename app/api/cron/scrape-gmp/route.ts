@@ -36,53 +36,60 @@ interface GMPScrapeResult {
 
 /**
  * Parse GMP value from a cell's text content
- * Handles formats: "Rs 2.5", "Rs-5", "Rs2.5", "2.5", "-5", "₹ 50", "Rs. 2.50"
+ * 
+ * InvestorGain formats observed:
+ * - "₹1.5 —" (with yellow dash indicator)
+ * - "₹3.5 ▼" (with red down arrow)
+ * - "₹7 ▲" (with green up arrow)
+ * - "₹0 —" (zero GMP)
+ * - "Rs 2.5", "Rs. 50", "Rs-5"
  */
 function parseGMPValue(text: string): number | null {
   if (!text) return null
   
-  // Remove HTML tags and clean up
-  let clean = text
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/₹|Rs\.?/gi, '') // Remove currency symbols (Rs, Rs., ₹)
-    .replace(/▼|▲|↓|↑|&nbsp;/gi, '') // Remove arrow indicators and nbsp
-    .replace(/,/g, '') // Remove commas from numbers
+  // Remove HTML tags first
+  let clean = text.replace(/<[^>]*>/g, ' ')
+  
+  // Remove common non-numeric characters but keep digits, dots, minus (for negative), plus
+  clean = clean
+    .replace(/₹/g, '') // Remove rupee symbol
+    .replace(/Rs\.?\s*/gi, '') // Remove Rs or Rs.
+    // Remove arrow/trend indicators (various unicode chars used by InvestorGain)
+    .replace(/[▼▲↓↑⬇⬆🔻🔺]/g, ' ')
+    // Remove dash indicators (yellow "—" dash shown for neutral)
+    .replace(/[—–―\u2014\u2013\u2015]/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/,/g, '') // Remove commas
+    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
   
-  // Handle negative values with spaces: "- 5" -> "-5"
-  clean = clean.replace(/^-\s+/, '-')
-  
-  // Match the number (possibly negative, possibly decimal)
-  // Try multiple patterns for robustness
-  const patterns = [
-    /^([+-]?\d+(?:\.\d+)?)/, // Standard: "2.5", "-5", "+10.5"
-    /([+-]?\d+(?:\.\d+)?)\s*$/, // Trailing: "GMP 2.5"
-  ]
-  
-  for (const pattern of patterns) {
-    const match = clean.match(pattern)
-    if (match) {
-      const value = parseFloat(match[1])
-      // Sanity check: GMP values are typically between -500 and 500
-      if (!isNaN(value) && value >= -500 && value <= 500) {
-        return value
-      }
+  // Now extract the first number we find
+  // Match patterns: "1.5", "-5", "0", "50.00"
+  // Use \b for word boundary to avoid matching parts of other numbers
+  const match = clean.match(/([+-]?\d+(?:\.\d+)?)/)
+  if (match && match[1]) {
+    const value = parseFloat(match[1])
+    // GMP values are typically between -500 and 500
+    // Allow 0 as valid GMP (seen in Propshare example)
+    if (!isNaN(value) && value >= -500 && value <= 500) {
+      console.log(`[GMP Scraper] Parsed GMP value: ${value} from cleaned text: "${clean}"`)
+      return value
     }
   }
   
+  console.log(`[GMP Scraper] Failed to parse GMP from: "${clean}" (original: "${text.substring(0, 50)}")`)
   return null
 }
 
 /**
- * Extract all table rows from HTML and parse GMP from the correct column
+ * Extract GMP from InvestorGain table
  * 
- * InvestorGain table structure (typical):
- * | GMP Date | IPO Price | GMP | Subscription | ... |
- * | 10-04-26 | 175.00   | Rs 2.5 | 0.71x      | ... |
+ * InvestorGain table structure (from screenshots):
+ * | GMP Date    | IPO Price | GMP     | Subscription | Sub2 Sauda Rate | Estimated Listing Price | Estimated Profit* | Last Updated |
+ * | 11-04-2026  | 175.00    | ₹1.5 —  | 0.71x        | 100/1400        | ₹176.5 (0.86%)          | ₹127.5            | 11-Apr-2026  |
  * 
- * Chittorgarh table structure:
- * | Date | GMP (Rs) | % | Est Listing |
- * | 10-Apr | 50 | 28% | 225 |
+ * Key insight: GMP column (index 2) has values like "₹1.5 —" or "₹0 —"
+ * The header row has "GMP" exactly as the column header
  */
 function extractGMPFromTable(html: string): number | null {
   // Find all tables
@@ -92,39 +99,38 @@ function extractGMPFromTable(html: string): number | null {
   for (const tableMatch of tables) {
     const tableContent = tableMatch[1]
     
-    // Check if this table has GMP-related headers
+    // Check if this table has GMP-related content (case insensitive)
     if (!/gmp|grey\s*market/i.test(tableContent)) continue
     
     // Extract all rows
     const rowPattern = /<tr[^>]*>([\s\S]*?)<\/tr>/gi
     const rows = [...tableContent.matchAll(rowPattern)]
     
-    // Find header row to determine GMP column index
+    // Find header row to determine column indices
     let gmpColumnIndex = -1
-    let hasHeaderRow = false
+    let headerFound = false
     
     for (const row of rows) {
       const rowContent = row[1]
+      
       // Check if this is a header row (contains th elements)
       if (/<th/i.test(rowContent)) {
-        hasHeaderRow = true
-        // Extract all cells (th or td)
-        const cellPattern = /<(?:th|td)[^>]*>([\s\S]*?)<\/(?:th|td)>/gi
+        headerFound = true
+        // Extract header cells
+        const cellPattern = /<th[^>]*>([\s\S]*?)<\/th>/gi
         const cells = [...rowContent.matchAll(cellPattern)]
+        
+        console.log(`[GMP Scraper] Found ${cells.length} header cells`)
         
         for (let i = 0; i < cells.length; i++) {
           const cellText = cells[i][1].replace(/<[^>]*>/g, '').trim().toLowerCase()
-          // Find the GMP column - be more permissive
-          // Match "gmp", "gmp (rs)", "grey market premium", but NOT "gmp date" or "gmp trend"
-          if (
-            cellText === 'gmp' || 
-            cellText === 'gmp (rs)' ||
-            cellText === 'gmp(rs)' ||
-            /^grey\s*market\s*premium$/i.test(cellText) ||
-            (cellText.includes('gmp') && !cellText.includes('date') && !cellText.includes('trend'))
-          ) {
+          console.log(`[GMP Scraper] Header ${i}: "${cellText}"`)
+          
+          // Match ONLY the GMP column, NOT "GMP Date" or "Estimated Profit"
+          // InvestorGain header is exactly "GMP"
+          if (cellText === 'gmp') {
             gmpColumnIndex = i
-            console.log(`[GMP Scraper] Found GMP column at index ${i} with header "${cellText}"`)
+            console.log(`[GMP Scraper] Found exact GMP column at index ${i}`)
             break
           }
         }
@@ -133,12 +139,14 @@ function extractGMPFromTable(html: string): number | null {
       }
     }
     
-    // If no explicit GMP column found but table has GMP data, try column 2 (common position)
-    if (gmpColumnIndex < 0 && !hasHeaderRow) {
-      gmpColumnIndex = 2 // Default to 3rd column (index 2) which is common for GMP tables
+    // If we didn't find an exact "GMP" header, try index 2 for InvestorGain tables
+    // (GMP Date=0, IPO Price=1, GMP=2)
+    if (gmpColumnIndex < 0 && headerFound) {
+      gmpColumnIndex = 2
+      console.log(`[GMP Scraper] Using default GMP column index 2`)
     }
     
-    // If we found a potential GMP column, extract value from first data row
+    // Extract value from first data row
     if (gmpColumnIndex >= 0) {
       for (const row of rows) {
         const rowContent = row[1]
@@ -146,42 +154,33 @@ function extractGMPFromTable(html: string): number | null {
         // Skip header rows
         if (/<th/i.test(rowContent)) continue
         
-        // Extract cells from this row
+        // Extract data cells
         const cellPattern = /<td[^>]*>([\s\S]*?)<\/td>/gi
         const cells = [...rowContent.matchAll(cellPattern)]
         
-        // Skip if not enough columns
-        if (cells.length <= gmpColumnIndex) continue
+        // Need enough columns
+        if (cells.length <= gmpColumnIndex) {
+          console.log(`[GMP Scraper] Row has only ${cells.length} cells, need at least ${gmpColumnIndex + 1}`)
+          continue
+        }
         
-        // Check if this row has a date (indicates it's a data row)
-        const rowText = rowContent.replace(/<[^>]*>/g, '')
-        const hasDate = /\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/.test(rowText) || 
-                       /\d{1,2}[-\/][A-Za-z]{3}[-\/]?\d{2,4}?/.test(rowText) ||
-                       /[A-Za-z]{3}[-\/]\d{1,2}/.test(rowText)
+        // First row should have the most recent GMP
+        const gmpCellHtml = cells[gmpColumnIndex][1]
+        console.log(`[GMP Scraper] GMP cell HTML: "${gmpCellHtml.substring(0, 100)}"`)
         
-        // Only process rows that look like data rows
-        if (!hasDate && cells.length < 3) continue
-        
-        const gmpCell = cells[gmpColumnIndex][1]
-        const gmpValue = parseGMPValue(gmpCell)
+        const gmpValue = parseGMPValue(gmpCellHtml)
         
         if (gmpValue !== null) {
-          console.log(`[GMP Scraper] Found GMP ${gmpValue} from table column ${gmpColumnIndex}`)
+          console.log(`[GMP Scraper] Extracted GMP ${gmpValue} from column ${gmpColumnIndex}`)
           return gmpValue
+        } else {
+          // Log the raw text for debugging
+          const rawText = gmpCellHtml.replace(/<[^>]*>/g, '').trim()
+          console.log(`[GMP Scraper] Could not parse GMP from: "${rawText}"`)
         }
         
-        // If first attempt fails, try adjacent columns (GMP might be off by one)
-        for (let offset = -1; offset <= 1; offset++) {
-          if (offset === 0) continue // Already tried
-          const tryIndex = gmpColumnIndex + offset
-          if (tryIndex >= 0 && tryIndex < cells.length) {
-            const tryValue = parseGMPValue(cells[tryIndex][1])
-            if (tryValue !== null) {
-              console.log(`[GMP Scraper] Found GMP ${tryValue} from adjusted column ${tryIndex}`)
-              return tryValue
-            }
-          }
-        }
+        // Only try the first data row for most recent GMP
+        break
       }
     }
   }
