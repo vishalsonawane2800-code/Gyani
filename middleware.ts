@@ -1,38 +1,44 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { jwtVerify } from 'jose'
 
-const CRON_SECRET = process.env.CRON_SECRET
-const ADMIN_SECRET = process.env.ADMIN_SECRET
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key-change-this')
 
-export function middleware(request: NextRequest) {
+async function verifyToken(token: string): Promise<{ adminId: string; username: string } | null> {
+  try {
+    const verified = await jwtVerify(token, JWT_SECRET)
+    return verified.payload as { adminId: string; username: string }
+  } catch (error) {
+    return null
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const authHeader = request.headers.get('authorization')
 
-  // Protect /api/cron/* routes with CRON_SECRET
-  if (pathname.startsWith('/api/cron')) {
-    if (!CRON_SECRET) {
-      console.warn('[Middleware] CRON_SECRET not configured')
-      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
-    }
-
-    if (authHeader !== `Bearer ${CRON_SECRET}`) {
-      console.log(`[Middleware] Unauthorized cron request to ${pathname}`)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
+  // Allow login and reset-password without token
+  if (pathname === '/api/admin/login' || pathname === '/api/admin/reset-password') {
+    // Login doesn't need token, reset-password will check inside the route
     return NextResponse.next()
   }
 
-  // Protect /api/admin/* routes with ADMIN_SECRET
-  if (pathname.startsWith('/api/admin')) {
-    if (!ADMIN_SECRET) {
-      console.warn('[Middleware] ADMIN_SECRET not configured')
-      return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 })
+  // Protect /api/cron/* and /api/admin/* routes with JWT token
+  if (pathname.startsWith('/api/cron') || pathname.startsWith('/api/admin')) {
+    if (!authHeader) {
+      return NextResponse.json({ error: 'Missing authorization header' }, { status: 401 })
     }
 
-    if (authHeader !== `Bearer ${ADMIN_SECRET}`) {
-      console.log(`[Middleware] Unauthorized admin request to ${pathname}`)
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const parts = authHeader.split(' ')
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+      return NextResponse.json({ error: 'Invalid authorization format' }, { status: 401 })
+    }
+
+    const token = parts[1]
+    const payload = await verifyToken(token)
+
+    if (!payload) {
+      return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
     }
 
     return NextResponse.next()
@@ -44,3 +50,4 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/api/cron/:path*', '/api/admin/:path*'],
 }
+
