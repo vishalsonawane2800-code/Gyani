@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { toast } from 'sonner'
 import { Loader2, Plus, Trash2, TrendingUp, RefreshCw, Clock } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 
 interface IPO {
   id: number
@@ -57,6 +58,7 @@ interface GMPManagementClientProps {
 
 export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientProps) {
   const router = useRouter()
+  const { authFetch } = useAuth()
   const [loading, setLoading] = useState(false)
   const [scraping, setScraping] = useState(false)
   const [selectedIpoId, setSelectedIpoId] = useState<string>('')
@@ -83,7 +85,7 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
     setLoading(true)
 
     try {
-      const response = await fetch('/api/admin/gmp', {
+      const response = await authFetch('/api/admin/gmp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,7 +124,7 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
   const handleManualScrape = async () => {
     setScraping(true)
     try {
-      const response = await fetch('/api/cron/scrape-gmp', {
+      const response = await authFetch('/api/cron/scrape-gmp', {
         method: 'POST',
       })
 
@@ -144,7 +146,7 @@ export function GMPManagementClient({ ipos, gmpHistory }: GMPManagementClientPro
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/admin/gmp/${id}`, {
+      const response = await authFetch(`/api/admin/gmp/${id}`, {
         method: 'DELETE',
       })
 

@@ -10,12 +10,15 @@ import {
   Settings,
   ChevronLeft,
   Menu,
-  MessageSquareText
+  MessageSquareText,
+  LogOut,
+  Loader2
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/sonner'
+import { AuthProvider, useAuth } from '@/lib/auth-context'
 
 const navItems = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
@@ -25,13 +28,53 @@ const navItems = [
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 
+// Auth pages that don't need the sidebar layout
+const authPages = ['/admin/login', '/admin/reset-password']
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  return (
+    <AuthProvider>
+      <AdminLayoutContent>{children}</AdminLayoutContent>
+    </AuthProvider>
+  )
+}
+
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { isAuthenticated, isLoading, logout } = useAuth()
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
+
+  // Auth pages (login, reset-password) - render without sidebar
+  if (authPages.includes(pathname)) {
+    return (
+      <>
+        {children}
+        <Toaster position="top-right" />
+      </>
+    )
+  }
+
+  // Not authenticated - will redirect via useEffect in AuthProvider
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 flex">
@@ -91,8 +134,22 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* Back to Site Link */}
-        <div className="absolute bottom-4 left-0 right-0 px-2">
+        {/* Bottom Links */}
+        <div className="absolute bottom-4 left-0 right-0 px-2 space-y-1">
+          {/* Logout Button */}
+          <button
+            onClick={logout}
+            className={cn(
+              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors',
+              !sidebarOpen && 'justify-center'
+            )}
+            title={!sidebarOpen ? 'Logout' : undefined}
+          >
+            <LogOut className="h-5 w-5" />
+            {sidebarOpen && <span className="font-medium">Logout</span>}
+          </button>
+          
+          {/* Back to Site Link */}
           <Link
             href="/"
             className={cn(

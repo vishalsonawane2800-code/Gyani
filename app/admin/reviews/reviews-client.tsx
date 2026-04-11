@@ -88,6 +88,7 @@ import {
   Info,
   Filter,
 } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 
 interface IPO {
   id: number
@@ -141,6 +142,7 @@ const defaultFormData = {
 
 export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
   const router = useRouter()
+  const { authFetch } = useAuth()
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingReview, setEditingReview] = useState<Review | null>(null)
@@ -189,7 +191,7 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
         : '/api/admin/reviews'
       const method = editingReview ? 'PUT' : 'POST'
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -205,7 +207,7 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
       router.refresh()
       
       // Refresh reviews list
-      const reviewsRes = await fetch('/api/admin/reviews')
+      const reviewsRes = await authFetch('/api/admin/reviews')
       const { data } = await reviewsRes.json()
       setReviews(data)
     } catch (error) {
@@ -217,7 +219,7 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/reviews/${id}`, {
+      const response = await authFetch(`/api/admin/reviews/${id}`, {
         method: 'DELETE',
       })
 
