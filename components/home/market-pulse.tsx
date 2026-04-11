@@ -1,30 +1,99 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Activity, BarChart2, Zap, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Activity, BarChart2, TrendingUp, Zap } from 'lucide-react';
 
-interface IndexData {
-  name: string;
-  value: string;
-  change: string;
-  changePercent: string;
-  up: boolean;
-}
+// Sentiment score: 0–100. 0–30 = Fear, 31–55 = Caution, 56–75 = Optimism, 76–100 = Greed
+const SENTIMENT_SCORE = 42;
 
-const indices: IndexData[] = [
-  { name: 'SENSEX', value: '76,992', change: '+312.40', changePercent: '+0.41%', up: true },
-  { name: 'NIFTY 50', value: '23,328', change: '+96.10', changePercent: '+0.41%', up: true },
-  { name: 'NIFTY SME IPO', value: '68,140', change: '-124.50', changePercent: '-0.18%', up: false },
-  { name: 'BSE IPO', value: '11,248', change: '+42.20', changePercent: '+0.38%', up: true },
+const ZONES = [
+  { label: 'Extreme Fear', range: [0, 20],   color: '#ef4444' },
+  { label: 'Fear',         range: [21, 40],  color: '#f97316' },
+  { label: 'Caution',      range: [41, 55],  color: '#eab308' },
+  { label: 'Optimism',     range: [56, 75],  color: '#84cc16' },
+  { label: 'Greed',        range: [76, 100], color: '#22c55e' },
 ];
 
+function getZone(score: number) {
+  return ZONES.find(z => score >= z.range[0] && score <= z.range[1]) ?? ZONES[2];
+}
+
+/**
+ * Renders a half-circle gauge SVG.
+ * Arcs span 180° from left (0) to right (100).
+ * Needle points from center to the score position on the arc.
+ */
+function SentimentGauge({ score }: { score: number }) {
+  const cx = 110;
+  const cy = 100;
+  const r  = 80;
+
+  // Convert score 0–100 to angle -180° to 0° (left to right half-circle)
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const scoreAngle = -180 + (score / 100) * 180; // degrees from positive x-axis
+
+  // Needle tip
+  const needleLen = 68;
+  const nx = cx + needleLen * Math.cos(toRad(scoreAngle));
+  const ny = cy + needleLen * Math.sin(toRad(scoreAngle));
+
+  // Build coloured arc segments
+  const segments = ZONES.map(zone => {
+    const startDeg = -180 + (zone.range[0] / 100) * 180;
+    const endDeg   = -180 + (zone.range[1] / 100) * 180;
+    const startRad = toRad(startDeg);
+    const endRad   = toRad(endDeg);
+    const x1 = cx + r * Math.cos(startRad);
+    const y1 = cy + r * Math.sin(startRad);
+    const x2 = cx + r * Math.cos(endRad);
+    const y2 = cy + r * Math.sin(endRad);
+    const large = (endDeg - startDeg) > 180 ? 1 : 0;
+    return { d: `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`, color: zone.color };
+  });
+
+  const zone = getZone(score);
+
+  return (
+    <svg viewBox="0 0 220 115" className="w-full max-w-[260px] mx-auto select-none">
+      {/* Track background */}
+      <path
+        d={`M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}`}
+        fill="none" stroke="currentColor" strokeWidth="18"
+        className="text-border opacity-40"
+      />
+      {/* Coloured zone arcs */}
+      {segments.map((seg, i) => (
+        <path key={i} d={seg.d} fill="none" stroke={seg.color} strokeWidth="18" strokeLinecap="butt" />
+      ))}
+      {/* Needle */}
+      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="white" strokeWidth="2.5" strokeLinecap="round" />
+      {/* Centre dot */}
+      <circle cx={cx} cy={cy} r="6" fill="white" />
+      <circle cx={cx} cy={cy} r="3.5" fill={zone.color} />
+      {/* Score label */}
+      <text x={cx} y={cy - 14} textAnchor="middle" fontSize="22" fontWeight="900" fill="white" fontFamily="inherit">
+        {score}
+      </text>
+      {/* Zone label */}
+      <text x={cx} y={cy + 18} textAnchor="middle" fontSize="10" fontWeight="700" fill={zone.color} fontFamily="inherit">
+        {zone.label.toUpperCase()}
+      </text>
+      {/* Left / Right labels */}
+      <text x={cx - r - 4} y={cy + 5} textAnchor="end" fontSize="8" fill="#6b7280" fontFamily="inherit">FEAR</text>
+      <text x={cx + r + 4} y={cy + 5} textAnchor="start" fontSize="8" fill="#6b7280" fontFamily="inherit">GREED</text>
+    </svg>
+  );
+}
+
 const signals = [
-  { label: 'Subscriptions', value: '12 Active', icon: Activity, color: 'text-violet-500', bg: 'bg-violet-50 dark:bg-violet-950/30' },
-  { label: 'Avg GMP', value: '+8.4%', icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-  { label: 'IPO Mood', value: 'Cautious', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-  { label: 'Retail Apps', value: '↓ 40%', icon: BarChart2, color: 'text-red-500', bg: 'bg-red-50 dark:bg-red-950/30' },
+  { label: 'Active IPOs',  value: '12',     icon: Activity,   color: 'text-violet-400', bg: 'bg-violet-500/10' },
+  { label: 'Avg GMP',      value: '+8.4%',  icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  { label: 'IPO Mood',     value: 'Cautious', icon: Zap,      color: 'text-amber-400',  bg: 'bg-amber-500/10' },
+  { label: 'Retail Apps',  value: '-40%',   icon: BarChart2,  color: 'text-red-400',    bg: 'bg-red-500/10' },
 ];
 
 export function MarketPulse() {
+  const zone = getZone(SENTIMENT_SCORE);
+
   return (
     <div className="mb-7 bg-card border border-border rounded-2xl overflow-hidden">
       {/* Header */}
@@ -35,54 +104,32 @@ export function MarketPulse() {
             Market Pulse
           </span>
         </div>
-        <span className="text-[10px] text-ink4 font-medium">Live · BSE/NSE</span>
+        <span className="text-[10px] text-ink4 font-medium">IPO Sentiment Index</span>
       </div>
 
       <div className="p-4">
-        {/* Index Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
-          {indices.map((idx) => (
-            <div
-              key={idx.name}
-              className="bg-secondary/60 rounded-xl px-3 py-2.5 flex flex-col gap-0.5"
-            >
-              <span className="text-[9.5px] font-bold text-ink4 uppercase tracking-wide">{idx.name}</span>
-              <span className="font-[family-name:var(--font-sora)] text-[15px] font-black text-foreground leading-tight">
-                {idx.value}
-              </span>
-              <div className={`flex items-center gap-0.5 text-[10.5px] font-bold ${idx.up ? 'text-emerald-600' : 'text-red-500'}`}>
-                {idx.up ? (
-                  <ArrowUpRight className="w-3 h-3" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3" />
-                )}
-                {idx.change} ({idx.changePercent})
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Gauge + Signals side by side on larger screens */}
+        <div className="flex flex-col sm:flex-row items-center gap-4">
 
-        {/* Divider */}
-        <div className="border-t border-border mb-4" />
+          {/* Gauge */}
+          <div className="w-full sm:w-auto sm:flex-shrink-0 sm:w-[240px]">
+            <SentimentGauge score={SENTIMENT_SCORE} />
+          </div>
 
-        {/* IPO Market Signals */}
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-[10.5px] font-extrabold text-ink3 uppercase tracking-wider">IPO Market Signals</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {signals.map((sig) => (
-            <div key={sig.label} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${sig.bg}`}>
-              <sig.icon className={`w-4 h-4 shrink-0 ${sig.color}`} />
-              <div className="min-w-0">
-                <div className={`font-[family-name:var(--font-sora)] text-[13px] font-black ${sig.color} leading-tight`}>
-                  {sig.value}
+          {/* Signals */}
+          <div className="w-full grid grid-cols-2 gap-2">
+            {signals.map((sig) => (
+              <div key={sig.label} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl ${sig.bg}`}>
+                <sig.icon className={`w-4 h-4 shrink-0 ${sig.color}`} />
+                <div className="min-w-0">
+                  <div className={`text-[13px] font-black ${sig.color} leading-tight`}>
+                    {sig.value}
+                  </div>
+                  <div className="text-[9px] text-ink4 font-semibold leading-tight mt-0.5">{sig.label}</div>
                 </div>
-                <div className="text-[9px] text-ink4 font-semibold leading-tight mt-0.5">{sig.label}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* AI Commentary strip */}
