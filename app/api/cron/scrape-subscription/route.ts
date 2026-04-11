@@ -220,12 +220,7 @@ async function scrapeChittorgarhSubscription(url: string): Promise<SubscriptionD
 }
 
 export async function GET(request: Request) {
-  // Verify cron secret (optional)
-  const authHeader = request.headers.get('authorization')
-  if (CRON_SECRET && authHeader && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+  // Authorization is handled by middleware.ts
   const supabase = getSupabase()
   if (!supabase) {
     return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })

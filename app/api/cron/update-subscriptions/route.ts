@@ -245,12 +245,7 @@ async function fetchFromChittorgarh(chittorgarhUrl: string): Promise<Chittorgarh
 }
 
 export async function GET(request: Request) {
-  // Verify cron secret
-  const authHeader = request.headers.get('authorization')
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
+  // Authorization is handled by middleware.ts
   const supabase = getSupabase()
   const results: { name: string; updated: boolean; gmpUpdated?: boolean; error?: string }[] = []
 
