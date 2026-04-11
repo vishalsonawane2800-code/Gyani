@@ -134,6 +134,8 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [bulkData, setBulkData] = useState<string>('')
+  const [bulkLoading, setBulkLoading] = useState(false)
   const [formData, setFormData] = useState<IPOFormData>({
     ...defaultFormData,
     ...initialData,
@@ -216,6 +218,68 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
 
   const removeLogo = () => {
     setFormData((prev) => ({ ...prev, logo_url: '' }))
+  }
+
+  const handleBulkUpload = async () => {
+    if (!bulkData.trim()) {
+      toast.error('Please paste JSON data')
+      return
+    }
+
+    setBulkLoading(true)
+    try {
+      // Parse JSON data
+      const parsedData = JSON.parse(bulkData)
+      const ipos = Array.isArray(parsedData) ? parsedData : [parsedData]
+
+      if (ipos.length === 0) {
+        toast.error('No IPO data found in JSON')
+        return
+      }
+
+      // Validate and upload each IPO
+      let successCount = 0
+      const errors: string[] = []
+
+      for (const ipo of ipos) {
+        if (!ipo.name) {
+          errors.push(`IPO missing required field: name`)
+          continue
+        }
+
+        try {
+          const url = '/api/admin/ipos'
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(ipo),
+          })
+
+          if (response.ok) {
+            successCount++
+          } else {
+            const error = await response.json()
+            errors.push(`${ipo.name}: ${error.error || 'Failed to save'}`)
+          }
+        } catch (error) {
+          errors.push(`${ipo.name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Successfully uploaded ${successCount} IPO${successCount !== 1 ? 's' : ''}`)
+        setBulkData('')
+        router.refresh()
+      }
+
+      if (errors.length > 0) {
+        toast.error(`${errors.length} IPO${errors.length !== 1 ? 's' : ''} failed:\n${errors.slice(0, 3).join('\n')}${errors.length > 3 ? '\n...' : ''}`)
+      }
+    } catch (error) {
+      toast.error(`Invalid JSON format: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setBulkLoading(false)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -914,6 +978,55 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           </div>
         </div>
       </div>
+
+      {/* Bulk Upload Section */}
+      {!isEditing && (
+        <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-white">Bulk Upload IPOs</h2>
+            <span className="text-xs text-blue-400 bg-blue-400/10 px-2 py-0.5 rounded">Optional</span>
+          </div>
+          <p className="text-sm text-slate-400 mb-4">
+            Upload multiple IPOs at once using JSON format. Paste an array of IPO objects or a single IPO object.
+          </p>
+          
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="bulk-data" className="text-slate-300">
+                JSON Data
+              </Label>
+              <Textarea
+                id="bulk-data"
+                value={bulkData}
+                onChange={(e) => setBulkData(e.target.value)}
+                placeholder={`[
+  {
+    "name": "Company Name",
+    "exchange": "NSE",
+    "sector": "Technology",
+    "price_min": 100,
+    "price_max": 150,
+    "lot_size": 10,
+    "open_date": "2026-04-20",
+    "close_date": "2026-04-24"
+  }
+]`}
+                className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 font-mono text-xs h-40 mt-1"
+              />
+            </div>
+            
+            <Button
+              type="button"
+              onClick={handleBulkUpload}
+              disabled={bulkLoading || !bulkData.trim()}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {bulkLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Upload IPOs
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Reviews Note */}
       {isEditing && (
