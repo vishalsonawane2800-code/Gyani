@@ -24,14 +24,10 @@ const fallbackStats = {
 };
 
 function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: string }) {
-  const gainPct = stats.total > 0
-    ? Math.round((stats.inGainOnListing / stats.total) * 100)
-    : 0;
-
   return (
     <div className="space-y-3">
       {/* Extra stats row - Chittorgarh-style */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-cobalt leading-none">
             {stats.total}
@@ -61,12 +57,6 @@ function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: strin
             {stats.inLossOnListing}
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">Loss on Listing</div>
-        </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-ink leading-none">
-            {gainPct}%
-          </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Success Rate</div>
         </div>
       </div>
 
@@ -139,23 +129,23 @@ export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
         </div>
       </div>
 
-      {/* Score Breakdown */}
-      <div className="grid grid-cols-4 gap-2 mt-4 relative px-0">
-        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-2 py-2.5 shadow-sm border border-white/50">
-          <div className="font-[family-name:var(--font-sora)] text-xl sm:text-[22px] font-black leading-none text-destructive">32</div>
-          <div className="text-[9px] sm:text-[9.5px] text-ink3 mt-1">Finfluencers</div>
+      {/* Score Breakdown - compact pills */}
+      <div className="flex flex-wrap gap-1.5 mt-3">
+        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm border border-white/50">
+          <span className="font-[family-name:var(--font-sora)] text-[13px] font-black leading-none text-destructive">32</span>
+          <span className="text-[9px] text-ink3">Finfluencers</span>
         </div>
-        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-2 py-2.5 shadow-sm border border-white/50">
-          <div className="font-[family-name:var(--font-sora)] text-xl sm:text-[22px] font-black leading-none text-gold-mid">41</div>
-          <div className="text-[9px] sm:text-[9.5px] text-ink3 mt-1">News & Media</div>
+        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm border border-white/50">
+          <span className="font-[family-name:var(--font-sora)] text-[13px] font-black leading-none text-gold-mid">41</span>
+          <span className="text-[9px] text-ink3">News & Media</span>
         </div>
-        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-2 py-2.5 shadow-sm border border-white/50">
-          <div className="font-[family-name:var(--font-sora)] text-xl sm:text-[22px] font-black leading-none text-destructive">35</div>
-          <div className="text-[9px] sm:text-[9.5px] text-ink3 mt-1">Big Firms</div>
+        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm border border-white/50">
+          <span className="font-[family-name:var(--font-sora)] text-[13px] font-black leading-none text-destructive">35</span>
+          <span className="text-[9px] text-ink3">Big Firms</span>
         </div>
-        <div className="text-center bg-white/80 backdrop-blur-sm rounded-xl px-2 py-2.5 shadow-sm border border-white/50">
-          <div className="font-[family-name:var(--font-sora)] text-xl sm:text-[22px] font-black leading-none text-destructive">28</div>
-          <div className="text-[9px] sm:text-[9.5px] text-ink3 mt-1">Retail Mood</div>
+        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm border border-white/50">
+          <span className="font-[family-name:var(--font-sora)] text-[13px] font-black leading-none text-destructive">28</span>
+          <span className="text-[9px] text-ink3">Retail Mood</span>
         </div>
       </div>
 
