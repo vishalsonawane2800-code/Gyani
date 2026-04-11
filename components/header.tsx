@@ -9,6 +9,7 @@ const navLinks = [
   { href: '/', label: 'Home' },
   { href: '#current', label: 'Live IPOs', badge: '3', badgeColor: 'bg-emerald-500' },
   { href: '/listed', label: 'Listed' },
+  { href: '/upcoming', label: 'Upcoming' },
   { href: '/gmp', label: 'GMP Today' },
   { href: '/allotment-status', label: 'Allotment' },
   { href: '/sme', label: 'SME IPOs' },
