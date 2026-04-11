@@ -6,10 +6,17 @@ interface MarketSentimentScoreProps {
   description?: string;
 }
 
+const statsData = [
+  { label: 'Finfluencers', value: '78%' },
+  { label: 'News & Media', value: '65%' },
+  { label: 'Big Firms', value: '52%' },
+  { label: 'Retail Mood', value: '41%' },
+];
+
 const getSentimentColor = (score: number) => {
   if (score >= 70) return 'text-emerald';
-  if (score >= 50) return 'text-amber-500';
-  if (score >= 30) return 'text-orange-500';
+  if (score >= 50) return 'text-gold-mid';
+  if (score >= 30) return 'text-gold';
   return 'text-destructive';
 };
 
@@ -21,10 +28,10 @@ const getSentimentLabel = (score: number) => {
 };
 
 const getArcStroke = (score: number) => {
-  if (score >= 70) return '#10b981';
-  if (score >= 50) return '#f59e0b';
-  if (score >= 30) return '#f97316';
-  return '#ef4444';
+  if (score >= 70) return 'rgb(21, 128, 61)'; // emerald
+  if (score >= 50) return 'rgb(245, 158, 11)'; // gold-mid
+  if (score >= 30) return 'rgb(180, 83, 9)'; // gold
+  return 'rgb(220, 38, 38)'; // destructive
 };
 
 export function MarketSentimentScore({
@@ -38,7 +45,7 @@ export function MarketSentimentScore({
   const arcStroke = getArcStroke(score);
 
   return (
-    <div className="w-full bg-gradient-to-r from-sky-50/80 to-white/60 backdrop-blur-sm border border-white/80 rounded-2xl p-3 sm:p-5 shadow-sm mb-4">
+    <div className="w-full bg-card border border-border rounded-xl p-3 sm:p-5 shadow-sm mb-4">
       <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
         {/* LEFT SECTION - Score Gauge */}
         <div className="flex flex-col items-center justify-center flex-shrink-0">
@@ -50,7 +57,7 @@ export function MarketSentimentScore({
                 cy="60"
                 r="45"
                 fill="none"
-                stroke="#e5e7eb"
+                stroke="rgb(229, 231, 235)"
                 strokeWidth="6"
                 strokeDasharray={`${circumference} ${circumference}`}
                 strokeLinecap="round"
@@ -84,23 +91,43 @@ export function MarketSentimentScore({
         </div>
 
         {/* RIGHT SECTION - Content */}
-        <div className="flex-1 flex flex-col justify-center gap-2 sm:gap-3">
-          {/* Badge */}
-          <div className="inline-flex w-fit">
-            <span className="bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
-              IPOGYANI AI - MARKET PULSE
-            </span>
+        <div className="flex-1 flex flex-col justify-between gap-3 sm:gap-4 w-full">
+          {/* Top content */}
+          <div className="flex flex-col gap-2 sm:gap-3">
+            {/* Badge */}
+            <div className="inline-flex w-fit">
+              <span className="bg-primary-bg text-primary text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
+                IPOGYANI AI - MARKET PULSE
+              </span>
+            </div>
+
+            {/* Title */}
+            <h2 className="text-sm sm:text-lg font-bold text-ink leading-tight">
+              Overall Market Sentiment
+            </h2>
+
+            {/* Description */}
+            <p className="text-[11px] sm:text-sm text-ink3 leading-relaxed max-w-sm">
+              {description}
+            </p>
           </div>
 
-          {/* Title */}
-          <h2 className="text-sm sm:text-lg font-bold text-ink leading-tight">
-            Overall Market Sentiment
-          </h2>
-
-          {/* Description */}
-          <p className="text-[11px] sm:text-sm text-ink3 leading-relaxed max-w-sm">
-            {description}
-          </p>
+          {/* Stats Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full">
+            {statsData.map((stat, index) => (
+              <div
+                key={index}
+                className="bg-secondary border border-border rounded-lg p-3 sm:p-4 text-center shadow-sm hover:shadow-md hover:border-primary transition-all"
+              >
+                <div className="text-lg sm:text-2xl font-bold text-primary">
+                  {stat.value}
+                </div>
+                <div className="text-[9px] sm:text-sm text-ink3 mt-1 leading-tight font-medium">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
