@@ -68,19 +68,19 @@ function CategoryStats({
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Sub</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Subscription</div>
         </div>
         <div className="hidden sm:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Gain</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">IPOs Open in Profit</div>
         </div>
         <div className="hidden lg:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Loss</div>
+          <div className="text-[9px] text-ink3 mt-1 leading-tight">IPOs Open in Loss</div>
         </div>
       </div>
 
