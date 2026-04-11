@@ -23,7 +23,21 @@ const fallbackStats = {
   },
 };
 
-function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: string }) {
+// Manual "medium" values for quick UI editing without backend changes
+const manualMediumListingGain: Record<'mainboard' | 'sme', number> = {
+  mainboard: 7.8,
+  sme: 12.6,
+};
+
+function CategoryStats({
+  stats,
+  label,
+  category,
+}: {
+  stats: IPOCategoryStats;
+  label: string;
+  category: 'mainboard' | 'sme';
+}) {
   return (
     <div className="space-y-3">
       {/* Extra stats row - Chittorgarh-style */}
@@ -34,11 +48,14 @@ function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: strin
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">{label} Listed</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
-          <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-emerald leading-none">
+        <div className="col-span-2 sm:col-span-2 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-4 py-3 text-center shadow-sm min-h-[72px] sm:min-h-[84px] flex flex-col items-center justify-center">
+          <div className="font-[family-name:var(--font-sora)] text-[18px] sm:text-[20px] font-black text-emerald leading-none">
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Listing Gain</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1 leading-tight">Avg Listing Gains</div>
+          <div className="text-[9px] sm:text-[10px] text-ink3/90 mt-1 leading-tight">
+            Medium: {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
+          </div>
         </div>
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-gold-mid leading-none">
@@ -60,17 +77,6 @@ function CategoryStats({ stats, label }: { stats: IPOCategoryStats; label: strin
         </div>
       </div>
 
-      {/* Total raised */}
-      {stats.totalRaisedCr > 0 && (
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 py-2 flex items-center justify-between shadow-sm">
-          <span className="text-[10px] text-ink3 font-medium">Total Capital Raised (2026)</span>
-          <span className="font-[family-name:var(--font-sora)] text-[13px] font-black text-cobalt">
-            ₹{stats.totalRaisedCr >= 1000
-              ? `${(stats.totalRaisedCr / 1000).toFixed(1)}K Cr`
-              : `${stats.totalRaisedCr} Cr`}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
@@ -185,6 +191,7 @@ export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
         <CategoryStats
           stats={active}
           label={activeTab === 'mainboard' ? 'Mainboard' : 'SME'}
+          category={activeTab}
         />
       </div>
     </div>
