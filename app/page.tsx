@@ -1,7 +1,7 @@
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { HeroSection } from '@/components/home/hero-section';
-import { MarketPulse } from '@/components/home/market-pulse';
+import { MarketSentiment } from '@/components/home/market-sentiment';
 import { CurrentIPOs } from '@/components/home/current-ipos';
 import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
@@ -19,6 +19,7 @@ const allPages = [
   { href: '/best-ipo', label: 'Best IPO' },
   { href: '/allotment-status', label: 'Allotment Status' },
   { href: '/subscription-status', label: 'Subscription Status' },
+  { href: '/upcoming', label: 'Upcoming IPOs' },
   { href: '/listed', label: 'Listed IPOs' },
   { href: '/sme', label: 'SME IPOs' },
   { href: '/shareholder-quota', label: 'Shareholder Quota' },
@@ -52,7 +53,7 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div className="min-w-0">
-            <MarketPulse />
+            <MarketSentiment />
             <CurrentIPOs ipos={ipos} />
             <ListedIPOs listedIpos={listedIpos} />
             <GMPTracker ipos={ipos} />
@@ -60,7 +61,7 @@ export default async function HomePage() {
           </div>
           
           {/* Sidebar */}
-          <Sidebar ipos={ipos} />
+          <Sidebar />
         </div>
       </main>
       
