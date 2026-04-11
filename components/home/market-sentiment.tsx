@@ -41,38 +41,42 @@ function CategoryStats({
   return (
     <div className="space-y-3">
       {/* Extra stats row - Chittorgarh-style */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2">
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-cobalt leading-none">
             {stats.total}
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">{label} Listed</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 py-4 text-center shadow-sm flex flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[18px] sm:text-[20px] font-black text-emerald leading-none">
+        <div className="col-span-1 sm:col-span-2 lg:col-span-1 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 sm:px-4 py-4 sm:py-6 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className={`font-[family-name:var(--font-sora)] text-[20px] sm:text-[26px] lg:text-[24px] font-black leading-none ${
+            stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
+          }`}>
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight">Avg</div>
+          <div className="text-[10px] sm:text-[12px] lg:text-[10px] text-ink3 mt-2 sm:mt-3 leading-tight font-semibold">Avg Listing Gains</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 py-4 text-center shadow-sm flex flex-col items-center justify-center">
-          <div className="font-[family-name:var(--font-sora)] text-[18px] sm:text-[20px] font-black text-sky-600 leading-none">
+        <div className="col-span-1 sm:col-span-2 lg:col-span-1 bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl px-3 sm:px-4 py-4 sm:py-6 text-center shadow-sm flex flex-col items-center justify-center">
+          <div className={`font-[family-name:var(--font-sora)] text-[20px] sm:text-[26px] lg:text-[24px] font-black leading-none ${
+            manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
+          }`}>
             {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
-          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight">Median</div>
+          <div className="text-[10px] sm:text-[12px] lg:text-[10px] text-ink3 mt-2 sm:mt-3 leading-tight font-semibold">Medium Listing Gains</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
+        <div className="hidden sm:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">Avg Sub</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
+        <div className="hidden sm:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
           <div className="text-[9px] text-ink3 mt-1 leading-tight">Gain</div>
         </div>
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm">
+        <div className="hidden lg:flex bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2.5 text-center shadow-sm flex-col items-center justify-center">
           <div className="font-[family-name:var(--font-sora)] text-[15px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
