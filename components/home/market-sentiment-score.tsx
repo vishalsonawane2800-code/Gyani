@@ -27,13 +27,6 @@ const getArcStroke = (score: number) => {
   return '#ef4444';
 };
 
-const statsData = [
-  { label: 'Finfluencers', value: '78%' },
-  { label: 'News & Media', value: '65%' },
-  { label: 'Big Firms', value: '52%' },
-  { label: 'Retail Mood', value: '41%' },
-];
-
 export function MarketSentimentScore({
   score = 38,
   description = 'FY26 IPO returns disappoint - investors lost money in 2 out of 3 issues. Retail applications down 40%. Exercise caution.',
@@ -91,43 +84,23 @@ export function MarketSentimentScore({
         </div>
 
         {/* RIGHT SECTION - Content */}
-        <div className="flex-1 flex flex-col justify-between gap-3 sm:gap-4 w-full">
-          {/* Top content */}
-          <div className="flex flex-col gap-2 sm:gap-3">
-            {/* Badge */}
-            <div className="inline-flex w-fit">
-              <span className="bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
-                IPOGYANI AI - MARKET PULSE
-              </span>
-            </div>
-
-            {/* Title */}
-            <h2 className="text-sm sm:text-lg font-bold text-ink leading-tight">
-              Overall Market Sentiment
-            </h2>
-
-            {/* Description */}
-            <p className="text-[11px] sm:text-sm text-ink3 leading-relaxed max-w-sm">
-              {description}
-            </p>
+        <div className="flex-1 flex flex-col justify-center gap-2 sm:gap-3">
+          {/* Badge */}
+          <div className="inline-flex w-fit">
+            <span className="bg-purple-100 text-purple-700 text-[9px] sm:text-[10px] font-bold px-2.5 py-1 rounded-full">
+              IPOGYANI AI - MARKET PULSE
+            </span>
           </div>
 
-          {/* Stats Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full">
-            {statsData.map((stat, index) => (
-              <div
-                key={index}
-                className="bg-white/60 border border-white/50 rounded-xl p-3 sm:p-4 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
-              >
-                <div className="text-lg sm:text-2xl font-bold text-ink">
-                  {stat.value}
-                </div>
-                <div className="text-[9px] sm:text-sm text-ink3 mt-1 leading-tight font-medium">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Title */}
+          <h2 className="text-sm sm:text-lg font-bold text-ink leading-tight">
+            Overall Market Sentiment
+          </h2>
+
+          {/* Description */}
+          <p className="text-[11px] sm:text-sm text-ink3 leading-relaxed max-w-sm">
+            {description}
+          </p>
         </div>
       </div>
     </div>
