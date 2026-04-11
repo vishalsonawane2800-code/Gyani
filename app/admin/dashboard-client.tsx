@@ -113,6 +113,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useAuth } from '@/lib/auth-context'
 
 interface IPOData {
   id: number
@@ -178,6 +179,7 @@ const statusLabels: Record<string, string> = {
 
 export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps) {
   const router = useRouter()
+  const { authFetch } = useAuth()
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [syncingStatus, setSyncingStatus] = useState(false)
   const [lastSynced, setLastSynced] = useState<string | null>(null)
@@ -228,7 +230,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
   useEffect(() => {
     const autoSync = async () => {
       try {
-        const response = await fetch('/api/admin/auto-status', { method: 'POST' })
+        const response = await authFetch('/api/admin/auto-status', { method: 'POST' })
         if (response.ok) {
           const data = await response.json()
           if (data.updates && data.updates.length > 0) {
@@ -242,12 +244,12 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
       }
     }
     autoSync()
-  }, [router])
+  }, [router, authFetch])
 
   const handleSyncStatus = async () => {
     setSyncingStatus(true)
     try {
-      const response = await fetch('/api/admin/auto-status', { method: 'POST' })
+      const response = await authFetch('/api/admin/auto-status', { method: 'POST' })
       if (response.ok) {
         const data = await response.json()
         if (data.updates && data.updates.length > 0) {
@@ -273,7 +275,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
   const handleRefreshData = async () => {
     setRefreshingData(true)
     try {
-      const response = await fetch('/api/cron/update-subscriptions', { method: 'POST' })
+      const response = await authFetch('/api/cron/update-subscriptions', { method: 'POST' })
       if (response.ok) {
         const data = await response.json()
         toast.success(`GMP & Subscription data refreshed for ${data.results?.length || 0} IPO(s)`)
@@ -300,7 +302,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     
     setMigrating(true)
     try {
-      const response = await fetch(`/api/admin/ipos/${migratingIpo.id}/migrate-listed`, {
+      const response = await authFetch(`/api/admin/ipos/${migratingIpo.id}/migrate-listed`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ list_price: parseFloat(listingPrice) }),
@@ -333,7 +335,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     
     setChangingStatus(true)
     try {
-      const response = await fetch(`/api/admin/ipos/${statusChangeIpo.id}`, {
+      const response = await authFetch(`/api/admin/ipos/${statusChangeIpo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -357,7 +359,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
   const handleDelete = async (id: number) => {
     setDeletingId(id)
     try {
-      const response = await fetch(`/api/admin/ipos/${id}`, {
+      const response = await authFetch(`/api/admin/ipos/${id}`, {
         method: 'DELETE',
       })
 
@@ -379,7 +381,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
   const handleScrapeIpo = async (ipo: IPOData) => {
     setScrapingId(ipo.id)
     try {
-      const response = await fetch('/api/admin/scrape-ipo', {
+      const response = await authFetch('/api/admin/scrape-ipo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ipo_id: ipo.id, type: 'both' }),
@@ -418,7 +420,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     try {
       const gmpNum = parseFloat(gmpValue)
       const gmpPercent = gmpIpo.price_max > 0 ? Math.round((gmpNum / gmpIpo.price_max) * 100 * 10) / 10 : 0
-      const response = await fetch('/api/admin/gmp', {
+      const response = await authFetch('/api/admin/gmp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ipo_id: gmpIpo.id, gmp: gmpNum, gmp_percent: gmpPercent }),
@@ -448,7 +450,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
     ])
     // Try to fetch existing financials
     try {
-      const response = await fetch(`/api/admin/ipos/${ipo.id}`)
+      const response = await authFetch(`/api/admin/ipos/${ipo.id}`)
       if (response.ok) {
         const data = await response.json()
         if (data.financials && data.financials.length > 0) {
@@ -488,7 +490,7 @@ export function AdminDashboardClient({ ipos, stats }: AdminDashboardClientProps)
           ebitda: parseFloat(row.ebitda) || 0,
         }))
       
-      const response = await fetch(`/api/admin/ipos/${financialsIpo.id}`, {
+      const response = await authFetch(`/api/admin/ipos/${financialsIpo.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ financials: validRows }),
