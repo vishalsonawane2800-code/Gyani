@@ -145,6 +145,67 @@ Financial data for IPOs.
 | net_worth | NUMERIC(15,2) | YES | - | Net Worth |
 | created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
 
+**Unique Constraint:** `(ipo_id, fiscal_year)` - ensures one entry per fiscal year per IPO
+
+### Table: `ipo_kpi`
+Key Performance Indicators for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| kpi_type | TEXT | NO | - | 'dated' or 'pre_post' |
+| metric | TEXT | NO | - | Metric name (ROE, ROCE, EPS, PE, etc.) |
+| date_label | TEXT | YES | - | Date label for dated metrics |
+| value | NUMERIC | YES | - | Numeric value |
+| text_value | TEXT | YES | - | Text value for non-numeric data |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+| updated_at | TIMESTAMPTZ | YES | NOW() | Last update time |
+
+### Table: `ipo_issue_details`
+Detailed issue information for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos (UNIQUE) |
+| total_issue_size_cr | NUMERIC | YES | - | Total issue size in Crores |
+| fresh_issue_cr | NUMERIC | YES | - | Fresh issue amount in Crores |
+| fresh_issue_percent | NUMERIC | YES | - | Fresh issue percentage |
+| ofs_cr | NUMERIC | YES | - | OFS amount in Crores |
+| ofs_percent | NUMERIC | YES | - | OFS percentage |
+| retail_quota_percent | NUMERIC | YES | - | Retail quota percentage |
+| nii_quota_percent | NUMERIC | YES | - | NII quota percentage |
+| qib_quota_percent | NUMERIC | YES | - | QIB quota percentage |
+| employee_quota_percent | NUMERIC | YES | - | Employee quota percentage |
+| shareholder_quota_percent | NUMERIC | YES | - | Shareholder quota percentage |
+| ipo_objectives | TEXT[] | YES | - | Array of IPO objectives |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+| updated_at | TIMESTAMPTZ | YES | NOW() | Last update time |
+
+### Table: `subscription_history`
+Historical subscription data for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| date | DATE | NO | - | Subscription date |
+| time | TEXT | YES | '17:00' | Time of snapshot |
+| day_number | INT | YES | 1 | Day 1, 2, or 3 |
+| retail | NUMERIC | YES | 0 | Retail subscription times |
+| nii | NUMERIC | YES | 0 | NII subscription times |
+| snii | NUMERIC | YES | 0 | sNII subscription times |
+| bnii | NUMERIC | YES | 0 | bNII subscription times |
+| qib | NUMERIC | YES | 0 | QIB subscription times |
+| total | NUMERIC | YES | 0 | Total subscription times |
+| employee | NUMERIC | YES | 0 | Employee subscription times |
+| is_final | BOOLEAN | YES | FALSE | Whether this is final data |
+| source | TEXT | YES | 'manual' | Data source |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+**Unique Constraint:** `(ipo_id, date, time)` - ensures one entry per time snapshot per IPO
+
 ---
 
 ## Status Values
