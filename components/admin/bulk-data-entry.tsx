@@ -33,6 +33,7 @@ import {
   parsePeerComparison,
   parseGMPHistory,
 } from '@/lib/bulk-data-parsers'
+import { useAuth } from '@/lib/auth-context'
 
 interface BulkDataEntryProps {
   ipoId: string
@@ -53,6 +54,7 @@ interface SectionConfig {
 }
 
 export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
+  const { authFetch } = useAuth()
   const [openSections, setOpenSections] = useState<Record<DataType, boolean>>({
     financials: false,
     peers: false,
@@ -170,7 +172,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     setLoading(prev => ({ ...prev, [section.type]: true }))
 
     try {
-      const response = await fetch(section.endpoint, {
+      const response = await authFetch(section.endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
