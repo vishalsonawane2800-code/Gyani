@@ -42,15 +42,15 @@ export function StatusBar() {
                   
                   {/* Content */}
                   <div className="flex flex-col items-start min-w-0">
-                    <div className="flex items-baseline gap-1 sm:gap-1.5">
-                      <span className={`font-[family-name:var(--font-sora)] text-lg sm:text-xl md:text-2xl font-extrabold leading-none ${node.accentClass}`}>
+                    <div className="flex items-baseline gap-1 sm:gap-2">
+                      <span className={`text-lg sm:text-2xl md:text-3xl font-extrabold leading-none ${node.accentClass}`}>
                         {count}
                       </span>
-                      <span className="text-[10px] sm:text-[11px] md:text-[12px] font-semibold text-ink2 truncate">
+                      <span className="text-xs sm:text-sm font-semibold text-ink2 truncate">
                         {node.label}
                       </span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] text-ink4 font-medium truncate">
+                    <span className="text-xs text-ink4 font-medium truncate">
                       {node.sub}
                     </span>
                   </div>

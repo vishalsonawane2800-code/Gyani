@@ -57,14 +57,14 @@ export function HeroSection({ ipos }: HeroSectionProps) {
           {/* Left Content */}
           <div className="space-y-3 sm:space-y-4">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 text-violet-300 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border border-violet-500/30" style={{ background: 'rgba(124,58,237,0.15)' }}>
+            <div className="inline-flex items-center gap-2 text-violet-300 text-xs sm:text-sm font-bold tracking-wider uppercase px-3 py-1 sm:px-4 sm:py-2 rounded-full border border-violet-500/30" style={{ background: 'rgba(124,58,237,0.15)' }}>
               <span className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse" />
               India&apos;s AI-Powered IPO Intelligence
             </div>
             
             {/* Headline */}
             <div className="space-y-1">
-              <h1 className="font-heading text-[28px] sm:text-4xl lg:text-[44px] font-black text-white leading-[1.1] tracking-tight">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white leading-tight tracking-tight">
                 Should You Apply for
                 <br />
                 <em className="not-italic text-violet-400">This IPO?</em>
@@ -72,40 +72,40 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             </div>
             
             {/* Subtext */}
-            <p className="text-white/55 text-[13px] sm:text-[15px] max-w-[500px] leading-relaxed">
+            <p className="text-white/55 text-sm sm:text-base max-w-xl leading-relaxed">
               Get AI-based listing gain prediction, GMP, and subscription signals in one place.
             </p>
             
             {/* CTA Buttons */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link 
                 href="#current" 
-                className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-xs sm:text-sm px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl transition-all hover:-translate-y-0.5 shadow-[0_0_0_0_rgba(124,58,237,0.4)] hover:shadow-[0_8px_24px_rgba(124,58,237,0.35)]"
+                className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm sm:text-base px-6 sm:px-7 py-3 sm:py-3 rounded-lg transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
               >
-                <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
                 View Live IPOs
               </Link>
               <Link 
                 href="/accuracy" 
-                className="inline-flex items-center gap-2 border border-white/15 hover:border-white/25 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 hover:text-white font-semibold text-xs sm:text-[13px] px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl transition-all"
+                className="inline-flex items-center gap-2 border border-white/15 hover:border-white/25 bg-white/[0.08] hover:bg-white/[0.14] text-white/80 hover:text-white font-semibold text-sm px-5 sm:px-6 py-3 rounded-lg transition-all"
               >
                 AI Track Record
-                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
               </Link>
             </div>
             
             {/* KPI Stats Row - always 4 cols in single line */}
-            <div className="flex gap-1.5 sm:gap-3 pt-3 sm:pt-5">
+            <div className="flex gap-2 sm:gap-3 pt-4 sm:pt-6">
               {stats.map((stat) => (
                 <div 
                   key={stat.label} 
-                  className="flex-1 backdrop-blur-xl rounded-lg sm:rounded-2xl px-1.5 sm:px-4 py-2 sm:py-3 border border-white/10 text-center"
+                  className="flex-1 backdrop-blur-xl rounded-lg sm:rounded-xl px-2 sm:px-4 py-2 sm:py-3 border border-white/10 text-center"
                   style={{ background: 'rgba(255,255,255,0.05)' }}
                 >
-                  <div className={`font-heading text-[13px] sm:text-xl lg:text-2xl font-black ${stat.color} leading-none mb-0.5`}>
+                  <div className={`text-lg sm:text-2xl font-black ${stat.color} leading-none mb-1`}>
                     {stat.value}
                   </div>
-                  <div className="text-white/40 text-[7px] sm:text-[10px] font-semibold tracking-wide leading-tight">{stat.label}</div>
+                  <div className="text-white/40 text-xs sm:text-sm font-semibold tracking-wide leading-tight">{stat.label}</div>
                 </div>
               ))}
             </div>
@@ -114,14 +114,14 @@ export function HeroSection({ ipos }: HeroSectionProps) {
           
           {/* Right: Live IPO Snapshot Card */}
           <div 
-            className="backdrop-blur-2xl rounded-xl sm:rounded-2xl p-4 sm:p-5 border border-white/[0.12]"
+            className="backdrop-blur-2xl rounded-lg sm:rounded-xl p-4 sm:p-5 border border-white/[0.12]"
             style={{ background: 'rgba(255,255,255,0.06)' }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-white/50 text-[10px] sm:text-xs font-bold tracking-wider uppercase">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-white/50 text-xs font-bold tracking-wider uppercase">
                 Live IPO Snapshot
               </h2>
-              <span className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-emerald-400 font-semibold">
+              <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
                 <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
                 Live
               </span>
@@ -132,27 +132,27 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                 <Link 
                   key={ipo.id} 
                   href={`/ipo/${ipo.slug}`}
-                  className={`flex items-center gap-2.5 sm:gap-3 py-2.5 sm:py-3 group ${index < liveIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
+                  className={`flex items-center gap-3 py-3 group ${index < liveIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
                 >
                   <div 
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-[10px] sm:text-xs font-bold font-heading shrink-0"
+                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
                     style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                   >
                     {generateAbbr(ipo.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-[12px] sm:text-[13px] font-semibold truncate group-hover:text-violet-400 transition-colors">
+                    <div className="text-white text-sm sm:text-base font-semibold truncate group-hover:text-violet-400 transition-colors">
                       {ipo.name}
                     </div>
-                    <div className="text-white/40 text-[9px] sm:text-[10px] mt-0.5">
+                    <div className="text-white/40 text-xs mt-0.5">
                       {ipo.sector} · {ipo.exchange}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className={`font-heading text-xs sm:text-sm font-extrabold ${ipo.aiPrediction >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                    <div className={`text-sm sm:text-base font-extrabold ${ipo.aiPrediction >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
                     </div>
-                    <div className="text-white/50 text-[9px] sm:text-[10px] mt-0.5">
+                    <div className="text-white/50 text-xs mt-0.5">
                       GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>Rs {ipo.gmp}</span>
                       <span className="text-white/30 mx-0.5">|</span>
                       <span className={ipo.gmpPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
@@ -168,13 +168,13 @@ export function HeroSection({ ipos }: HeroSectionProps) {
               )}
             </div>
             
-            <div className="mt-3 pt-3 border-t border-white/[0.06]">
+            <div className="mt-4 pt-4 border-t border-white/[0.06]">
               <Link 
                 href="#current" 
-                className="flex items-center justify-center gap-2 text-violet-400 hover:text-violet-300 text-[11px] sm:text-[12px] font-semibold transition-colors"
+                className="flex items-center justify-center gap-2 text-violet-400 hover:text-violet-300 text-xs sm:text-sm font-semibold transition-colors"
               >
                 View all live IPOs
-                <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>

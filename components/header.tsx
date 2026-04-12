@@ -59,16 +59,16 @@ export function Header() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden lg:flex gap-0.5 flex-1 overflow-x-auto">
+        <div className="hidden lg:flex gap-1 flex-1 overflow-x-auto">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-[13px] font-medium text-ink3 px-3 py-1.5 rounded-lg transition-colors hover:bg-background hover:text-foreground whitespace-nowrap flex items-center gap-1.5"
+              className="text-sm font-medium text-ink3 px-3 py-2 rounded transition-colors hover:bg-background hover:text-foreground whitespace-nowrap flex items-center gap-2"
             >
               {link.label}
               {link.badge && (
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full text-white ${link.badgeColor}`}>
+                <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full text-white ${link.badgeColor}`}>
                   {link.badge}
                 </span>
               )}
@@ -79,16 +79,16 @@ export function Header() {
         {/* Right Section */}
         <div className="flex items-center gap-2 ml-auto shrink-0">
           {/* Market Status */}
-          <div className="hidden sm:flex items-center gap-1.5 text-[11.5px] text-ink3 px-2.5 py-1 rounded-full border border-border whitespace-nowrap">
-            <span className={`w-1.5 h-1.5 rounded-full ${isMarketOpen ? 'bg-emerald-mid animate-pulse' : 'bg-ink4'}`} />
+          <div className="hidden sm:flex items-center gap-2 text-xs text-ink3 px-3 py-2 rounded-full border border-border whitespace-nowrap">
+            <span className={`w-2 h-2 rounded-full ${isMarketOpen ? 'bg-emerald-mid animate-pulse' : 'bg-ink4'}`} />
             <span>{isMarketOpen ? 'Market Open' : 'Market Closed'}</span>
           </div>
 
           {/* Compact Search Bar */}
-          <div className={`hidden md:flex items-center bg-secondary rounded-lg border transition-all ${
+          <div className={`hidden md:flex items-center bg-secondary rounded border transition-all ${
             isSearchFocused ? 'border-primary shadow-sm w-56' : 'border-transparent w-44'
           }`}>
-            <Search className="w-3.5 h-3.5 text-ink4 ml-2.5 shrink-0" />
+            <Search className="w-4 h-4 text-ink4 ml-3 shrink-0" />
             <input
               type="search"
               value={searchQuery}
@@ -96,7 +96,7 @@ export function Header() {
               onFocus={() => setIsSearchFocused(true)}
               onBlur={() => setIsSearchFocused(false)}
               placeholder="Search IPO..."
-              className="flex-1 border-none outline-none py-1.5 px-2 text-[12px] text-foreground placeholder:text-ink4 bg-transparent"
+              className="flex-1 border-none outline-none py-2 px-2 text-sm text-foreground placeholder:text-ink4 bg-transparent"
               maxLength={60}
               autoComplete="off"
               spellCheck="false"
@@ -104,7 +104,7 @@ export function Header() {
           </div>
 
           {/* Log in button */}
-          <button className="hidden sm:block text-[12px] font-medium text-ink2 hover:text-foreground px-3 py-1.5 rounded-lg border border-border hover:border-border-secondary transition-colors">
+          <button className="hidden sm:block text-sm font-medium text-ink2 hover:text-foreground px-3 py-2 rounded border border-border hover:border-border-secondary transition-colors">
             Log in
           </button>
 
@@ -123,14 +123,14 @@ export function Header() {
       {isMenuOpen && (
         <div className="lg:hidden border-t border-border bg-card px-5 py-3">
           {/* Mobile Search */}
-          <div className="flex items-center bg-secondary rounded-lg border border-border mb-3">
+          <div className="flex items-center bg-secondary rounded border border-border mb-3">
             <Search className="w-4 h-4 text-ink4 ml-3 shrink-0" />
             <input
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search IPO..."
-              className="flex-1 border-none outline-none py-2 px-2.5 text-[13px] text-foreground placeholder:text-ink4 bg-transparent"
+              className="flex-1 border-none outline-none py-2 px-2 text-sm text-foreground placeholder:text-ink4 bg-transparent"
               maxLength={60}
             />
           </div>
@@ -139,12 +139,12 @@ export function Header() {
             <Link
               key={link.href}
               href={link.href}
-              className="flex items-center gap-2 text-sm font-medium text-ink2 py-2.5 border-b border-border last:border-0"
+              className="flex items-center gap-2 text-sm font-medium text-ink2 py-2 border-b border-border last:border-0"
               onClick={() => setIsMenuOpen(false)}
             >
               {link.label}
               {link.badge && (
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full text-white ${link.badgeColor}`}>
+                <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full text-white ${link.badgeColor}`}>
                   {link.badge}
                 </span>
               )}
@@ -153,7 +153,7 @@ export function Header() {
 
           {/* Mobile buttons */}
           <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-            <button className="flex-1 text-[13px] font-medium text-ink2 py-2 rounded-lg border border-border">
+            <button className="flex-1 text-sm font-medium text-ink2 py-2 rounded border border-border">
               Log in
             </button>
           </div>
