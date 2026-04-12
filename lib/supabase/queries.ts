@@ -180,7 +180,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   }
 
   // Fetch related data in parallel
-  const [gmpHistoryResult, financialsResult, reviewsResult] = await Promise.all([
+  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult] = await Promise.all([
     // Get GMP history
     supabase
       .from('gmp_history')
@@ -200,12 +200,27 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .from('reviews')
       .select('*')
       .eq('ipo_id', ipo.id)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }),
+    
+    // Get peer companies
+    supabase
+      .from('peer_companies')
+      .select('*')
+      .eq('ipo_id', ipo.id),
+    
+    // Get KPI data
+    supabase
+      .from('ipo_kpi')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('date_label', { ascending: true })
   ])
 
   const gmpHistory = gmpHistoryResult.data ?? []
   const financialsData = financialsResult.data ?? []
   const reviewsData = reviewsResult.data ?? []
+  const peersData = peersResult.data ?? []
+  const kpiData = kpiResult.data ?? []
 
   // Get latest GMP from history if available
   const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
@@ -228,18 +243,79 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     url: r.url || undefined,
   }))
   
+  // Parse peer companies
+  const peerCompanies = peersData.map(p => ({
+    name: p.name,
+    marketCap: p.market_cap || 0,
+    revenue: p.revenue || 0,
+    pat: p.pat || 0,
+    peRatio: p.pe_ratio || 0,
+    pbRatio: p.pb_ratio || 0,
+    roe: p.roe || 0,
+  }))
+
+  // Parse KPI data
+  const kpi = parseKPIData(kpiData)
+
   // Add GMP history data for charts - match GMPHistoryEntry interface
   const priceMax = ipo.price_max || 0
   return {
     ...transformedIPO,
     financials: financials || undefined,
     expertReviews: expertReviews.length > 0 ? expertReviews : undefined,
+    peerCompanies: peerCompanies.length > 0 ? peerCompanies : undefined,
+    kpi: kpi || undefined,
     gmpHistory: gmpHistory.map(g => ({
       date: g.recorded_at,
       gmp: g.gmp,
       gmpPercent: priceMax > 0 ? Math.round((g.gmp / priceMax) * 100 * 10) / 10 : 0,
       source: g.source || 'investorgain',
     })),
+  }
+}
+
+// Parse KPI data from database rows
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseKPIData(kpiData: any[]): IPO['kpi'] | null {
+  if (!kpiData || kpiData.length === 0) {
+    return null
+  }
+
+  // Group by type (dated vs pre_post)
+  const datedKPIs = kpiData.filter(k => k.kpi_type === 'dated')
+  const prePostKPIs = kpiData.filter(k => k.kpi_type === 'pre_post')
+
+  // Get unique date labels for dated KPIs
+  const dateLabels = [...new Set(datedKPIs.map(k => k.date_label))].slice(0, 2)
+
+  return {
+    dated: {
+      dateLabels,
+      roe: datedKPIs.filter(k => k.metric === 'roe').map(k => k.value),
+      roce: datedKPIs.filter(k => k.metric === 'roce').map(k => k.value),
+      debtEquity: datedKPIs.filter(k => k.metric === 'debt_equity').map(k => k.value),
+      ronw: datedKPIs.filter(k => k.metric === 'ronw').map(k => k.value),
+      patMargin: datedKPIs.filter(k => k.metric === 'pat_margin').map(k => k.value),
+      ebitdaMargin: datedKPIs.filter(k => k.metric === 'ebitda_margin').map(k => k.value),
+      priceToBook: datedKPIs.find(k => k.metric === 'price_to_book')?.value,
+    },
+    prePost: {
+      eps: {
+        pre: prePostKPIs.find(k => k.metric === 'eps' && k.date_label === 'pre')?.value,
+        post: prePostKPIs.find(k => k.metric === 'eps' && k.date_label === 'post')?.value,
+      },
+      pe: {
+        pre: prePostKPIs.find(k => k.metric === 'pe' && k.date_label === 'pre')?.value,
+        post: prePostKPIs.find(k => k.metric === 'pe' && k.date_label === 'post')?.value,
+      },
+      promoterHolding: {
+        pre: prePostKPIs.find(k => k.metric === 'promoter_holding' && k.date_label === 'pre')?.value,
+        post: prePostKPIs.find(k => k.metric === 'promoter_holding' && k.date_label === 'post')?.value,
+      },
+      marketCap: prePostKPIs.find(k => k.metric === 'market_cap')?.value,
+    },
+    promoters: kpiData.find(k => k.metric === 'promoters')?.text_value || '',
+    disclaimer: kpiData.find(k => k.metric === 'disclaimer')?.text_value || '',
   }
 }
 

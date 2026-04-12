@@ -56,6 +56,27 @@ export interface IssueDetails {
   ipoObjectives: string[]; // Reasons for IPO from DRHP
 }
 
+export interface KPIData {
+  dated: {
+    dateLabels: string[]; // e.g., ["Dec 31, 2025", "Mar 31, 2025"]
+    roe: number[]; // values for each date
+    roce: number[];
+    debtEquity: number[];
+    ronw: number[];
+    patMargin: number[];
+    ebitdaMargin: number[];
+    priceToBook?: number; // single value
+  };
+  prePost: {
+    eps: { pre?: number; post?: number };
+    pe: { pre?: number; post?: number };
+    promoterHolding: { pre?: number; post?: number };
+    marketCap?: number;
+  };
+  promoters?: string;
+  disclaimer?: string;
+}
+
 export interface IPO {
   id: number;
   name: string;
@@ -112,6 +133,7 @@ export interface IPO {
   subscriptionHistory?: SubscriptionHistoryEntry[];
   expertReviews?: ExpertReview[];
   peerCompanies?: PeerCompany[];
+  kpi?: KPIData;
 }
 
 export interface ListedIPO {

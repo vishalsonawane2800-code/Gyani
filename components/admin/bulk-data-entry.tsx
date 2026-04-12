@@ -28,10 +28,12 @@ import {
   FINANCIALS_TEMPLATE,
   PEER_COMPARISON_TEMPLATE,
   GMP_HISTORY_TEMPLATE,
+  KPI_TEMPLATE,
   AI_PROMPTS,
   parseFinancials,
   parsePeerComparison,
   parseGMPHistory,
+  parseKPI,
 } from '@/lib/bulk-data-parsers'
 import { useAuth } from '@/lib/auth-context'
 
@@ -40,7 +42,7 @@ interface BulkDataEntryProps {
   onSuccess?: () => void
 }
 
-type DataType = 'financials' | 'peers' | 'gmp'
+type DataType = 'financials' | 'peers' | 'gmp' | 'kpi'
 
 interface SectionConfig {
   type: DataType
@@ -59,24 +61,28 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     financials: false,
     peers: false,
     gmp: false,
+    kpi: false,
   })
   
   const [texts, setTexts] = useState<Record<DataType, string>>({
     financials: '',
     peers: '',
     gmp: '',
+    kpi: '',
   })
   
   const [loading, setLoading] = useState<Record<DataType, boolean>>({
     financials: false,
     peers: false,
     gmp: false,
+    kpi: false,
   })
   
   const [clearExisting, setClearExisting] = useState<Record<DataType, boolean>>({
     financials: true,
     peers: true,
     gmp: false,
+    kpi: true,
   })
 
   const [copiedTemplate, setCopiedTemplate] = useState<DataType | null>(null)
@@ -136,6 +142,25 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
           count: result.data.length,
           preview: result.success 
             ? `${result.data.length} entries from ${result.data[result.data.length - 1]?.date || 'N/A'} to ${result.data[0]?.date || 'N/A'}`
+            : result.errors.join(', '),
+        }
+      },
+    },
+    {
+      type: 'kpi',
+      title: 'KPI Data',
+      icon: <FileText className="h-4 w-4" />,
+      description: 'Bulk import KPI data including ROE, ROCE, EPS, P/E, Promoter Holding, etc.',
+      template: KPI_TEMPLATE,
+      aiPrompt: AI_PROMPTS.kpi,
+      endpoint: `/api/admin/ipos/${ipoId}/kpi`,
+      parsePreview: (text) => {
+        const result = parseKPI(text)
+        return {
+          success: result.success,
+          count: result.data.length,
+          preview: result.success 
+            ? `${result.data.length} KPI metrics parsed`
             : result.errors.join(', '),
         }
       },
