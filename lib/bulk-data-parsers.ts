@@ -72,6 +72,20 @@ export interface IssueDetailsData {
   ipo_objectives: string[]
 }
 
+export interface SubscriptionEntry {
+  date: string // YYYY-MM-DD
+  time: string // e.g., "17:00" or "5:00 PM"
+  day_number: number
+  retail: number
+  nii: number
+  snii: number
+  bnii: number
+  qib: number
+  total: number
+  employee: number
+  is_final: boolean
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -764,6 +778,146 @@ export function parseIssueDetails(text: string): ParseResult<IssueDetailsData> {
 }
 
 // ============================================
+// SUBSCRIPTION HISTORY PARSER
+// ============================================
+
+/**
+ * Parse subscription history data from structured text
+ * 
+ * Example input:
+ * === SUBSCRIPTION_HISTORY ===
+ * --- ENTRY ---
+ * DATE: 2026-04-10
+ * TIME: 17:00
+ * DAY: 1
+ * RETAIL: 0.45
+ * NII: 0.23
+ * SNII: 0.12
+ * BNII: 0.11
+ * QIB: 0.05
+ * TOTAL: 0.25
+ * EMPLOYEE: 0
+ * IS_FINAL: false
+ * --- ENTRY ---
+ * DATE: 2026-04-11
+ * TIME: 17:00
+ * DAY: 2
+ * RETAIL: 1.85
+ * NII: 0.98
+ * QIB: 0.45
+ * TOTAL: 1.12
+ * === END ===
+ */
+export function parseSubscriptionHistory(text: string): ParseResult<SubscriptionEntry> {
+  const result: ParseResult<SubscriptionEntry> = { success: false, data: [], errors: [] }
+  
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  // Split into entry blocks
+  const entryBlocks = text.split(/---\s*ENTRY\s*---/i)
+  
+  for (const block of entryBlocks) {
+    if (!block.trim() || block.includes('===')) continue
+    
+    const entry: Partial<SubscriptionEntry> = {
+      snii: 0,
+      bnii: 0,
+      employee: 0,
+      is_final: false,
+    }
+    const lines = block.split('\n')
+    
+    for (const line of lines) {
+      if (!line.trim() || line.includes('===')) continue
+      
+      const match = line.match(/^([A-Z_]+)\s*:\s*(.+)$/i)
+      if (match) {
+        const [, key, value] = match
+        const upperKey = key.toUpperCase()
+        
+        switch (upperKey) {
+          case 'DATE':
+            // Support various date formats and convert to YYYY-MM-DD
+            const dateStr = value.trim()
+            if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+              entry.date = dateStr
+            } else if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+              const [dd, mm, yyyy] = dateStr.split('-')
+              entry.date = `${yyyy}-${mm}-${dd}`
+            } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateStr)) {
+              const [dd, mm, yyyy] = dateStr.split('/')
+              entry.date = `${yyyy}-${mm}-${dd}`
+            }
+            break
+          case 'TIME':
+            entry.time = value.trim()
+            break
+          case 'DAY':
+          case 'DAY_NUMBER':
+            entry.day_number = parseInt(value) || 1
+            break
+          case 'RETAIL':
+            entry.retail = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'NII':
+            entry.nii = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'SNII':
+          case 'S_NII':
+            entry.snii = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'BNII':
+          case 'B_NII':
+            entry.bnii = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'QIB':
+            entry.qib = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'TOTAL':
+            entry.total = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'EMPLOYEE':
+            entry.employee = parseFloat(value.replace(/[x,\s]/g, '')) || 0
+            break
+          case 'IS_FINAL':
+          case 'FINAL':
+            entry.is_final = value.toLowerCase() === 'true' || value.toLowerCase() === 'yes' || value === '1'
+            break
+        }
+      }
+    }
+    
+    // Validate and add entry - need at minimum date and retail
+    if (entry.date && entry.retail !== undefined) {
+      result.data.push({
+        date: entry.date,
+        time: entry.time || '17:00',
+        day_number: entry.day_number || 1,
+        retail: entry.retail || 0,
+        nii: entry.nii || 0,
+        snii: entry.snii || 0,
+        bnii: entry.bnii || 0,
+        qib: entry.qib || 0,
+        total: entry.total || 0,
+        employee: entry.employee || 0,
+        is_final: entry.is_final || false,
+      })
+    }
+  }
+  
+  if (result.data.length === 0) {
+    result.errors.push('No valid subscription entries found. Use format: --- ENTRY --- followed by DATE: and RETAIL:')
+  } else {
+    result.success = true
+  }
+  
+  return result
+}
+
+// ============================================
 // FORMAT TEMPLATES (for display in UI)
 // ============================================
 
@@ -870,6 +1024,38 @@ OBJECTIVE_3: Capital expenditure for expansion
 OBJECTIVE_4: General corporate purposes
 === END ===`
 
+export const SUBSCRIPTION_HISTORY_TEMPLATE = `=== SUBSCRIPTION_HISTORY ===
+--- ENTRY ---
+DATE: 2026-04-10
+TIME: 17:00
+DAY: 1
+RETAIL: 0.45
+NII: 0.23
+SNII: 0.12
+BNII: 0.11
+QIB: 0.05
+TOTAL: 0.25
+EMPLOYEE: 0
+IS_FINAL: false
+--- ENTRY ---
+DATE: 2026-04-11
+TIME: 17:00
+DAY: 2
+RETAIL: 1.85
+NII: 0.98
+QIB: 0.45
+TOTAL: 1.12
+--- ENTRY ---
+DATE: 2026-04-12
+TIME: 17:00
+DAY: 3
+RETAIL: 5.24
+NII: 3.12
+QIB: 2.45
+TOTAL: 3.85
+IS_FINAL: true
+=== END ===`
+
 // AI Prompt templates for generating formatted data
 export const AI_PROMPTS = {
   financials: `Convert the following financial data into this exact format:
@@ -972,5 +1158,25 @@ OBJECTIVE_3: [Third IPO objective]
 [Add more OBJECTIVE_N for additional objectives]
 === END ===
 
-List all objectives of the issue from the DRHP/RHP. Use 0 for any quota not mentioned.`
+List all objectives of the issue from the DRHP/RHP. Use 0 for any quota not mentioned.`,
+
+  subscriptionHistory: `Convert the following subscription data into this exact format:
+=== SUBSCRIPTION_HISTORY ===
+--- ENTRY ---
+DATE: [YYYY-MM-DD]
+TIME: [HH:MM, e.g., 17:00]
+DAY: [Day number 1, 2, or 3]
+RETAIL: [Retail subscription times, e.g., 1.85]
+NII: [NII subscription times]
+SNII: [sNII subscription times, if available]
+BNII: [bNII subscription times, if available]
+QIB: [QIB subscription times]
+TOTAL: [Total subscription times]
+EMPLOYEE: [Employee subscription times, or 0]
+IS_FINAL: [true/false - true only for final day closing data]
+--- ENTRY ---
+[repeat for each entry]
+=== END ===
+
+Create one entry per day or per time snapshot. Mark the last entry as IS_FINAL: true if it's the final subscription data.`
 }

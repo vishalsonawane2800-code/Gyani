@@ -30,12 +30,14 @@ import {
   GMP_HISTORY_TEMPLATE,
   KPI_TEMPLATE,
   ISSUE_DETAILS_TEMPLATE,
+  SUBSCRIPTION_HISTORY_TEMPLATE,
   AI_PROMPTS,
   parseFinancials,
   parsePeerComparison,
   parseGMPHistory,
   parseKPI,
   parseIssueDetails,
+  parseSubscriptionHistory,
 } from '@/lib/bulk-data-parsers'
 import { useAuth } from '@/lib/auth-context'
 
@@ -44,7 +46,7 @@ interface BulkDataEntryProps {
   onSuccess?: () => void
 }
 
-type DataType = 'financials' | 'peers' | 'gmp' | 'kpi' | 'issueDetails'
+type DataType = 'financials' | 'peers' | 'gmp' | 'kpi' | 'issueDetails' | 'subscriptions'
 
 interface SectionConfig {
   type: DataType
@@ -65,6 +67,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     gmp: false,
     kpi: false,
     issueDetails: false,
+    subscriptions: false,
   })
   
   const [texts, setTexts] = useState<Record<DataType, string>>({
@@ -73,6 +76,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     gmp: '',
     kpi: '',
     issueDetails: '',
+    subscriptions: '',
   })
   
   const [loading, setLoading] = useState<Record<DataType, boolean>>({
@@ -81,6 +85,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     gmp: false,
     kpi: false,
     issueDetails: false,
+    subscriptions: false,
   })
   
   const [clearExisting, setClearExisting] = useState<Record<DataType, boolean>>({
@@ -89,6 +94,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     gmp: false,
     kpi: true,
     issueDetails: true,
+    subscriptions: false,
   })
 
   const [copiedTemplate, setCopiedTemplate] = useState<DataType | null>(null)
@@ -193,6 +199,32 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
           success: true,
           count: 1,
           preview: `Issue Size: ${d.total_issue_size_cr} Cr, Fresh: ${d.fresh_issue_cr} Cr, OFS: ${d.ofs_cr || 0} Cr, ${d.ipo_objectives.length} objectives`,
+        }
+      },
+    },
+    {
+      type: 'subscriptions',
+      title: 'Subscription History',
+      icon: <TrendingUp className="h-4 w-4" />,
+      description: 'Import historical subscription data by day. Latest data is auto-fetched via cron workers.',
+      template: SUBSCRIPTION_HISTORY_TEMPLATE,
+      aiPrompt: AI_PROMPTS.subscriptionHistory,
+      endpoint: `/api/admin/ipos/${ipoId}/subscription-history`,
+      parsePreview: (text) => {
+        const result = parseSubscriptionHistory(text)
+        if (!result.success || result.data.length === 0) {
+          return {
+            success: false,
+            count: 0,
+            preview: result.errors.join(', '),
+          }
+        }
+        const firstEntry = result.data[0]
+        const lastEntry = result.data[result.data.length - 1]
+        return {
+          success: true,
+          count: result.data.length,
+          preview: `${result.data.length} entries from Day ${firstEntry.day_number} to Day ${lastEntry.day_number}. Latest: ${lastEntry.total}x total`,
         }
       },
     },
