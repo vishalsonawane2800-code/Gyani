@@ -195,9 +195,9 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .eq('ipo_id', ipo.id)
       .order('fiscal_year', { ascending: true }),
     
-    // Get expert reviews
+    // Get expert reviews - table is named 'expert_reviews'
     supabase
-      .from('reviews')
+      .from('expert_reviews')
       .select('*')
       .eq('ipo_id', ipo.id)
       .order('created_at', { ascending: false }),
@@ -243,12 +243,17 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   // Parse financials from database rows into the expected format
   const financials = parseFinancials(financialsData)
   
-  // Parse expert reviews
+  // Parse expert reviews - map database columns to ExpertReview interface
   const expertReviews = reviewsData.map(r => ({
+    id: r.id || '',
     source: r.source || 'Unknown',
-    rating: r.rating || 'Neutral',
+    sourceType: r.source_type || 'analyst',  // Database column is source_type
+    author: r.author || '',
     summary: r.summary || '',
+    sentiment: r.sentiment || 'neutral',
     url: r.url || undefined,
+    logoUrl: r.logo_url || undefined,
+    createdAt: r.review_date || r.created_at || new Date().toISOString(),
   }))
   
   // Parse peer companies - map database columns to frontend interface
@@ -280,10 +285,19 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     ipoObjectives: issueDetailsData.ipo_objectives || [],
   } : undefined
 
+  // Extract P/E ratio and market cap from KPI data for IPO header/overview
+  const peRatioFromKPI = kpi?.prePost?.pe?.post || kpi?.prePost?.pe?.pre || 0
+  const marketCapFromKPI = kpi?.prePost?.marketCap || 0
+  const marketCapStr = marketCapFromKPI > 0 
+    ? `Rs ${marketCapFromKPI >= 100 ? marketCapFromKPI.toFixed(0) : marketCapFromKPI.toFixed(2)} Cr`
+    : transformedIPO.marketCap
+
   // Add GMP history data for charts - match GMPHistoryEntry interface
   const priceMax = ipo.price_max || 0
   return {
     ...transformedIPO,
+    peRatio: peRatioFromKPI || transformedIPO.peRatio,
+    marketCap: marketCapStr,
     financials: financials || undefined,
     expertReviews: expertReviews.length > 0 ? expertReviews : undefined,
     peerCompanies: peerCompanies.length > 0 ? peerCompanies : undefined,
