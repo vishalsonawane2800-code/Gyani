@@ -29,11 +29,13 @@ import {
   PEER_COMPARISON_TEMPLATE,
   GMP_HISTORY_TEMPLATE,
   KPI_TEMPLATE,
+  ISSUE_DETAILS_TEMPLATE,
   AI_PROMPTS,
   parseFinancials,
   parsePeerComparison,
   parseGMPHistory,
   parseKPI,
+  parseIssueDetails,
 } from '@/lib/bulk-data-parsers'
 import { useAuth } from '@/lib/auth-context'
 
@@ -42,7 +44,7 @@ interface BulkDataEntryProps {
   onSuccess?: () => void
 }
 
-type DataType = 'financials' | 'peers' | 'gmp' | 'kpi'
+type DataType = 'financials' | 'peers' | 'gmp' | 'kpi' | 'issueDetails'
 
 interface SectionConfig {
   type: DataType
@@ -62,6 +64,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     peers: false,
     gmp: false,
     kpi: false,
+    issueDetails: false,
   })
   
   const [texts, setTexts] = useState<Record<DataType, string>>({
@@ -69,6 +72,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     peers: '',
     gmp: '',
     kpi: '',
+    issueDetails: '',
   })
   
   const [loading, setLoading] = useState<Record<DataType, boolean>>({
@@ -76,6 +80,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     peers: false,
     gmp: false,
     kpi: false,
+    issueDetails: false,
   })
   
   const [clearExisting, setClearExisting] = useState<Record<DataType, boolean>>({
@@ -83,6 +88,7 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     peers: true,
     gmp: false,
     kpi: true,
+    issueDetails: true,
   })
 
   const [copiedTemplate, setCopiedTemplate] = useState<DataType | null>(null)
@@ -162,6 +168,31 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
           preview: result.success 
             ? `${result.data.length} KPI metrics parsed`
             : result.errors.join(', '),
+        }
+      },
+    },
+    {
+      type: 'issueDetails',
+      title: 'Issue Details',
+      icon: <FileText className="h-4 w-4" />,
+      description: 'Import issue details: total size, fresh issue, OFS, quotas, and IPO objectives.',
+      template: ISSUE_DETAILS_TEMPLATE,
+      aiPrompt: AI_PROMPTS.issueDetails,
+      endpoint: `/api/admin/ipos/${ipoId}/issue-details`,
+      parsePreview: (text) => {
+        const result = parseIssueDetails(text)
+        if (!result.success || result.data.length === 0) {
+          return {
+            success: false,
+            count: 0,
+            preview: result.errors.join(', '),
+          }
+        }
+        const d = result.data[0]
+        return {
+          success: true,
+          count: 1,
+          preview: `Issue Size: ${d.total_issue_size_cr} Cr, Fresh: ${d.fresh_issue_cr} Cr, OFS: ${d.ofs_cr || 0} Cr, ${d.ipo_objectives.length} objectives`,
         }
       },
     },

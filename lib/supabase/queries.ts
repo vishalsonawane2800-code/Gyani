@@ -180,7 +180,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   }
 
   // Fetch related data in parallel
-  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult] = await Promise.all([
+  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult] = await Promise.all([
     // Get GMP history
     supabase
       .from('gmp_history')
@@ -213,7 +213,14 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .from('ipo_kpi')
       .select('*')
       .eq('ipo_id', ipo.id)
-      .order('date_label', { ascending: true })
+      .order('date_label', { ascending: true }),
+    
+    // Get Issue Details
+    supabase
+      .from('ipo_issue_details')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .maybeSingle()
   ])
 
   const gmpHistory = gmpHistoryResult.data ?? []
@@ -221,6 +228,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const reviewsData = reviewsResult.data ?? []
   const peersData = peersResult.data ?? []
   const kpiData = kpiResult.data ?? []
+  const issueDetailsData = issueDetailsResult.data
 
   // Get latest GMP from history if available
   const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
@@ -257,6 +265,21 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   // Parse KPI data
   const kpi = parseKPIData(kpiData)
 
+  // Parse issue details from database
+  const issueDetails = issueDetailsData ? {
+    totalIssueSizeCr: issueDetailsData.total_issue_size_cr || 0,
+    freshIssueCr: issueDetailsData.fresh_issue_cr || 0,
+    freshIssuePercent: issueDetailsData.fresh_issue_percent || 0,
+    ofsCr: issueDetailsData.ofs_cr || 0,
+    ofsPercent: issueDetailsData.ofs_percent || 0,
+    retailQuotaPercent: issueDetailsData.retail_quota_percent || 0,
+    niiQuotaPercent: issueDetailsData.nii_quota_percent || 0,
+    qibQuotaPercent: issueDetailsData.qib_quota_percent || 0,
+    employeeQuotaPercent: issueDetailsData.employee_quota_percent || 0,
+    shareholderQuotaPercent: issueDetailsData.shareholder_quota_percent || 0,
+    ipoObjectives: issueDetailsData.ipo_objectives || [],
+  } : undefined
+
   // Add GMP history data for charts - match GMPHistoryEntry interface
   const priceMax = ipo.price_max || 0
   return {
@@ -265,6 +288,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     expertReviews: expertReviews.length > 0 ? expertReviews : undefined,
     peerCompanies: peerCompanies.length > 0 ? peerCompanies : undefined,
     kpi: kpi || undefined,
+    issueDetails: issueDetails,
     gmpHistory: gmpHistory.map(g => ({
       date: g.recorded_at,
       gmp: g.gmp,
