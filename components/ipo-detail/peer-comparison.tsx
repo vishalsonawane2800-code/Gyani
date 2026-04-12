@@ -57,16 +57,35 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
     );
   }
 
-  // Calculate averages for comparison
-  const avgMarketCap = peers.reduce((sum, p) => sum + p.marketCap, 0) / peers.length;
-  const avgPE = peers.filter(p => p.peRatio > 0).reduce((sum, p) => sum + p.peRatio, 0) / peers.filter(p => p.peRatio > 0).length;
-  const avgPB = peers.reduce((sum, p) => sum + p.pbRatio, 0) / peers.length;
-  const avgROE = peers.reduce((sum, p) => sum + p.roe, 0) / peers.length;
+  // Calculate averages for comparison - only include peers with valid values
+  const peersWithMarketCap = peers.filter(p => p.marketCap > 0);
+  const peersWithPE = peers.filter(p => p.peRatio > 0);
+  const peersWithPB = peers.filter(p => p.pbRatio > 0);
+  const peersWithROE = peers.filter(p => p.roe > 0);
+  
+  const avgMarketCap = peersWithMarketCap.length > 0 
+    ? peersWithMarketCap.reduce((sum, p) => sum + p.marketCap, 0) / peersWithMarketCap.length 
+    : 0;
+  const avgPE = peersWithPE.length > 0 
+    ? peersWithPE.reduce((sum, p) => sum + p.peRatio, 0) / peersWithPE.length 
+    : 0;
+  const avgPB = peersWithPB.length > 0 
+    ? peersWithPB.reduce((sum, p) => sum + p.pbRatio, 0) / peersWithPB.length 
+    : 0;
+  const avgROE = peersWithROE.length > 0 
+    ? peersWithROE.reduce((sum, p) => sum + p.roe, 0) / peersWithROE.length 
+    : 0;
+  const avgRevenue = peers.filter(p => p.revenue > 0).length > 0
+    ? peers.filter(p => p.revenue > 0).reduce((sum, p) => sum + p.revenue, 0) / peers.filter(p => p.revenue > 0).length
+    : 0;
+  const avgPAT = peers.filter(p => p.pat > 0).length > 0
+    ? peers.filter(p => p.pat > 0).reduce((sum, p) => sum + p.pat, 0) / peers.filter(p => p.pat > 0).length
+    : 0;
 
-  // IPO metrics for comparison
-  const ipoMarketCapNum = parseInt(ipo.marketCap.replace(/[^0-9]/g, ''));
-  const ipoPE = ipo.peRatio;
-  const ipoROE = ipo.financials?.roe || 0;
+  // IPO metrics for comparison - get P/E from KPI data, ROE from KPI dated or financials
+  const ipoMarketCapNum = parseInt(ipo.marketCap.replace(/[^0-9]/g, '')) || 0;
+  const ipoPE = ipo.kpi?.prePost?.pe?.post || ipo.kpi?.prePost?.pe?.pre || ipo.peRatio || 0;
+  const ipoROE = (ipo.kpi?.dated?.roe?.[0]) || ipo.financials?.roe || 0;
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
@@ -130,7 +149,7 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
         <div className="bg-secondary rounded-xl p-3">
           <div className="text-[10px] text-ink4 font-semibold mb-1">Peer Avg P/B</div>
           <div className="font-[family-name:var(--font-sora)] text-lg font-bold">
-            {avgPB.toFixed(1)}x
+            {avgPB > 0 ? `${avgPB.toFixed(1)}x` : 'N/A'}
           </div>
           <div className="text-[10px] text-ink4 mt-1">
             Price-to-Book ratio
@@ -191,30 +210,26 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
                 <td className="py-3 px-3">
                   <span className="font-medium">{peer.name}</span>
                 </td>
-                <td className="py-3 px-3 text-right">{formatCr(peer.marketCap)}</td>
-                <td className="py-3 px-3 text-right">{formatCr(peer.revenue)}</td>
-                <td className="py-3 px-3 text-right">{formatCr(peer.pat)}</td>
+                <td className="py-3 px-3 text-right">{peer.marketCap > 0 ? formatCr(peer.marketCap) : '-'}</td>
+                <td className="py-3 px-3 text-right">{peer.revenue > 0 ? formatCr(peer.revenue) : '-'}</td>
+                <td className="py-3 px-3 text-right">{peer.pat > 0 ? formatCr(peer.pat) : '-'}</td>
                 <td className="py-3 px-3 text-right">
                   {peer.peRatio > 0 ? `${peer.peRatio}x` : '-'}
                 </td>
-                <td className="py-3 px-3 text-right">{peer.pbRatio}x</td>
-                <td className="py-3 px-3 text-right">{peer.roe}%</td>
+                <td className="py-3 px-3 text-right">{peer.pbRatio > 0 ? `${peer.pbRatio}x` : '-'}</td>
+                <td className="py-3 px-3 text-right">{peer.roe > 0 ? `${peer.roe}%` : '-'}</td>
               </tr>
             ))}
 
             {/* Average Row */}
             <tr className="bg-secondary font-semibold">
               <td className="py-3 px-3">Peer Average</td>
-              <td className="py-3 px-3 text-right">{formatCr(avgMarketCap)}</td>
-              <td className="py-3 px-3 text-right">
-                {formatCr(peers.reduce((sum, p) => sum + p.revenue, 0) / peers.length)}
-              </td>
-              <td className="py-3 px-3 text-right">
-                {formatCr(peers.reduce((sum, p) => sum + p.pat, 0) / peers.length)}
-              </td>
+              <td className="py-3 px-3 text-right">{avgMarketCap > 0 ? formatCr(avgMarketCap) : '-'}</td>
+              <td className="py-3 px-3 text-right">{avgRevenue > 0 ? formatCr(avgRevenue) : '-'}</td>
+              <td className="py-3 px-3 text-right">{avgPAT > 0 ? formatCr(avgPAT) : '-'}</td>
               <td className="py-3 px-3 text-right">{avgPE > 0 ? `${avgPE.toFixed(1)}x` : '-'}</td>
-              <td className="py-3 px-3 text-right">{avgPB.toFixed(1)}x</td>
-              <td className="py-3 px-3 text-right">{avgROE.toFixed(1)}%</td>
+              <td className="py-3 px-3 text-right">{avgPB > 0 ? `${avgPB.toFixed(1)}x` : '-'}</td>
+              <td className="py-3 px-3 text-right">{avgROE > 0 ? `${avgROE.toFixed(1)}%` : '-'}</td>
             </tr>
           </tbody>
         </table>

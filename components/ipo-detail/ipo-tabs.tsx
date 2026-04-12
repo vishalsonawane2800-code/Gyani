@@ -152,21 +152,21 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
           <tbody>
             <tr className="border-b border-border">
               <td className="py-2.5 px-3">Revenue</td>
-              <td className="py-2.5 px-3 text-right">Rs {revenue.fy23}</td>
-              <td className="py-2.5 px-3 text-right">Rs {revenue.fy24}</td>
-              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {revenue.fy25}</td>
+              <td className="py-2.5 px-3 text-right">Rs {revenue.fy23} Cr</td>
+              <td className="py-2.5 px-3 text-right">Rs {revenue.fy24} Cr</td>
+              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {revenue.fy25} Cr</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2.5 px-3">EBITDA</td>
-              <td className="py-2.5 px-3 text-right">Rs {ebitda.fy23}</td>
-              <td className="py-2.5 px-3 text-right">Rs {ebitda.fy24}</td>
-              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {ebitda.fy25}</td>
+              <td className="py-2.5 px-3 text-right">Rs {ebitda.fy23} Cr</td>
+              <td className="py-2.5 px-3 text-right">Rs {ebitda.fy24} Cr</td>
+              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {ebitda.fy25} Cr</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2.5 px-3">PAT (Net Profit)</td>
-              <td className="py-2.5 px-3 text-right">Rs {pat.fy23}</td>
-              <td className="py-2.5 px-3 text-right">Rs {pat.fy24}</td>
-              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {pat.fy25}</td>
+              <td className="py-2.5 px-3 text-right">Rs {pat.fy23} Cr</td>
+              <td className="py-2.5 px-3 text-right">Rs {pat.fy24} Cr</td>
+              <td className="py-2.5 px-3 text-right font-medium text-emerald-mid">Rs {pat.fy25} Cr</td>
             </tr>
           </tbody>
         </table>
