@@ -251,9 +251,9 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     url: r.url || undefined,
   }))
   
-  // Parse peer companies
+  // Parse peer companies - map database columns to frontend interface
   const peerCompanies = peersData.map(p => ({
-    name: p.name,
+    name: p.company_name || '',  // Database column is company_name
     marketCap: p.market_cap || 0,
     revenue: p.revenue || 0,
     pat: p.pat || 0,
