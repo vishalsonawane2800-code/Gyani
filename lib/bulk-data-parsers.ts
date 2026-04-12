@@ -58,6 +58,20 @@ export interface KPIEntry {
   text_value?: string
 }
 
+export interface IssueDetailsData {
+  total_issue_size_cr: number | null
+  fresh_issue_cr: number | null
+  fresh_issue_percent: number | null
+  ofs_cr: number | null
+  ofs_percent: number | null
+  retail_quota_percent: number | null
+  nii_quota_percent: number | null
+  qib_quota_percent: number | null
+  employee_quota_percent: number | null
+  shareholder_quota_percent: number | null
+  ipo_objectives: string[]
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -648,6 +662,108 @@ export function parseKPI(text: string): ParseResult<KPIEntry> {
 }
 
 // ============================================
+// ISSUE DETAILS PARSER
+// ============================================
+
+/**
+ * Parse issue details data from structured text
+ * 
+ * Example input:
+ * === ISSUE_DETAILS ===
+ * TOTAL_ISSUE_SIZE_CR: 150
+ * FRESH_ISSUE_CR: 100
+ * FRESH_ISSUE_PERCENT: 66.67
+ * OFS_CR: 50
+ * OFS_PERCENT: 33.33
+ * RETAIL_QUOTA_PERCENT: 35
+ * NII_QUOTA_PERCENT: 15
+ * QIB_QUOTA_PERCENT: 50
+ * EMPLOYEE_QUOTA_PERCENT: 0
+ * SHAREHOLDER_QUOTA_PERCENT: 0
+ * OBJECTIVE_1: Working capital requirements
+ * OBJECTIVE_2: Repayment of borrowings
+ * OBJECTIVE_3: General corporate purposes
+ * === END ===
+ */
+export function parseIssueDetails(text: string): ParseResult<IssueDetailsData> {
+  const result: ParseResult<IssueDetailsData> = { success: false, data: [], errors: [] }
+  
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  const lines = text.split('\n')
+  const values: Record<string, string> = {}
+  const objectives: string[] = []
+  
+  for (const line of lines) {
+    if (line.includes('===') || !line.trim()) continue
+    
+    const match = line.match(/^([A-Z0-9_]+)\s*:\s*(.+)$/i)
+    if (match) {
+      const key = match[1].toUpperCase()
+      const value = match[2].trim()
+      
+      // Handle objectives separately
+      if (key.startsWith('OBJECTIVE_') || key === 'OBJECTIVE') {
+        objectives.push(value)
+      } else {
+        values[key] = value
+      }
+    }
+  }
+
+  // Parse numeric values
+  const parseNum = (key: string): number | null => {
+    const val = values[key]
+    if (!val) return null
+    const num = parseFloat(val.replace(/[₹Rs,\s]/g, ''))
+    return isNaN(num) ? null : num
+  }
+
+  const issueDetails: IssueDetailsData = {
+    total_issue_size_cr: parseNum('TOTAL_ISSUE_SIZE_CR') ?? parseNum('TOTAL_ISSUE_SIZE') ?? parseNum('ISSUE_SIZE'),
+    fresh_issue_cr: parseNum('FRESH_ISSUE_CR') ?? parseNum('FRESH_ISSUE'),
+    fresh_issue_percent: parseNum('FRESH_ISSUE_PERCENT'),
+    ofs_cr: parseNum('OFS_CR') ?? parseNum('OFS'),
+    ofs_percent: parseNum('OFS_PERCENT'),
+    retail_quota_percent: parseNum('RETAIL_QUOTA_PERCENT') ?? parseNum('RETAIL_QUOTA') ?? parseNum('RETAIL'),
+    nii_quota_percent: parseNum('NII_QUOTA_PERCENT') ?? parseNum('NII_QUOTA') ?? parseNum('NII'),
+    qib_quota_percent: parseNum('QIB_QUOTA_PERCENT') ?? parseNum('QIB_QUOTA') ?? parseNum('QIB'),
+    employee_quota_percent: parseNum('EMPLOYEE_QUOTA_PERCENT') ?? parseNum('EMPLOYEE_QUOTA') ?? parseNum('EMPLOYEE'),
+    shareholder_quota_percent: parseNum('SHAREHOLDER_QUOTA_PERCENT') ?? parseNum('SHAREHOLDER_QUOTA') ?? parseNum('SHAREHOLDER'),
+    ipo_objectives: objectives,
+  }
+
+  // Validate - at minimum we need total issue size
+  if (issueDetails.total_issue_size_cr === null && issueDetails.fresh_issue_cr === null) {
+    result.errors.push('Missing required field: TOTAL_ISSUE_SIZE_CR or FRESH_ISSUE_CR')
+    return result
+  }
+
+  // If total not provided but fresh + ofs are, calculate it
+  if (issueDetails.total_issue_size_cr === null && issueDetails.fresh_issue_cr !== null) {
+    issueDetails.total_issue_size_cr = (issueDetails.fresh_issue_cr || 0) + (issueDetails.ofs_cr || 0)
+  }
+
+  // Calculate percentages if not provided
+  if (issueDetails.total_issue_size_cr && issueDetails.total_issue_size_cr > 0) {
+    if (issueDetails.fresh_issue_percent === null && issueDetails.fresh_issue_cr !== null) {
+      issueDetails.fresh_issue_percent = Math.round((issueDetails.fresh_issue_cr / issueDetails.total_issue_size_cr) * 100 * 100) / 100
+    }
+    if (issueDetails.ofs_percent === null && issueDetails.ofs_cr !== null) {
+      issueDetails.ofs_percent = Math.round((issueDetails.ofs_cr / issueDetails.total_issue_size_cr) * 100 * 100) / 100
+    }
+  }
+
+  result.data.push(issueDetails)
+  result.success = true
+  
+  return result
+}
+
+// ============================================
 // FORMAT TEMPLATES (for display in UI)
 // ============================================
 
@@ -737,6 +853,23 @@ PROMOTERS: Kalpesh Dhanjibhai Patel, Kanubhai Patel and Vasantkumar are the comp
 DISCLAIMER: The financial data is based on the company's DRHP and RHP.
 === END ===`
 
+export const ISSUE_DETAILS_TEMPLATE = `=== ISSUE_DETAILS ===
+TOTAL_ISSUE_SIZE_CR: 150
+FRESH_ISSUE_CR: 100
+FRESH_ISSUE_PERCENT: 66.67
+OFS_CR: 50
+OFS_PERCENT: 33.33
+RETAIL_QUOTA_PERCENT: 35
+NII_QUOTA_PERCENT: 15
+QIB_QUOTA_PERCENT: 50
+EMPLOYEE_QUOTA_PERCENT: 0
+SHAREHOLDER_QUOTA_PERCENT: 0
+OBJECTIVE_1: Working capital requirements
+OBJECTIVE_2: Repayment of borrowings
+OBJECTIVE_3: Capital expenditure for expansion
+OBJECTIVE_4: General corporate purposes
+=== END ===`
+
 // AI Prompt templates for generating formatted data
 export const AI_PROMPTS = {
   financials: `Convert the following financial data into this exact format:
@@ -819,5 +952,25 @@ PROMOTERS: [Promoter names and description]
 DISCLAIMER: [Any disclaimer text]
 === END ===
 
-Use _1 suffix for first date column and _2 suffix for second date column. Use _PRE for pre-IPO and _POST for post-IPO values.`
+Use _1 suffix for first date column and _2 suffix for second date column. Use _PRE for pre-IPO and _POST for post-IPO values.`,
+
+  issueDetails: `Convert the following issue details data into this exact format:
+=== ISSUE_DETAILS ===
+TOTAL_ISSUE_SIZE_CR: [Total issue size in Cr]
+FRESH_ISSUE_CR: [Fresh issue amount in Cr]
+FRESH_ISSUE_PERCENT: [Fresh issue percentage]
+OFS_CR: [OFS amount in Cr, or 0 if no OFS]
+OFS_PERCENT: [OFS percentage, or 0 if no OFS]
+RETAIL_QUOTA_PERCENT: [Retail quota %]
+NII_QUOTA_PERCENT: [NII quota %]
+QIB_QUOTA_PERCENT: [QIB quota %]
+EMPLOYEE_QUOTA_PERCENT: [Employee quota %, or 0]
+SHAREHOLDER_QUOTA_PERCENT: [Shareholder quota %, or 0]
+OBJECTIVE_1: [First IPO objective]
+OBJECTIVE_2: [Second IPO objective]
+OBJECTIVE_3: [Third IPO objective]
+[Add more OBJECTIVE_N for additional objectives]
+=== END ===
+
+List all objectives of the issue from the DRHP/RHP. Use 0 for any quota not mentioned.`
 }
