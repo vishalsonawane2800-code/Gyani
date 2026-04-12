@@ -6,6 +6,7 @@ import { Footer } from '@/components/footer';
 import { IPOHero } from '@/components/ipo-detail/ipo-hero';
 import { AIPrediction } from '@/components/ipo-detail/ai-prediction';
 import { IssueDetails } from '@/components/ipo-detail/issue-details';
+import { KPITable } from '@/components/ipo-detail/kpi-table';
 import { CompanyFinancials } from '@/components/ipo-detail/company-financials';
 import { IPOTabs } from '@/components/ipo-detail/ipo-tabs';
 import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
@@ -96,6 +97,9 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* Issue Details Section */}
             <IssueDetails ipo={ipo} />
             
+            {/* KPI Section */}
+            {ipo.kpi && <KPITable kpi={ipo.kpi} ipoSlug={ipo.slug} />}
+            
             {/* Company Financials Section */}
             <CompanyFinancials ipo={ipo} />
             
@@ -110,7 +114,9 @@ export default async function IPODetailPage({ params }: PageProps) {
             </div>
             
             {/* Peer Comparison */}
-            <PeerComparison ipo={ipo} peers={ipo.peerCompanies} />
+            <div id="peer-comparison">
+              <PeerComparison ipo={ipo} peers={ipo.peerCompanies} />
+            </div>
             
             {/* Tabs - Overview, Financials, GMP History, Subscription */}
             <IPOTabs ipo={ipo} />

@@ -50,6 +50,14 @@ export interface GMPEntry {
   time_slot: 'morning' | 'evening'
 }
 
+export interface KPIEntry {
+  kpi_type: 'dated' | 'pre_post'
+  metric: string
+  date_label?: string
+  value?: number
+  text_value?: string
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -471,6 +479,175 @@ export function parseGMPHistory(text: string): ParseResult<GMPEntry> {
 }
 
 // ============================================
+// KPI PARSER
+// ============================================
+
+/**
+ * Parse KPI data from structured text
+ * 
+ * Example input:
+ * === KPI ===
+ * DATE_LABEL_1: Dec 31, 2025
+ * DATE_LABEL_2: Mar 31, 2025
+ * ROE_1: 24.28
+ * ROE_2: 35.83
+ * ROCE_1: 26.53
+ * ROCE_2: 41.76
+ * DEBT_EQUITY_1: 0.32
+ * DEBT_EQUITY_2: 0.26
+ * RONW_1: 19.50
+ * RONW_2: 30.40
+ * PAT_MARGIN_1: 8.45
+ * PAT_MARGIN_2: 7.84
+ * EBITDA_MARGIN_1: 12.38
+ * EBITDA_MARGIN_2: 12.66
+ * PRICE_TO_BOOK: 5.93
+ * EPS_PRE: 8.28
+ * EPS_POST: 9.10
+ * PE_PRE: 21.13
+ * PE_POST: 19.23
+ * PROMOTER_HOLDING_PRE: 92.26
+ * PROMOTER_HOLDING_POST: 68.92
+ * MARKET_CAP: 599.29
+ * PROMOTERS: Kalpesh Dhanjibhai Patel, Kanubhai Patel and Vasantkumar Narayanbhai Patel are the company's promoters.
+ * DISCLAIMER: The financial data is based on...
+ * === END ===
+ */
+export function parseKPI(text: string): ParseResult<KPIEntry> {
+  const result: ParseResult<KPIEntry> = { success: false, data: [], errors: [] }
+  
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  const lines = text.split('\n')
+  const values: Record<string, string> = {}
+  
+  for (const line of lines) {
+    if (line.includes('===') || !line.trim()) continue
+    
+    const match = line.match(/^([A-Z0-9_]+)\s*:\s*(.+)$/i)
+    if (match) {
+      values[match[1].toUpperCase()] = match[2].trim()
+    }
+  }
+
+  // Extract date labels
+  const dateLabels = [values.DATE_LABEL_1, values.DATE_LABEL_2].filter(Boolean)
+
+  // Dated KPIs (with _1 and _2 suffixes)
+  const datedMetrics = ['ROE', 'ROCE', 'DEBT_EQUITY', 'RONW', 'PAT_MARGIN', 'EBITDA_MARGIN']
+  
+  for (const metric of datedMetrics) {
+    const val1 = values[`${metric}_1`]
+    const val2 = values[`${metric}_2`]
+    
+    if (val1 && dateLabels[0]) {
+      const value = parseFloat(val1)
+      if (!isNaN(value)) {
+        result.data.push({
+          kpi_type: 'dated',
+          metric: metric.toLowerCase(),
+          date_label: dateLabels[0],
+          value,
+        })
+      }
+    }
+    if (val2 && dateLabels[1]) {
+      const value = parseFloat(val2)
+      if (!isNaN(value)) {
+        result.data.push({
+          kpi_type: 'dated',
+          metric: metric.toLowerCase(),
+          date_label: dateLabels[1],
+          value,
+        })
+      }
+    }
+  }
+
+  // Price to book (single value)
+  if (values.PRICE_TO_BOOK) {
+    const value = parseFloat(values.PRICE_TO_BOOK)
+    if (!isNaN(value)) {
+      result.data.push({
+        kpi_type: 'dated',
+        metric: 'price_to_book',
+        value,
+      })
+    }
+  }
+
+  // Pre/Post IPO metrics
+  const prePostMetrics = ['EPS', 'PE', 'PROMOTER_HOLDING']
+  
+  for (const metric of prePostMetrics) {
+    const preVal = values[`${metric}_PRE`]
+    const postVal = values[`${metric}_POST`]
+    
+    if (preVal) {
+      const value = parseFloat(preVal)
+      if (!isNaN(value)) {
+        result.data.push({
+          kpi_type: 'pre_post',
+          metric: metric.toLowerCase(),
+          date_label: 'pre',
+          value,
+        })
+      }
+    }
+    if (postVal) {
+      const value = parseFloat(postVal)
+      if (!isNaN(value)) {
+        result.data.push({
+          kpi_type: 'pre_post',
+          metric: metric.toLowerCase(),
+          date_label: 'post',
+          value,
+        })
+      }
+    }
+  }
+
+  // Market Cap
+  if (values.MARKET_CAP) {
+    const value = parseFloat(values.MARKET_CAP)
+    if (!isNaN(value)) {
+      result.data.push({
+        kpi_type: 'pre_post',
+        metric: 'market_cap',
+        value,
+      })
+    }
+  }
+
+  // Text fields
+  if (values.PROMOTERS) {
+    result.data.push({
+      kpi_type: 'pre_post',
+      metric: 'promoters',
+      text_value: values.PROMOTERS,
+    })
+  }
+  if (values.DISCLAIMER) {
+    result.data.push({
+      kpi_type: 'pre_post',
+      metric: 'disclaimer',
+      text_value: values.DISCLAIMER,
+    })
+  }
+
+  if (result.data.length === 0) {
+    result.errors.push('No valid KPI data found. Use format: ROE_1: 24.28')
+  } else {
+    result.success = true
+  }
+
+  return result
+}
+
+// ============================================
 // FORMAT TEMPLATES (for display in UI)
 // ============================================
 
@@ -533,6 +710,33 @@ TIME_SLOT: evening
 GMP: 4.0
 === END ===`
 
+export const KPI_TEMPLATE = `=== KPI ===
+DATE_LABEL_1: Dec 31, 2025
+DATE_LABEL_2: Mar 31, 2025
+ROE_1: 24.28
+ROE_2: 35.83
+ROCE_1: 26.53
+ROCE_2: 41.76
+DEBT_EQUITY_1: 0.32
+DEBT_EQUITY_2: 0.26
+RONW_1: 19.50
+RONW_2: 30.40
+PAT_MARGIN_1: 8.45
+PAT_MARGIN_2: 7.84
+EBITDA_MARGIN_1: 12.38
+EBITDA_MARGIN_2: 12.66
+PRICE_TO_BOOK: 5.93
+EPS_PRE: 8.28
+EPS_POST: 9.10
+PE_PRE: 21.13
+PE_POST: 19.23
+PROMOTER_HOLDING_PRE: 92.26
+PROMOTER_HOLDING_POST: 68.92
+MARKET_CAP: 599.29
+PROMOTERS: Kalpesh Dhanjibhai Patel, Kanubhai Patel and Vasantkumar are the company's promoters.
+DISCLAIMER: The financial data is based on the company's DRHP and RHP.
+=== END ===`
+
 // AI Prompt templates for generating formatted data
 export const AI_PROMPTS = {
   financials: `Convert the following financial data into this exact format:
@@ -585,5 +789,35 @@ GMP: [value]
 [repeat for each entry]
 === END ===
 
-Use "morning" for 12 PM data and "evening" for 10 PM data.`
+Use "morning" for 12 PM data and "evening" for 10 PM data.`,
+
+  kpi: `Convert the following KPI data into this exact format:
+=== KPI ===
+DATE_LABEL_1: [First date, e.g., Dec 31, 2025]
+DATE_LABEL_2: [Second date, e.g., Mar 31, 2025]
+ROE_1: [ROE % for first date]
+ROE_2: [ROE % for second date]
+ROCE_1: [ROCE % for first date]
+ROCE_2: [ROCE % for second date]
+DEBT_EQUITY_1: [D/E ratio for first date]
+DEBT_EQUITY_2: [D/E ratio for second date]
+RONW_1: [RoNW % for first date]
+RONW_2: [RoNW % for second date]
+PAT_MARGIN_1: [PAT Margin % for first date]
+PAT_MARGIN_2: [PAT Margin % for second date]
+EBITDA_MARGIN_1: [EBITDA Margin % for first date]
+EBITDA_MARGIN_2: [EBITDA Margin % for second date]
+PRICE_TO_BOOK: [Price to Book Value ratio]
+EPS_PRE: [EPS before IPO]
+EPS_POST: [EPS after IPO]
+PE_PRE: [P/E ratio before IPO]
+PE_POST: [P/E ratio after IPO]
+PROMOTER_HOLDING_PRE: [Promoter holding % before IPO]
+PROMOTER_HOLDING_POST: [Promoter holding % after IPO]
+MARKET_CAP: [Market Cap in Cr]
+PROMOTERS: [Promoter names and description]
+DISCLAIMER: [Any disclaimer text]
+=== END ===
+
+Use _1 suffix for first date column and _2 suffix for second date column. Use _PRE for pre-IPO and _POST for post-IPO values.`
 }
