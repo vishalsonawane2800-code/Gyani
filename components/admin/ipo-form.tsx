@@ -16,6 +16,7 @@ import {
 import { toast } from 'sonner'
 import { Loader2, Upload, X, Image as ImageIcon, Info, RefreshCw, Brain } from 'lucide-react'
 import Image from 'next/image'
+import { useAuth } from '@/lib/auth-context'
 
 /* =========================================================================
    IPO ADMIN FORM - User Guide
@@ -130,6 +131,7 @@ interface IPOFormProps {
 
 export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
   const router = useRouter()
+  const { authFetch } = useAuth()
   const [loading, setLoading] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [bulkData, setBulkData] = useState<string>('')
@@ -194,7 +196,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
       formDataUpload.append('file', file)
       formDataUpload.append('slug', formData.slug || 'temp')
 
-      const response = await fetch('/api/admin/upload-logo', {
+      const response = await authFetch('/api/admin/upload-logo', {
         method: 'POST',
         body: formDataUpload,
       })
@@ -247,7 +249,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
 
         try {
           const url = '/api/admin/ipos'
-          const response = await fetch(url, {
+          const response = await authFetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(ipo),
@@ -290,7 +292,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         : '/api/admin/ipos'
       const method = isEditing ? 'PUT' : 'POST'
 
-      const response = await fetch(url, {
+      const response = await authFetch(url, {
         method,
         headers: {
           'Content-Type': 'application/json',
