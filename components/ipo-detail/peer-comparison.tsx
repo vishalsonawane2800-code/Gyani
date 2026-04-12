@@ -20,7 +20,9 @@ interface PeerComparisonProps {
 function formatCr(value: number): string {
   if (value >= 100000) return `${(value / 100000).toFixed(0)}L Cr`;
   if (value >= 1000) return `${(value / 1000).toFixed(1)}K Cr`;
-  return `${value} Cr`;
+  // Round to 2 decimal places for cleaner display
+  const rounded = Math.round(value * 100) / 100;
+  return `${rounded} Cr`;
 }
 
 function getComparisonIndicator(ipoValue: number, avgPeerValue: number, lowerIsBetter = false) {
