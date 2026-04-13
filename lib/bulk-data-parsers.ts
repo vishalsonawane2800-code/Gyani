@@ -76,6 +76,7 @@ export interface SubscriptionEntry {
   date: string // YYYY-MM-DD
   time: string // e.g., "17:00" or "5:00 PM"
   day_number: number
+  anchor: number
   retail: number
   nii: number
   snii: number
@@ -823,6 +824,7 @@ export function parseSubscriptionHistory(text: string): ParseResult<Subscription
     if (!block.trim() || block.includes('===')) continue
     
     const entry: Partial<SubscriptionEntry> = {
+      anchor: 0,
       snii: 0,
       bnii: 0,
       employee: 0,
@@ -858,6 +860,9 @@ export function parseSubscriptionHistory(text: string): ParseResult<Subscription
           case 'DAY':
           case 'DAY_NUMBER':
             entry.day_number = parseInt(value) || 1
+            break
+          case 'ANCHOR':
+            entry.anchor = parseFloat(value.replace(/[x,\s]/g, '')) || 0
             break
           case 'RETAIL':
             entry.retail = parseFloat(value.replace(/[x,\s]/g, '')) || 0
@@ -896,6 +901,7 @@ export function parseSubscriptionHistory(text: string): ParseResult<Subscription
         date: entry.date,
         time: entry.time || '17:00',
         day_number: entry.day_number || 1,
+        anchor: entry.anchor || 0,
         retail: entry.retail || 0,
         nii: entry.nii || 0,
         snii: entry.snii || 0,
@@ -1029,6 +1035,7 @@ export const SUBSCRIPTION_HISTORY_TEMPLATE = `=== SUBSCRIPTION_HISTORY ===
 DATE: 2026-04-10
 TIME: 17:00
 DAY: 1
+ANCHOR: 0
 RETAIL: 0.45
 NII: 0.23
 SNII: 0.12
@@ -1041,6 +1048,7 @@ IS_FINAL: false
 DATE: 2026-04-11
 TIME: 17:00
 DAY: 2
+ANCHOR: 0
 RETAIL: 1.85
 NII: 0.98
 QIB: 0.45
@@ -1049,6 +1057,7 @@ TOTAL: 1.12
 DATE: 2026-04-12
 TIME: 17:00
 DAY: 3
+ANCHOR: 1.0
 RETAIL: 5.24
 NII: 3.12
 QIB: 2.45
@@ -1166,6 +1175,7 @@ List all objectives of the issue from the DRHP/RHP. Use 0 for any quota not ment
 DATE: [YYYY-MM-DD]
 TIME: [HH:MM, e.g., 17:00]
 DAY: [Day number 1, 2, or 3]
+ANCHOR: [Anchor investor subscription times, or 0]
 RETAIL: [Retail subscription times, e.g., 1.85]
 NII: [NII subscription times]
 SNII: [sNII subscription times, if available]
