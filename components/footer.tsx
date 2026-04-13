@@ -38,21 +38,21 @@ export function Footer() {
               height={53}
               className="h-[53px] w-auto mb-3 brightness-0 invert"
             />
-            <p className="text-[12.5px] leading-relaxed max-w-[280px] text-white/50">
+            <p className="text-sm leading-relaxed max-w-xs text-white/50">
               {"India's most intelligent IPO research platform. Live GMP, AI predictions, and India's most complete listed IPO database."}
             </p>
           </div>
 
           {/* IPO Lists */}
           <div>
-            <h4 className="text-[11px] font-extrabold tracking-wider uppercase text-white/35 mb-3">
+            <h4 className="text-xs font-extrabold tracking-wider uppercase text-white/35 mb-3">
               IPO Lists
             </h4>
             {footerLinks.ipoLists.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block text-[13px] text-white/55 mb-2 transition-colors hover:text-white"
+                className="block text-sm text-white/55 mb-2 transition-colors hover:text-white"
               >
                 {link.label}
               </Link>
@@ -61,14 +61,14 @@ export function Footer() {
 
           {/* Tools */}
           <div>
-            <h4 className="text-[11px] font-extrabold tracking-wider uppercase text-white/35 mb-3">
+            <h4 className="text-xs font-extrabold tracking-wider uppercase text-white/35 mb-3">
               Tools
             </h4>
             {footerLinks.tools.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block text-[13px] text-white/55 mb-2 transition-colors hover:text-white"
+                className="block text-sm text-white/55 mb-2 transition-colors hover:text-white"
               >
                 {link.label}
               </Link>
@@ -77,14 +77,14 @@ export function Footer() {
 
           {/* Info */}
           <div>
-            <h4 className="text-[11px] font-extrabold tracking-wider uppercase text-white/35 mb-3">
+            <h4 className="text-xs font-extrabold tracking-wider uppercase text-white/35 mb-3">
               Info
             </h4>
             {footerLinks.info.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block text-[13px] text-white/55 mb-2 transition-colors hover:text-white"
+                className="block text-sm text-white/55 mb-2 transition-colors hover:text-white"
               >
                 {link.label}
               </Link>
@@ -93,7 +93,7 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="flex flex-wrap justify-between items-center pt-5 border-t border-white/10 text-[12px] gap-2">
+        <div className="flex flex-wrap justify-between items-center pt-5 border-t border-white/10 text-xs gap-2">
           <span>2026 IPOGyani. All rights reserved</span>
           <span>Privacy. Terms. Disclaimer. Contact</span>
         </div>
