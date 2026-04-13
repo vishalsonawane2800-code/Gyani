@@ -196,12 +196,10 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
 }
 
 function GMPHistoryTab({ ipo }: { ipo: IPO }) {
-  // Use actual GMP history data if available, otherwise generate mock
   const gmpHistory = ipo.gmpHistory || [
     { date: 'Today', gmp: ipo.gmp, gmpPercent: ipo.gmpPercent, source: 'IPOWatch' },
   ];
 
-  // Prepare data for chart (reverse to show chronological order)
   const chartData = [...gmpHistory].reverse().map((entry, index) => ({
     name: entry.date.includes('2026') ? new Date(entry.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : entry.date,
     gmp: entry.gmp,
@@ -229,7 +227,6 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
         </span>
       </div>
 
-      {/* GMP Chart */}
       <div className="bg-secondary rounded-lg p-4 mb-4">
         <ChartContainer config={chartConfig} className="h-56 min-h-56 w-full">
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
@@ -264,7 +261,6 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
         </ChartContainer>
       </div>
 
-      {/* GMP History Table */}
       <h4 className="font-semibold text-sm mb-3">Historical Data</h4>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-collapse">
@@ -308,16 +304,13 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
 }
 
 function SubscriptionTab({ ipo }: { ipo: IPO }) {
-  // Use actual subscription history if available
   const subHistory = ipo.subscriptionHistory || [];
   const subscription = ipo.subscription ?? { total: 0, retail: 0, nii: 0, qib: 0, isFinal: false, day: 0 };
 
-  // Get last updated time from subscription history or use current time
   const lastUpdated = subHistory.length > 0 
     ? `${new Date(subHistory[0].date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} ${subHistory[0].time}`
     : new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-  // Organize subscription history by day
   const dayWiseData: { [key: string]: typeof subHistory } = {};
   subHistory.forEach((entry) => {
     const day = entry.date.includes('2026') 
@@ -347,7 +340,6 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
 
   return (
     <div className="space-y-6">
-      {/* Live Subscription Summary */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold">
@@ -361,7 +353,6 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
           </div>
         </div>
 
-        {/* Live Subscription Table */}
         <div className="overflow-x-auto border border-border rounded-lg">
           <table className="w-full text-sm border-collapse">
             <thead>
@@ -397,7 +388,6 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         </div>
       </div>
 
-      {/* Day-wise Subscription */}
       {subHistory.length > 0 && (
         <div>
           <h3 className="text-lg font-bold mb-4">Day-wise Subscription</h3>
