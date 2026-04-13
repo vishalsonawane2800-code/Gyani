@@ -130,9 +130,9 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-sans), 'Inter', system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), 'DM Sans', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-  --font-heading: var(--font-sans), 'Inter', system-ui, sans-serif;
+  --font-heading: var(--font-sora), 'Sora', system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -193,7 +193,7 @@
     @apply border-border outline-ring/50;
   }
   html, body {
-    @apply bg-background text-foreground overflow-x-hidden text-base;
+    @apply bg-background text-foreground overflow-x-hidden text-[18px] sm:text-[19px];
   }
 }
 
@@ -223,6 +223,9 @@
 }
 
 /* Utility Classes */
+.font-heading {
+  font-family: var(--font-sora), 'Sora', system-ui, sans-serif;
+}
 
 /* Violet gradient - fintech theme */
 .bg-vgrad {

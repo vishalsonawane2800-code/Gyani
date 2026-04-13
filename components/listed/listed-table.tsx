@@ -107,27 +107,27 @@ export function ListedTable() {
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       {/* Results Info */}
       <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/30">
-        <span className="text-xs sm:text-sm text-ink3">
+        <span className="text-[12.5px] text-ink3">
           Showing <strong className="text-foreground">{(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, filteredData.length)}</strong> of <strong className="text-foreground">{filteredData.length}</strong> IPOs
         </span>
       </div>
 
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="w-full text-xs sm:text-sm border-collapse">
+        <table className="w-full text-[13px] border-collapse">
           <thead>
             <tr className="bg-secondary">
-              <th className="text-left text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap min-w-[180px]"># Company</th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Exchange</th>
-              <th className="text-left text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Sector</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Date</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Issue Price</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Price</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Gain</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Subscription</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">AI Pred.</th>
-              <th className="text-right text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">AI Error</th>
-              <th className="text-center text-xs font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Details</th>
+              <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap min-w-[180px]"># Company</th>
+              <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Exchange</th>
+              <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Sector</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Date</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Issue Price</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Price</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Listing Gain</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Subscription</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">AI Pred.</th>
+              <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">AI Error</th>
+              <th className="text-center text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-3 whitespace-nowrap">Details</th>
             </tr>
           </thead>
           <tbody>
@@ -143,7 +143,7 @@ export function ListedTable() {
                   <td className="py-3 px-3">
                     <div className="flex items-center gap-2">
                 <div
-                  className="w-7 h-7 rounded flex items-center justify-center text-xs font-black shrink-0"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-[9px] font-black shrink-0"
                   style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                 >
                   {generateAbbr(ipo.name)}
@@ -152,25 +152,25 @@ export function ListedTable() {
                         <Link href={`/ipo/${ipo.slug}`} className="font-bold text-primary hover:underline">
                           {ipo.name}
                         </Link>
-                        <div className="text-xs text-ink3">{ipo.sector}</div>
+                        <div className="text-[10.5px] text-ink3">{ipo.sector}</div>
                       </div>
                     </div>
                   </td>
                   <td className="py-3 px-3">
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${getExchangeBadge(ipo.exchange)}`}>
+                    <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge(ipo.exchange)}`}>
                       {ipo.exchange}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-xs text-ink3">{ipo.sector}</td>
-                  <td className="py-3 px-3 text-right text-xs text-ink2 whitespace-nowrap">{formatDate(ipo.listDate)}</td>
-                  <td className="py-3 px-3 text-right font-bold">
+                  <td className="py-3 px-3 text-[12px] text-ink3">{ipo.sector}</td>
+                  <td className="py-3 px-3 text-right text-[12.5px] text-ink2 whitespace-nowrap">{formatDate(ipo.listDate)}</td>
+                  <td className="py-3 px-3 text-right font-[family-name:var(--font-sora)] font-bold">
                     Rs {ipo.issuePrice.toLocaleString()}
                   </td>
-                  <td className={`py-3 px-3 text-right font-bold ${gainColor}`}>
+                  <td className={`py-3 px-3 text-right font-[family-name:var(--font-sora)] font-bold ${gainColor}`}>
                     Rs {ipo.listPrice.toLocaleString()}
                   </td>
                   <td className="py-3 px-3 text-right">
-                    <span className={`inline-block text-xs font-bold px-2 py-0.5 rounded-lg ${gainBg} ${gainColor}`}>
+                    <span className={`inline-block text-[12px] font-bold px-2 py-0.5 rounded-lg ${gainBg} ${gainColor}`}>
                       {isPositive ? '+' : ''}{ipo.gainPct.toFixed(1)}%
                     </span>
                   </td>
@@ -180,13 +180,13 @@ export function ListedTable() {
                   <td className="py-3 px-3 text-right font-bold text-primary">
                     {ipo.aiPred}
                   </td>
-                  <td className={`py-3 px-3 text-right text-xs font-bold ${errColor}`}>
+                  <td className={`py-3 px-3 text-right text-[11.5px] font-bold ${errColor}`}>
                     {ipo.aiErr}%
                   </td>
                   <td className="py-3 px-3 text-center">
                     <Link 
                       href={`/ipo/${ipo.slug}`}
-                      className="text-xs font-semibold text-cobalt-mid hover:underline whitespace-nowrap"
+                      className="text-[12px] font-semibold text-cobalt-mid hover:underline whitespace-nowrap"
                     >
                       View
                     </Link>

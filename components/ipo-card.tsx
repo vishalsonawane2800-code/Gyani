@@ -88,21 +88,21 @@ export function IPOCard({ ipo }: IPOCardProps) {
       {/* Header */}
       <div className="flex gap-3 mb-3">
         <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm shrink-0"
+          className="w-10 h-10 rounded-[10px] flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-[13px] shrink-0"
           style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
         >
           {abbr}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-sm sm:text-base truncate">{ipo.name}</h3>
-          <p className="text-xs text-ink3 mt-0.5">
+          <h3 className="font-bold text-[13.5px] truncate">{ipo.name}</h3>
+          <p className="text-[11px] text-ink3 mt-0.5">
             {formatDateRange(ipo.openDate, ipo.closeDate)}
           </p>
-          <div className="flex gap-2 flex-wrap mt-2">
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${statusBadge.className}`}>
+          <div className="flex gap-1.5 flex-wrap mt-1.5">
+            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl border ${statusBadge.className}`}>
               {statusBadge.label}
             </span>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${getExchangeBadge()}`}>
+            <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge()}`}>
               {ipo.exchange}
             </span>
           </div>
@@ -110,71 +110,71 @@ export function IPOCard({ ipo }: IPOCardProps) {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-1.5 mb-2.5">
         <div className="bg-secondary rounded-lg p-2">
-          <p className="text-xs text-ink4 font-semibold mb-1">Price Band</p>
-          <p className="text-sm font-bold">
+          <p className="text-[9.5px] text-ink4 font-semibold mb-0.5">Price Band</p>
+          <p className="text-[13.5px] font-bold font-[family-name:var(--font-sora)]">
             {ipo.priceMax >= 100000 ? formatPrice(ipo.priceMax) : `Rs ${ipo.priceMin}-${ipo.priceMax}`}
           </p>
-          <p className="text-xs text-ink4">Lot: {ipo.lotSize.toLocaleString()}</p>
+          <p className="text-[9.5px] text-ink4">Lot: {ipo.lotSize.toLocaleString()}</p>
         </div>
         <div className="bg-secondary rounded-lg p-2">
-          <p className="text-xs text-ink4 font-semibold mb-1">Subscription</p>
-          <p className={`text-sm font-bold ${
+          <p className="text-[9.5px] text-ink4 font-semibold mb-0.5">Subscription</p>
+          <p className={`text-[13.5px] font-bold font-[family-name:var(--font-sora)] ${
             ipo.subscription.total > 1 ? 'text-emerald-mid' : ipo.subscription.total > 0 ? 'text-gold-mid' : 'text-ink4'
           }`}>
             {ipo.subscription.total > 0 ? `${ipo.subscription.total}x` : '-'}
           </p>
-          <p className="text-xs text-ink4">
+          <p className="text-[9.5px] text-ink4">
             {ipo.subscription.isFinal ? 'Final' : ipo.subscription.day > 0 ? `Day ${ipo.subscription.day}` : 'Not open'}
           </p>
         </div>
         <div className="bg-secondary rounded-lg p-2">
-          <p className="text-xs text-ink4 font-semibold mb-1">Issue Size</p>
-          <p className="text-sm font-bold">
+          <p className="text-[9.5px] text-ink4 font-semibold mb-0.5">Issue Size</p>
+          <p className="text-[13.5px] font-bold font-[family-name:var(--font-sora)]">
             Rs {ipo.issueSize}
           </p>
-          <p className="text-xs text-ink4">{ipo.exchange === 'REIT' ? 'REIT' : ipo.ofs === 'Nil' ? 'Fresh' : 'OFS'}</p>
+          <p className="text-[9.5px] text-ink4">{ipo.exchange === 'REIT' ? 'REIT' : ipo.ofs === 'Nil' ? 'Fresh' : 'OFS'}</p>
         </div>
       </div>
 
       {/* GMP Row */}
-      <div className="flex items-center gap-2 py-2 px-3 bg-secondary rounded-lg mb-2 text-sm">
-        <span className="text-xs font-extrabold text-ink4 tracking-wide">GMP</span>
-        <span className={`font-extrabold text-base ${
+      <div className="flex items-center gap-2 py-2 px-2.5 bg-secondary rounded-lg mb-2 text-[12.5px]">
+        <span className="text-[9.5px] font-extrabold text-ink4 tracking-wide">GMP</span>
+        <span className={`font-extrabold font-[family-name:var(--font-sora)] text-sm ${
           isZeroGMP ? 'text-ink3' : isPositiveGMP ? 'text-emerald-mid' : 'text-destructive'
         }`}>
           {isZeroGMP ? 'Rs 0' : isPositiveGMP ? `+Rs ${ipo.gmp.toLocaleString()}` : `-Rs ${Math.abs(ipo.gmp).toLocaleString()}`}
         </span>
-        <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-xl ${
           isZeroGMP ? 'bg-secondary text-ink3 border border-border' : isPositiveGMP ? 'bg-emerald-bg text-emerald' : 'bg-destructive-bg text-destructive'
         }`}>
           {isZeroGMP ? '0%' : isPositiveGMP ? `+${ipo.gmpPercent}%` : `${ipo.gmpPercent}%`}
         </span>
-        <div className="flex items-center gap-1 text-xs text-ink4 ml-auto">
-          <Clock className="w-4 h-4" />
+        <div className="flex items-center gap-1 text-[10px] text-ink4 ml-auto">
+          <Clock className="w-3 h-3" />
           <span>{timeAgo || 'just now'}</span>
         </div>
       </div>
 
       {/* Market Sentiment Score */}
-      <div className="flex items-center gap-2 py-2 px-3 border border-primary/20 bg-primary-bg/50 rounded-lg mb-3 text-sm">
-        <Star className="w-4 h-4 text-primary" fill="currentColor" />
-        <span className="text-xs text-ink3 font-semibold shrink-0">Market Sentiment</span>
-        <div className="flex-1 h-2 bg-primary/20 rounded-full overflow-hidden">
+      <div className="flex items-center gap-2 py-2 px-2.5 border border-primary/20 bg-primary-bg/50 rounded-lg mb-2.5 text-[12px]">
+        <Star className="w-3 h-3 text-primary" fill="currentColor" />
+        <span className="text-[10px] text-ink3 font-semibold shrink-0">Market Sentiment</span>
+        <div className="flex-1 h-1.5 bg-primary/20 rounded-full overflow-hidden">
           <div 
             className="h-full rounded-full bg-primary"
             style={{ width: `${ipo.aiConfidence}%` }}
           />
         </div>
-        <span className="font-extrabold text-base shrink-0 text-primary">
+        <span className="font-extrabold font-[family-name:var(--font-sora)] text-sm shrink-0 text-primary">
           {ipo.aiConfidence}/100
         </span>
       </div>
 
       {/* Action */}
       <div className="flex">
-        <span className="flex-1 text-center py-2 rounded-lg text-sm font-bold bg-primary text-white cursor-pointer transition-opacity hover:opacity-90">
+        <span className="flex-1 text-center py-2 rounded-lg text-[12px] font-bold bg-primary text-white cursor-pointer transition-opacity hover:opacity-90">
           View Analysis
         </span>
       </div>
