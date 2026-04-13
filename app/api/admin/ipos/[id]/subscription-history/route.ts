@@ -84,6 +84,7 @@ export async function POST(
       date: s.date,
       time: s.time,
       day_number: s.day_number,
+      anchor: s.anchor,
       retail: s.retail,
       nii: s.nii,
       snii: s.snii,
