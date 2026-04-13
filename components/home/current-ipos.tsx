@@ -64,24 +64,24 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   return (
     <section id="current" className="mb-7">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-2.5">
+          <h2 className="font-[family-name:var(--font-sora)] text-[17px] font-bold">
             Current IPO
           </h2>
-          <span className="text-xs font-extrabold py-1 px-3 rounded-full bg-emerald-bg text-emerald">
+          <span className="text-[10.5px] font-extrabold py-0.5 px-2.5 rounded-full bg-emerald-bg text-emerald">
             {activeCount} Active
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Filter Toggle */}
-          <div className="flex bg-secondary rounded-lg p-1 gap-1">
+          <div className="flex bg-secondary rounded-lg p-0.5 gap-0.5">
             {(['all', 'main', 'sme'] as FilterType[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setFilter(type)}
-                className={`text-xs sm:text-sm font-semibold py-1 px-3 rounded transition-all ${
+                className={`text-[11.5px] font-semibold py-1 px-3 rounded-md transition-all ${
                   filter === type
                     ? 'bg-card text-foreground shadow-sm'
                     : 'text-ink3 hover:text-foreground'
@@ -98,7 +98,7 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
 
           <Link
             href="/listed"
-            className="text-xs sm:text-sm font-semibold text-primary hover:opacity-75 transition-opacity"
+            className="text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity"
           >
             View All
           </Link>
@@ -113,20 +113,20 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       </div>
 
       {/* Status Legend */}
-      <div className="flex flex-wrap gap-4 mt-4 text-xs">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap gap-3 mt-3 text-[10px]">
+        <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-emerald"></span>
           <span className="text-ink3">Listing Day</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-primary"></span>
           <span className="text-ink3">Allotment Day</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-gold"></span>
           <span className="text-ink3">Last Day</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cobalt"></span>
           <span className="text-ink3">Open</span>
         </div>

@@ -43,59 +43,59 @@ function CategoryStats({
       {/* All 6 boxes - 3 columns on mobile, 6 columns on desktop */}
       <div className="grid grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         {/* 1. Mainboard Listed IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-cobalt leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-cobalt leading-none">
             {stats.total}
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">{label} Listed</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">{label} Listed</div>
         </div>
 
         {/* 2. Upcoming IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-cobalt-mid leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-cobalt-mid leading-none">
             {stats.upcoming}
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Upcoming IPOs</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
 
         {/* 3. Avg Subscription */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-gold-mid leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Subscription</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">Avg Subscription</div>
         </div>
 
         {/* 4. Avg Listing Gains with Median (combined box) */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className={`text-xl sm:text-2xl font-black leading-none ${
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className={`font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black leading-none ${
             stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
-          <div className={`text-sm sm:text-base font-black mt-1 ${
+          <div className="text-[9px] sm:text-[10px] text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
+          <div className={`text-[11px] sm:text-[12px] font-black mt-0.5 ${
             manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
-          <div className="text-xs sm:text-sm text-ink3 leading-tight font-semibold">Median Listing Gains</div>
+          <div className="text-[8px] sm:text-[9px] text-ink3 leading-tight font-semibold">Median Listing Gains</div>
         </div>
 
         {/* 5. IPOs Open in Profit */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-emerald leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-emerald leading-none">
             {stats.inGainOnListing}
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">IPOs Open in Profit</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Profit</div>
         </div>
 
         {/* 6. IPOs Open in Loss */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-destructive leading-none">
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-xl p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-[80px] sm:min-h-[90px]">
+          <div className="font-[family-name:var(--font-sora)] text-[16px] sm:text-[18px] font-black text-destructive leading-none">
             {stats.inLossOnListing}
           </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">IPOs Open in Loss</div>
+          <div className="text-[10px] sm:text-[11px] text-ink3 mt-1.5 leading-tight font-semibold">IPOs Open in Loss</div>
         </div>
       </div>
 
@@ -115,27 +115,27 @@ export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={() => setActiveTab('mainboard')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
               activeTab === 'mainboard'
                 ? 'bg-primary text-white shadow-sm'
                 : 'bg-white/60 text-ink2 hover:bg-white/90 border border-white/60'
             }`}
           >
-            <List className="w-4 h-4" />
+            <List className="w-3 h-3" />
             Mainboard
           </button>
           <button
             onClick={() => setActiveTab('sme')}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
               activeTab === 'sme'
                 ? 'bg-primary text-white shadow-sm'
                 : 'bg-white/60 text-ink2 hover:bg-white/90 border border-white/60'
             }`}
           >
-            <TrendingUp className="w-4 h-4" />
+            <TrendingUp className="w-3 h-3" />
             SME
           </button>
-          <span className="ml-auto text-xs font-semibold text-ink3 bg-white/50 px-2 py-1 rounded border border-white/50">
+          <span className="ml-auto text-[9px] font-semibold text-ink3 bg-white/50 px-2 py-1 rounded-md border border-white/50">
             2026 Stats
           </span>
         </div>
