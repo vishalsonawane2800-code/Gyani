@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS subscription_live (
   UNIQUE(ipo_id, category)
 );
 
--- 2. Add additional columns to subscription_history for day-wise tracking
+-- 2. Added the new additional columns to subscription_history for day-wise tracking
 -- Already has retail, nii, qib, snii, bnii, total from previous migration
 -- Adding anchor and employee columns if not exist
 ALTER TABLE subscription_history 
