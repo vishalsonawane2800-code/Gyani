@@ -397,6 +397,111 @@ function parseFinancials(financialsData: any[]): IPO['financials'] | null {
   }
 }
 
+// Get live subscription data for an IPO
+export async function getSubscriptionLive(ipoId: string) {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase
+    .from('subscription_live')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('display_order', { ascending: true })
+  
+  if (error) {
+    console.error('Error fetching subscription_live:', error)
+    return []
+  }
+  
+  return data || []
+}
+
+// Get subscription history for an IPO
+export async function getSubscriptionHistory(ipoId: string) {
+  const supabase = createClient()
+  
+  const { data, error } = await supabase
+    .from('subscription_history')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('date', { ascending: false })
+    .order('time', { ascending: false })
+  
+  if (error) {
+    console.error('Error fetching subscription_history:', error)
+    return []
+  }
+  
+  return data || []
+}
+
+// Upsert live subscription data
+export async function upsertSubscriptionLive(
+  ipoId: string,
+  category: string,
+  data: {
+    subscription_times?: number
+    shares_offered?: number
+    shares_bid_for?: number
+    total_amount_cr?: number
+    display_order?: number
+  }
+) {
+  const supabase = createClient()
+  
+  const { error } = await supabase
+    .from('subscription_live')
+    .upsert(
+      {
+        ipo_id: ipoId,
+        category,
+        ...data,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'ipo_id,category' }
+    )
+  
+  if (error) {
+    console.error('Error upserting subscription_live:', error)
+    throw error
+  }
+}
+
+// Upsert subscription history entry
+export async function upsertSubscriptionHistory(
+  ipoId: string,
+  data: {
+    date: string
+    time?: string
+    day_number?: number
+    anchor?: number
+    retail?: number
+    nii?: number
+    snii?: number
+    bnii?: number
+    qib?: number
+    total?: number
+    employee?: number
+  }
+) {
+  const supabase = createClient()
+  
+  const { error } = await supabase
+    .from('subscription_history')
+    .upsert(
+      {
+        ipo_id: ipoId,
+        ...data,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'ipo_id,date,time' }
+    )
+  
+  if (error) {
+    console.error('Error upserting subscription_history:', error)
+    throw error
+  }
+}
+
 // Transform Supabase IPO to ListedIPO interface expected by components
 function transformToListedIPO(ipo: IPOSimple): ListedIPO {
   const priceMax = ipo.price_max || 0

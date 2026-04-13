@@ -93,6 +93,47 @@ Main IPO data storage.
 - `fresh_issue` - REMOVED
 - `ofs` - REMOVED
 
+### Table: `subscription_live`
+Live/current subscription status by category (like Chittorgarh format).
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| category | TEXT | NO | - | 'anchor', 'qib', 'nii', 'bnii', 'snii', 'retail', 'employee', 'total' |
+| subscription_times | NUMERIC(10,2) | YES | 0 | Subscription times (e.g., 1.52x) |
+| shares_offered | BIGINT | YES | 0 | Total shares offered |
+| shares_bid_for | BIGINT | YES | 0 | Shares bid for |
+| total_amount_cr | NUMERIC(12,2) | YES | 0 | Total amount in Crores |
+| display_order | INT | YES | 0 | Order for display |
+| updated_at | TIMESTAMPTZ | YES | NOW() | Last update time |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+**Unique Constraint:** `(ipo_id, category)` - ensures one entry per category per IPO
+
+### Table: `subscription_history`
+Day-wise historical subscription data for IPOs.
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| id | UUID | NO | gen_random_uuid() | Primary key |
+| ipo_id | UUID | NO | - | Foreign key to ipos |
+| date | DATE | NO | - | Subscription date |
+| time | TEXT | YES | '17:00' | Time of snapshot |
+| day_number | INT | YES | 1 | Day 1, 2, or 3 |
+| anchor | NUMERIC | YES | 0 | Anchor subscription times |
+| retail | NUMERIC | YES | 0 | Retail subscription times |
+| nii | NUMERIC | YES | 0 | NII subscription times |
+| snii | NUMERIC | YES | 0 | sNII (< Rs 10L) subscription times |
+| bnii | NUMERIC | YES | 0 | bNII (> Rs 10L) subscription times |
+| qib | NUMERIC | YES | 0 | QIB subscription times |
+| total | NUMERIC | YES | 0 | Total subscription times |
+| employee | NUMERIC | YES | 0 | Employee subscription times |
+| updated_at | TIMESTAMPTZ | YES | NOW() | Last update time |
+| created_at | TIMESTAMPTZ | YES | NOW() | Created timestamp |
+
+**Unique Constraint:** `(ipo_id, date, time)` - ensures one snapshot per IPO per timestamp
+
 ### Table: `gmp_history`
 Grey Market Premium history tracking.
 
