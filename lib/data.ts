@@ -14,10 +14,24 @@ export interface GMPHistoryEntry {
 export interface SubscriptionHistoryEntry {
   date: string;
   time: string;
+  dayNumber?: number;
   retail: number;
   nii: number;
+  bnii?: number; // bNII (> Rs 10L)
+  snii?: number; // sNII (< Rs 10L)
   qib: number;
+  anchor?: number;
+  employee?: number;
   total: number;
+}
+
+export interface SubscriptionLiveEntry {
+  category: 'anchor' | 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'total';
+  subscriptionTimes: number;
+  sharesOffered: number;
+  sharesBidFor: number;
+  totalAmountCr: number;
+  displayOrder: number;
 }
 
 export interface ExpertReview {
@@ -131,6 +145,8 @@ export interface IPO {
   // New fields for scraped data storage
   gmpHistory?: GMPHistoryEntry[];
   subscriptionHistory?: SubscriptionHistoryEntry[];
+  subscriptionLive?: SubscriptionLiveEntry[]; // Live subscription by category
+  subscriptionLastUpdated?: string; // Timestamp for live subscription
   expertReviews?: ExpertReview[];
   peerCompanies?: PeerCompany[];
   kpi?: KPIData;
