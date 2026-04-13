@@ -14,10 +14,28 @@ export interface GMPHistoryEntry {
 export interface SubscriptionHistoryEntry {
   date: string;
   time: string;
+  dayNumber?: number;
+  anchor?: number;
   retail: number;
   nii: number;
+  snii?: number;
+  bnii?: number;
   qib: number;
   total: number;
+  employee?: number;
+}
+
+export interface SubscriptionLiveEntry {
+  id?: string;
+  ipoId?: string;
+  category: 'anchor' | 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'total';
+  subscriptionTimes?: number;
+  sharesOffered?: number;
+  sharesBidFor?: number;
+  totalAmountCr?: number;
+  displayOrder?: number;
+  updatedAt?: string;
+  createdAt?: string;
 }
 
 export interface ExpertReview {
@@ -131,6 +149,8 @@ export interface IPO {
   // New fields for scraped data storage
   gmpHistory?: GMPHistoryEntry[];
   subscriptionHistory?: SubscriptionHistoryEntry[];
+  subscriptionLive?: SubscriptionLiveEntry[];
+  subscriptionLastUpdated?: string;
   expertReviews?: ExpertReview[];
   peerCompanies?: PeerCompany[];
   kpi?: KPIData;
