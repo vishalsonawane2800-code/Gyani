@@ -46,9 +46,13 @@ ALTER TABLE ipos ADD COLUMN IF NOT EXISTS subscription_last_updated TIMESTAMPTZ;
 ALTER TABLE subscription_live ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscription_history ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (safer approach)
+DROP POLICY IF EXISTS "subscription_live_public_read" ON subscription_live;
+DROP POLICY IF EXISTS "subscription_history_public_read" ON subscription_history;
+
 -- Public read access
-CREATE POLICY IF NOT EXISTS "subscription_live_public_read" ON subscription_live
+CREATE POLICY "subscription_live_public_read" ON subscription_live
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "subscription_history_public_read" ON subscription_history
+CREATE POLICY "subscription_history_public_read" ON subscription_history
   FOR SELECT USING (true);
