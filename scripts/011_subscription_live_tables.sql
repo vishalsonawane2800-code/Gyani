@@ -1,7 +1,7 @@
 -- Create subscription_live table for live subscription status (Chittorgarh format)
 CREATE TABLE IF NOT EXISTS subscription_live (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  ipo_id INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
   category TEXT NOT NULL CHECK (category IN ('anchor', 'qib', 'nii', 'bnii', 'snii', 'retail', 'employee', 'total')),
   subscription_times NUMERIC(10,2) DEFAULT 0,
   shares_offered BIGINT DEFAULT 0,
@@ -15,8 +15,8 @@ CREATE TABLE IF NOT EXISTS subscription_live (
 
 -- Create subscription_history table for day-wise historical data
 CREATE TABLE IF NOT EXISTS subscription_history (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  ipo_id INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
   date DATE NOT NULL,
   time TEXT DEFAULT '17:00',
   day_number INT DEFAULT 1,
