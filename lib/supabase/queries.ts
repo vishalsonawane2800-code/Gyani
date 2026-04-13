@@ -180,7 +180,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   }
 
   // Fetch related data in parallel
-  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult] = await Promise.all([
+  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult, subscriptionLiveResult, subscriptionHistoryResult] = await Promise.all([
     // Get GMP history
     supabase
       .from('gmp_history')
@@ -220,7 +220,22 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .from('ipo_issue_details')
       .select('*')
       .eq('ipo_id', ipo.id)
-      .maybeSingle()
+      .maybeSingle(),
+
+    // Get subscription live data (category-wise breakdown)
+    supabase
+      .from('subscription_live')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('display_order', { ascending: true }),
+
+    // Get subscription history (day-wise)
+    supabase
+      .from('subscription_history')
+      .select('*')
+      .eq('ipo_id', ipo.id)
+      .order('date', { ascending: true })
+      .order('day_number', { ascending: true })
   ])
 
   const gmpHistory = gmpHistoryResult.data ?? []
@@ -229,6 +244,8 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const peersData = peersResult.data ?? []
   const kpiData = kpiResult.data ?? []
   const issueDetailsData = issueDetailsResult.data
+  const subscriptionLiveData = subscriptionLiveResult.data ?? []
+  const subscriptionHistoryData = subscriptionHistoryResult.data ?? []
 
   // Get latest GMP from history if available
   const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
@@ -285,6 +302,36 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     ipoObjectives: issueDetailsData.ipo_objectives || [],
   } : undefined
 
+  // Parse subscription live data (category-wise breakdown)
+  const subscriptionLive = subscriptionLiveData.map(s => ({
+    category: s.category as 'anchor' | 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'total',
+    subscriptionTimes: s.subscription_times || 0,
+    sharesOffered: s.shares_offered || 0,
+    sharesBidFor: s.shares_bid_for || 0,
+    totalAmountCr: s.total_amount_cr || 0,
+    displayOrder: s.display_order || 0,
+  }))
+
+  // Parse subscription history (day-wise) - includes bNII and sNII
+  const subscriptionHistory = subscriptionHistoryData.map(s => ({
+    date: s.date,
+    time: s.time || '17:00',
+    dayNumber: s.day_number || 1,
+    retail: s.retail || 0,
+    nii: s.nii || 0,
+    bnii: s.bnii || 0,
+    snii: s.snii || 0,
+    qib: s.qib || 0,
+    anchor: s.anchor || 0,
+    employee: s.employee || 0,
+    total: s.total || 0,
+  }))
+
+  // Get last updated time from subscription live data
+  const subscriptionLastUpdated = subscriptionLiveData.length > 0 
+    ? subscriptionLiveData[0].updated_at 
+    : undefined
+
   // Extract P/E ratio and market cap from KPI data for IPO header/overview
   const peRatioFromKPI = kpi?.prePost?.pe?.post || kpi?.prePost?.pe?.pre || 0
   const marketCapFromKPI = kpi?.prePost?.marketCap || 0
@@ -303,6 +350,9 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     peerCompanies: peerCompanies.length > 0 ? peerCompanies : undefined,
     kpi: kpi || undefined,
     issueDetails: issueDetails,
+    subscriptionLive: subscriptionLive.length > 0 ? subscriptionLive : undefined,
+    subscriptionHistory: subscriptionHistory.length > 0 ? subscriptionHistory : undefined,
+    subscriptionLastUpdated: subscriptionLastUpdated,
     gmpHistory: gmpHistory.map(g => ({
       date: g.recorded_at,
       gmp: g.gmp,
