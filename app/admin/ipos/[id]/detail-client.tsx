@@ -263,7 +263,7 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
                 alt={ipo.name}
                 width={56}
                 height={56}
-                className="rounded-lg"
+                className="rounded-lg w-14 h-14 object-cover"
               />
             ) : (
               <div

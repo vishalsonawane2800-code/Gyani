@@ -357,13 +357,13 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
     <div className="space-y-8">
       {/* Section 1: IPO Subscription Status Live */}
       <div>
-        <h3 className="text-base font-bold mb-3">
+        <h3 className="font-[family-name:var(--font-sora)] text-[16px] font-bold mb-3">
           IPO Subscription Status Live
         </h3>
         
         {/* Summary text */}
         {totalSub && (
-          <p className="text-sm text-ink2 mb-4">
+          <p className="text-[13px] text-ink2 mb-4">
             {ipo.name} IPO subscribed {totalSub.subscriptionTimes} times. 
             The public issue subscribed {retailSub?.subscriptionTimes || '-'} times in the retail category
             {subscriptionLive.find(s => s.category === 'qib') && 
@@ -373,9 +373,9 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         )}
 
         {/* Action buttons */}
-        <div className="flex items-center gap-4 mb-4 text-xs sm:text-sm">
+        <div className="flex items-center gap-4 mb-4 text-[12px]">
           <button 
-            className="flex items-center gap-2 text-primary-mid hover:underline"
+            className="flex items-center gap-1.5 text-primary-mid hover:underline"
             onClick={() => window.location.reload()}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -383,7 +383,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
             </svg>
             Reload
           </button>
-          <button className="flex items-center gap-2 text-primary-mid hover:underline">
+          <button className="flex items-center gap-1.5 text-primary-mid hover:underline">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
@@ -393,19 +393,19 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
 
         {/* Live Subscription Table */}
         {subscriptionLive.length > 0 ? (
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-secondary">
                   <th className="text-left py-3 px-4 font-bold text-ink3">Category</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Subscription (x)</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Shares Offered*</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Shares bid for</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">Total Amt* (Rs Cr.)</th>
+                  <th className="text-right py-3 px-4 font-bold text-ink3">{`Total Amt* (Rs Cr.)`}</th>
                 </tr>
               </thead>
               <tbody>
-                {subscriptionLive.map((entry) => {
+                {subscriptionLive.map((entry, index) => {
                   const isTotal = entry.category === 'total';
                   const isSubCategory = entry.category === 'bnii' || entry.category === 'snii';
                   return (
@@ -413,7 +413,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                       key={entry.category} 
                       className={`border-t border-border ${isTotal ? 'bg-secondary font-semibold' : ''}`}
                     >
-                      <td className={`py-3 px-4 ${isSubCategory ? 'pl-8' : ''}`}>
+                      <td className={`py-3 px-4 ${isSubCategory ? 'pl-8' : ''} ${entry.category === 'anchor' || entry.category === 'qib' || entry.category === 'nii' || entry.category === 'retail' ? 'text-primary-mid' : ''}`}>
                         {categoryNames[entry.category] || entry.category}
                       </td>
                       <td className="py-3 px-4 text-right">{entry.subscriptionTimes || '-'}</td>
@@ -429,29 +429,29 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         ) : (
           // Fallback to simple grid view if no live data
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-secondary rounded-lg p-4 text-center">
-              <div className={`text-xl font-extrabold ${subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
+            <div className="bg-secondary rounded-xl p-4 text-center">
+              <div className={`font-[family-name:var(--font-sora)] text-xl font-extrabold ${subscription.total > 1 ? 'text-emerald-mid' : 'text-gold-mid'}`}>
                 {subscription.total > 0 ? `${subscription.total}x` : '-'}
               </div>
-              <div className="text-xs text-ink3 mt-1">Total</div>
+              <div className="text-[11px] text-ink3 mt-1">Total</div>
             </div>
-            <div className="bg-secondary rounded-lg p-4 text-center">
-              <div className="text-xl font-extrabold text-cobalt-mid">
+            <div className="bg-secondary rounded-xl p-4 text-center">
+              <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-cobalt-mid">
                 {subscription.retail || '-'}
               </div>
-              <div className="text-xs text-ink3 mt-1">Retail</div>
+              <div className="text-[11px] text-ink3 mt-1">Retail</div>
             </div>
-            <div className="bg-secondary rounded-lg p-4 text-center">
-              <div className="text-xl font-extrabold text-primary-mid">
+            <div className="bg-secondary rounded-xl p-4 text-center">
+              <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-primary-mid">
                 {subscription.nii || '-'}
               </div>
-              <div className="text-xs text-ink3 mt-1">NII (HNI)</div>
+              <div className="text-[11px] text-ink3 mt-1">NII (HNI)</div>
             </div>
-            <div className="bg-secondary rounded-lg p-4 text-center">
-              <div className="text-xl font-extrabold text-emerald-mid">
+            <div className="bg-secondary rounded-xl p-4 text-center">
+              <div className="font-[family-name:var(--font-sora)] text-xl font-extrabold text-emerald-mid">
                 {subscription.qib || '-'}
               </div>
-              <div className="text-xs text-ink3 mt-1">QIB</div>
+              <div className="text-[11px] text-ink3 mt-1">QIB</div>
             </div>
           </div>
         )}
@@ -460,19 +460,19 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
       {/* Section 2: Day-wise Subscription Details */}
       {subHistory.length > 0 && (
         <div>
-          <h3 className="text-base font-bold mb-4">
+          <h3 className="font-[family-name:var(--font-sora)] text-[16px] font-bold mb-4">
             Day-wise Subscription Details (times)
           </h3>
           
-          <div className="border border-border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="border border-border rounded-xl overflow-hidden">
+            <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-secondary">
                   <th className="text-left py-3 px-4 font-bold text-ink3">Date</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">QIB (Ex Anchor)</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">NII</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">NII (> Rs 10L)</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">NII (< Rs 10L)</th>
+                  <th className="text-right py-3 px-4 font-bold text-ink3">{`NII (> Rs 10L)`}</th>
+                  <th className="text-right py-3 px-4 font-bold text-ink3">{`NII (< Rs 10L)`}</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Retail</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Total</th>
                 </tr>
@@ -483,7 +483,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                   return (
                     <tr key={index} className="border-t border-border">
                       <td className="py-3 px-4">
-                        {dateStr} <span className="text-ink4 text-xs">{getDayText(entry, index)}</span>
+                        {dateStr} <span className="text-ink4">{getDayText(entry, index)}</span>
                       </td>
                       <td className="py-3 px-4 text-right">{entry.qib || '-'}</td>
                       <td className="py-3 px-4 text-right">{entry.nii || '-'}</td>
@@ -518,7 +518,7 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         </div>
       )}
 
-      <p className="text-xs text-ink4">
+      <p className="text-[11px] text-ink4">
         * Subscription data is updated multiple times during IPO period. For complete details, refer to the IPO prospectus.
       </p>
     </div>

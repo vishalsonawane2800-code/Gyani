@@ -556,3 +556,152 @@ export async function getAllIPOSlugs(): Promise<string[]> {
   
   return data?.map(ipo => ipo.slug).filter(Boolean) ?? []
 }
+
+// Subscription Live Data Types
+export interface SubscriptionLive {
+  id: string
+  ipo_id: string
+  category: 'anchor' | 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'total'
+  subscription_times: number
+  shares_offered: number
+  shares_bid_for: number
+  total_amount_cr: number
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface SubscriptionHistory {
+  id: string
+  ipo_id: string
+  date: string
+  time: string
+  day_number: number
+  anchor: number
+  qib: number
+  nii: number
+  bnii: number
+  snii: number
+  retail: number
+  employee: number
+  total: number
+  created_at: string
+  updated_at: string
+}
+
+// Fetch live subscription data for an IPO
+export async function getIPOSubscriptionLive(ipoId: string): Promise<SubscriptionLive[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  const { data, error } = await supabase
+    .from('subscription_live')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('display_order', { ascending: true })
+  
+  if (error) {
+    console.error('Error fetching subscription live data:', error)
+    return []
+  }
+  
+  return data ?? []
+}
+
+// Fetch subscription history for an IPO
+export async function getIPOSubscriptionHistory(ipoId: string): Promise<SubscriptionHistory[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  const { data, error } = await supabase
+    .from('subscription_history')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('date', { ascending: false })
+    .order('time', { ascending: false })
+  
+  if (error) {
+    console.error('Error fetching subscription history:', error)
+    return []
+  }
+  
+  return data ?? []
+}
+
+// Update or insert subscription live data
+export async function upsertSubscriptionLive(data: Omit<SubscriptionLive, 'id' | 'created_at' | 'updated_at'>): Promise<SubscriptionLive | null> {
+  const supabase = await createClient()
+  
+  if (!supabase) return null
+  
+  const { data: result, error } = await supabase
+    .from('subscription_live')
+    .upsert(data, { onConflict: 'ipo_id,category' })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error upserting subscription live data:', error)
+    return null
+  }
+  
+  return result ?? null
+}
+
+// Batch update subscription live data
+export async function batchUpsertSubscriptionLive(items: Omit<SubscriptionLive, 'id' | 'created_at' | 'updated_at'>[]): Promise<boolean> {
+  const supabase = await createClient()
+  
+  if (!supabase) return false
+  
+  const { error } = await supabase
+    .from('subscription_live')
+    .upsert(items, { onConflict: 'ipo_id,category' })
+  
+  if (error) {
+    console.error('Error batch upserting subscription live data:', error)
+    return false
+  }
+  
+  return true
+}
+
+// Insert subscription history
+export async function insertSubscriptionHistory(data: Omit<SubscriptionHistory, 'id' | 'created_at' | 'updated_at'>): Promise<SubscriptionHistory | null> {
+  const supabase = await createClient()
+  
+  if (!supabase) return null
+  
+  const { data: result, error } = await supabase
+    .from('subscription_history')
+    .insert(data)
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error inserting subscription history:', error)
+    return null
+  }
+  
+  return result ?? null
+}
+
+// Batch insert subscription history
+export async function batchInsertSubscriptionHistory(items: Omit<SubscriptionHistory, 'id' | 'created_at' | 'updated_at'>[]): Promise<boolean> {
+  const supabase = await createClient()
+  
+  if (!supabase) return false
+  
+  const { error } = await supabase
+    .from('subscription_history')
+    .insert(items)
+  
+  if (error) {
+    console.error('Error batch inserting subscription history:', error)
+    return false
+  }
+  
+  return true
+}
