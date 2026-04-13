@@ -313,12 +313,6 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
   const subHistory = ipo.subscriptionHistory || [];
   const subscription = ipo.subscription ?? { total: 0, retail: 0, nii: 0, qib: 0, isFinal: false, day: 0 };
 
-  // Debug logging
-  console.log("[v0] SubscriptionTab - IPO:", ipo.name);
-  console.log("[v0] SubscriptionTab - subscriptionLive:", subscriptionLive);
-  console.log("[v0] SubscriptionTab - subscriptionHistory:", subHistory);
-  console.log("[v0] SubscriptionTab - subscription (from ipos table):", subscription);
-
   // Get last updated time
   const lastUpdated = ipo.subscriptionLastUpdated 
     ? new Date(ipo.subscriptionLastUpdated).toLocaleString('en-IN', { 
