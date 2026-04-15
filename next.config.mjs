@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // Remove output: 'standalone' - opennextjs-cloudflare handles output generation
   typescript: {
     ignoreBuildErrors: true,
   },
