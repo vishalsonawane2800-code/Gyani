@@ -1,0 +1,38 @@
+name = "ipogyani"
+type = "service"
+main = ".open-next/worker.js"
+compatibility_date = "2024-04-15"
+
+[env.production]
+name = "ipogyani-prod"
+route = "ipogyani.workers.dev/*"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "ipogyani"
+database_id = "your-database-id"
+
+[env.production.d1_databases]
+binding = "DB"
+database_name = "ipogyani-prod"
+database_id = "your-prod-database-id"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "your-kv-namespace-id"
+
+[env.production.kv_namespaces]
+binding = "CACHE"
+id = "your-prod-kv-namespace-id"
+
+[build]
+command = "opennextjs-cloudflare build"
+cwd = "./"
+watch_paths = ["./src/**/*.ts", "./src/**/*.tsx", "./src/**/*.js", "./src/**/*.jsx"]
+
+[build.upload]
+format = "modules"
+main = ".open-next/worker.js"
+
+[observability]
+enabled = true
