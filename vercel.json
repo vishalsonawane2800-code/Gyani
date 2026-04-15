@@ -1,8 +1,9 @@
 {
-  "buildCommand": "next build",
+  "buildCommand": "opennextjs-cloudflare build",
   "devCommand": "next dev",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "outputDirectory": ".open-next",
   "crons": [
     {
       "path": "/api/cron/update-subscriptions",

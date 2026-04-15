@@ -4,11 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
     "start": "next start",
     "lint": "eslint .",
-    "deploy": "vercel deploy --prod",
-    "preview": "next start"
+    "deploy": "wrangler deploy",
+    "preview": "wrangler pages dev .open-next/static"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -69,7 +69,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.10.0",
     "@opennextjs/cloudflare": "^1.18.0",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
