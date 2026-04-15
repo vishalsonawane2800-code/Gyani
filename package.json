@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "deploy": "wrangler deploy",
-    "preview": "wrangler pages dev .open-next/static"
+    "preview": "wrangler pages dev .open-next/static",
+    "cf-build": "pnpm run build && wrangler deploy"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

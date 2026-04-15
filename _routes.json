@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "description": "Cloudflare Pages routing configuration for Next.js with OpenNextJS",
+  "include": [
+    "/*"
+  ],
+  "exclude": [
+    "/favicon.ico",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/_next/static/*"
+  ],
+  "rules": [
+    {
+      "dynamic": "/.well-known/*",
+      "include": [
+        "/.well-known/*"
+      ]
+    }
+  ]
+}
