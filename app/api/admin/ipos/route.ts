@@ -64,6 +64,8 @@ export async function POST(request: Request) {
       chittorgarh_url: body.chittorgarh_url || null,
       investorgain_gmp_url: body.investorgain_gmp_url || null,
       investorgain_sub_url: body.investorgain_sub_url || null,
+      ipowatch_gmp_url: body.ipowatch_gmp_url || null,
+      ipocentral_gmp_url: body.ipocentral_gmp_url || null,
       // Exchange symbols
       nse_symbol: body.nse_symbol || null,
       bse_scrip_code: body.bse_scrip_code || null,

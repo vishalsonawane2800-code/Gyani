@@ -53,6 +53,8 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     chittorgarh_url: ipo.chittorgarh_url || '',
     investorgain_gmp_url: ipo.investorgain_gmp_url || '',
     investorgain_sub_url: ipo.investorgain_sub_url || '',
+    ipowatch_gmp_url: ipo.ipowatch_gmp_url || '',
+    ipocentral_gmp_url: ipo.ipocentral_gmp_url || '',
     nse_symbol: ipo.nse_symbol || '',
     bse_scrip_code: ipo.bse_scrip_code || '',
     bg_color: ipo.bg_color || '#f0f9ff',
