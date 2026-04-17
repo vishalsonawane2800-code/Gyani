@@ -1,9 +1,6 @@
 // lib/scraper/parsers.ts
-
-/**
- * Utility parsers for IPOGyani scrapers
- * Handles messy Indian financial formats safely
- */
+// Utility parsers for IPOGyani scrapers.
+// Handles messy Indian financial formats safely.
 
 const MONTH_MAP: Record<string, number> = {
   jan: 0,
