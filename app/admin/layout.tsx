@@ -12,7 +12,8 @@ import {
   Menu,
   MessageSquareText,
   LogOut,
-  Loader2
+  Loader2,
+  Activity
 } from 'lucide-react'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ const navItems = [
   { href: '/admin/ipos/new', label: 'Add IPO', icon: PlusCircle },
   { href: '/admin/reviews', label: 'Reviews', icon: MessageSquareText },
   { href: '/admin/gmp', label: 'GMP Management', icon: TrendingUp },
+  { href: '/admin/automation', label: 'Automation', icon: Activity },
   { href: '/admin/settings', label: 'Settings', icon: Settings },
 ]
 

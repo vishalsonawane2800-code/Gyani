@@ -264,7 +264,20 @@ function toNumOrNull(v: unknown): number | null {
 // GET / POST handler
 // ---------------------------------------------------------------------------
 
-export async function GET(_request: Request) {
+/**
+ * Core subscription scraper pipeline. Exported so the dispatcher and admin
+ * manual-trigger route can invoke it without an HTTP hop. Always logs one
+ * `scraper_health` row and never throws.
+ */
+export async function runSubscriptionScraper(): Promise<{
+  processed: number
+  inserted: number
+  skipped: number
+  failed: number
+  duration_ms: number
+  by_source: Record<string, number>
+  error?: string
+}> {
   const started = Date.now()
   const supabase = createAdminClient()
 
@@ -282,15 +295,24 @@ export async function GET(_request: Request) {
     .gte("close_date", thresholdIso)
 
   if (fetchErr) {
+    const duration = Date.now() - started
     console.error("[v0] scrape-subscription: fetch IPOs failed:", fetchErr.message)
     await logScraperRun({
       scraperName: SCRAPER_NAME,
       status: "failed",
       itemsProcessed: 0,
       errorMessage: fetchErr.message,
-      durationMs: Date.now() - started,
+      durationMs: duration,
     })
-    return NextResponse.json({ error: "Failed to fetch IPOs" }, { status: 500 })
+    return {
+      processed: 0,
+      inserted: 0,
+      skipped: 0,
+      failed: 0,
+      duration_ms: duration,
+      by_source: { nse: 0, bse: 0, chittorgarh: 0 },
+      error: fetchErr.message,
+    }
   }
 
   const rows: IpoRow[] = (ipos ?? []).map((r) => ({
@@ -305,20 +327,23 @@ export async function GET(_request: Request) {
   }))
 
   if (rows.length === 0) {
+    const duration = Date.now() - started
     await logScraperRun({
       scraperName: SCRAPER_NAME,
       status: "success",
       itemsProcessed: 0,
-      durationMs: Date.now() - started,
+      durationMs: duration,
     })
-    return NextResponse.json({
-      message: "No IPOs in subscription window",
-      updated_at: new Date().toISOString(),
-      results: [],
-    })
+    return {
+      processed: 0,
+      inserted: 0,
+      skipped: 0,
+      failed: 0,
+      duration_ms: duration,
+      by_source: { nse: 0, bse: 0, chittorgarh: 0 },
+    }
   }
 
-  const results: ProcessResult[] = []
   let inserted = 0
   let skipped = 0
   let failed = 0
@@ -327,24 +352,12 @@ export async function GET(_request: Request) {
   for (const ipo of rows) {
     try {
       const r = await processIpoSubscription(ipo)
-      results.push(r)
       if (r.source) sourceCounts[r.source] = (sourceCounts[r.source] ?? 0) + 1
       if (r.inserted) inserted++
       else if (r.skipped) skipped++
       if (!r.snapshot) failed++
     } catch (err) {
       failed++
-      const message = err instanceof Error ? err.message : "unknown"
-      results.push({
-        ipo_id: ipo.id,
-        company_name: ipo.company_name,
-        source: null,
-        snapshot: null,
-        inserted: false,
-        skipped: false,
-        cached: false,
-        error: message,
-      })
       console.error(`[v0] subscription scrape crashed for ${ipo.slug}:`, err)
     }
 
@@ -366,18 +379,22 @@ export async function GET(_request: Request) {
         : null,
   })
 
+  return {
+    processed: rows.length,
+    inserted,
+    skipped,
+    failed,
+    duration_ms: duration,
+    by_source: sourceCounts,
+  }
+}
+
+export async function GET(_request: Request) {
+  const result = await runSubscriptionScraper()
   return NextResponse.json({
     message: "Subscription scrape complete",
     updated_at: new Date().toISOString(),
-    duration_ms: duration,
-    totals: {
-      processed: rows.length,
-      inserted,
-      skipped,
-      failed,
-      by_source: sourceCounts,
-    },
-    results,
+    ...result,
   })
 }
 
