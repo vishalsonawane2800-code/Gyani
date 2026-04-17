@@ -838,3 +838,297 @@ export async function batchInsertSubscriptionHistory(items: Omit<SubscriptionHis
   
   return true
 }
+
+// =============================================================================
+// News, YouTube, and Predictions Query Helpers (migration 004_automation_extensions)
+// =============================================================================
+
+// Transform ipo_news row to NewsArticle
+function transformNewsRow(row: IPONewsRow): NewsArticle {
+  return {
+    id: row.id,
+    ipoId: row.ipo_id,
+    title: row.title,
+    url: row.url,
+    source: row.source ?? undefined,
+    imageUrl: row.image_url ?? undefined,
+    publishedAt: row.published_at ?? undefined,
+    summary: row.summary ?? undefined,
+    sentiment: row.sentiment ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+// Transform ipo_youtube_summaries row to YouTubeSummary
+function transformYouTubeRow(row: IPOYouTubeRow): YouTubeSummary {
+  return {
+    id: row.id,
+    ipoId: row.ipo_id,
+    videoId: row.video_id,
+    videoUrl: row.video_url ?? undefined,
+    channelName: row.channel_name ?? undefined,
+    thumbnailUrl: row.thumbnail_url ?? undefined,
+    viewCount: row.view_count ?? undefined,
+    publishedAt: row.published_at ?? undefined,
+    aiSummary: row.ai_summary ?? undefined,
+    keyPoints: row.key_points ?? undefined,
+    sentiment: row.sentiment ?? undefined,
+    createdAt: row.created_at,
+  }
+}
+
+// Transform ipo_predictions row to IPOPrediction
+function transformPredictionRow(row: IPOPredictionRow): IPOPrediction {
+  return {
+    id: row.id,
+    ipoId: row.ipo_id,
+    modelVersion: row.model_version,
+    predictedListingPrice: row.predicted_listing_price ?? undefined,
+    predictedGainPercent: row.predicted_gain_percent ?? undefined,
+    confidenceLower: row.confidence_lower ?? undefined,
+    confidenceUpper: row.confidence_upper ?? undefined,
+    confidenceLabel: row.confidence_label ?? undefined,
+    reasoning: row.reasoning ?? undefined,
+    featuresUsed: row.features_used ?? undefined,
+    generatedAt: row.generated_at,
+  }
+}
+
+// Fetch news articles for an IPO
+export async function getIPONews(ipoId: number, options?: { limit?: number }): Promise<NewsArticle[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  let query = supabase
+    .from('ipo_news')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('published_at', { ascending: false })
+  
+  if (options?.limit) {
+    query = query.limit(options.limit)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error fetching IPO news:', error)
+    return []
+  }
+  
+  return (data ?? []).map(row => transformNewsRow(row as IPONewsRow))
+}
+
+// Fetch YouTube summaries for an IPO
+export async function getIPOYouTubeSummaries(ipoId: number, options?: { limit?: number }): Promise<YouTubeSummary[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  let query = supabase
+    .from('ipo_youtube_summaries')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('published_at', { ascending: false })
+  
+  if (options?.limit) {
+    query = query.limit(options.limit)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error fetching IPO YouTube summaries:', error)
+    return []
+  }
+  
+  return (data ?? []).map(row => transformYouTubeRow(row as IPOYouTubeRow))
+}
+
+// Fetch predictions for an IPO
+export async function getIPOPredictions(ipoId: number, options?: { limit?: number; latestOnly?: boolean }): Promise<IPOPrediction[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  let query = supabase
+    .from('ipo_predictions')
+    .select('*')
+    .eq('ipo_id', ipoId)
+    .order('generated_at', { ascending: false })
+  
+  if (options?.latestOnly) {
+    query = query.limit(1)
+  } else if (options?.limit) {
+    query = query.limit(options.limit)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error fetching IPO predictions:', error)
+    return []
+  }
+  
+  return (data ?? []).map(row => transformPredictionRow(row as IPOPredictionRow))
+}
+
+// Insert a news article (with dedup via unique url constraint)
+export async function insertIPONews(news: Omit<IPONewsRow, 'id' | 'created_at'>): Promise<NewsArticle | null> {
+  const supabase = await createClient()
+  
+  if (!supabase) return null
+  
+  const { data, error } = await supabase
+    .from('ipo_news')
+    .upsert({
+      ipo_id: news.ipo_id,
+      title: news.title,
+      url: news.url,
+      source: news.source,
+      image_url: news.image_url,
+      published_at: news.published_at,
+      summary: news.summary,
+      sentiment: news.sentiment,
+    }, { onConflict: 'url' })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error inserting IPO news:', error)
+    return null
+  }
+  
+  return data ? transformNewsRow(data as IPONewsRow) : null
+}
+
+// Insert a YouTube summary (with dedup via unique video_id constraint)
+export async function insertIPOYouTubeSummary(summary: Omit<IPOYouTubeRow, 'id' | 'created_at'>): Promise<YouTubeSummary | null> {
+  const supabase = await createClient()
+  
+  if (!supabase) return null
+  
+  const { data, error } = await supabase
+    .from('ipo_youtube_summaries')
+    .upsert({
+      ipo_id: summary.ipo_id,
+      video_id: summary.video_id,
+      video_url: summary.video_url,
+      channel_name: summary.channel_name,
+      thumbnail_url: summary.thumbnail_url,
+      view_count: summary.view_count,
+      published_at: summary.published_at,
+      ai_summary: summary.ai_summary,
+      key_points: summary.key_points,
+      sentiment: summary.sentiment,
+    }, { onConflict: 'video_id' })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error inserting IPO YouTube summary:', error)
+    return null
+  }
+  
+  return data ? transformYouTubeRow(data as IPOYouTubeRow) : null
+}
+
+// Insert a prediction
+export async function insertIPOPrediction(prediction: Omit<IPOPredictionRow, 'id' | 'generated_at'>): Promise<IPOPrediction | null> {
+  const supabase = await createClient()
+  
+  if (!supabase) return null
+  
+  const { data, error } = await supabase
+    .from('ipo_predictions')
+    .insert({
+      ipo_id: prediction.ipo_id,
+      model_version: prediction.model_version,
+      predicted_listing_price: prediction.predicted_listing_price,
+      predicted_gain_percent: prediction.predicted_gain_percent,
+      confidence_lower: prediction.confidence_lower,
+      confidence_upper: prediction.confidence_upper,
+      confidence_label: prediction.confidence_label,
+      reasoning: prediction.reasoning,
+      features_used: prediction.features_used,
+    })
+    .select()
+    .single()
+  
+  if (error) {
+    console.error('Error inserting IPO prediction:', error)
+    return null
+  }
+  
+  return data ? transformPredictionRow(data as IPOPredictionRow) : null
+}
+
+// =============================================================================
+// Scraper Health Query Helpers (admin-only, service_role bypasses RLS)
+// =============================================================================
+
+export interface ScraperHealthRow {
+  id: number
+  scraper_name: string
+  status: 'success' | 'failed' | 'skipped'
+  items_processed: number
+  error_message: string | null
+  duration_ms: number | null
+  ran_at: string
+}
+
+// Log a scraper run
+export async function logScraperRun(entry: Omit<ScraperHealthRow, 'id' | 'ran_at'>): Promise<boolean> {
+  const supabase = await createClient()
+  
+  if (!supabase) return false
+  
+  const { error } = await supabase
+    .from('scraper_health')
+    .insert({
+      scraper_name: entry.scraper_name,
+      status: entry.status,
+      items_processed: entry.items_processed,
+      error_message: entry.error_message,
+      duration_ms: entry.duration_ms,
+    })
+  
+  if (error) {
+    console.error('Error logging scraper run:', error)
+    return false
+  }
+  
+  return true
+}
+
+// Get recent scraper runs (admin dashboard)
+export async function getRecentScraperRuns(options?: { scraperName?: string; limit?: number }): Promise<ScraperHealthRow[]> {
+  const supabase = await createClient()
+  
+  if (!supabase) return []
+  
+  let query = supabase
+    .from('scraper_health')
+    .select('*')
+    .order('ran_at', { ascending: false })
+  
+  if (options?.scraperName) {
+    query = query.eq('scraper_name', options.scraperName)
+  }
+  
+  if (options?.limit) {
+    query = query.limit(options.limit)
+  } else {
+    query = query.limit(50)
+  }
+  
+  const { data, error } = await query
+  
+  if (error) {
+    console.error('Error fetching scraper runs:', error)
+    return []
+  }
+  
+  return (data ?? []) as ScraperHealthRow[]
+}
