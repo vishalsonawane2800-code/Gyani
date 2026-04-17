@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Migrate an IPO from the 'ipos' table to the 'listed_ipos' table
@@ -18,7 +18,7 @@ export async function POST(
       return NextResponse.json({ error: 'Listing price is required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     // Fetch the IPO data
     const { data: ipo, error: fetchError } = await supabase

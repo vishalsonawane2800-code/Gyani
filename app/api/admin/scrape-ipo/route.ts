@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // POST /api/admin/scrape-ipo
 // Body: { ipo_id: string, type: 'gmp' | 'subscription' | 'both' }
@@ -13,10 +13,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ipo_id is required' }, { status: 400 })
     }
 
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
-    }
+    const supabase = createAdminClient()
 
     // Get the IPO
     const { data: ipo, error: fetchError } = await supabase
