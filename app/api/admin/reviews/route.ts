@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // GET /api/admin/reviews - List all reviews or reviews for a specific IPO
 export async function GET(request: Request) {
@@ -7,7 +7,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const ipoId = searchParams.get('ipo_id')
     
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     
     let query = supabase
       .from('expert_reviews')
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
 // POST /api/admin/reviews - Create new review
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const body = await request.json()
 
     // Validate required fields

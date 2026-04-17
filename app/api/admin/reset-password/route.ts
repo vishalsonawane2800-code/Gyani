@@ -1,15 +1,11 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { hashPassword, verifyPassword } from '@/lib/hash'
 import { verifyJWT, extractToken } from '@/lib/jwt'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
-
 export async function POST(request: Request) {
   try {
+    const supabase = createAdminClient()
     // Verify JWT token
     const authHeader = request.headers.get('authorization')
     const token = extractToken(authHeader)

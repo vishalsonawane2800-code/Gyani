@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
  * Automated IPO Status Transition Logic
@@ -17,7 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST() {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     
     const updates: { id: number; oldStatus: string; newStatus: string; name: string }[] = []
@@ -100,7 +100,7 @@ export async function POST() {
 // GET endpoint to check status without making changes (preview)
 export async function GET() {
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const today = new Date().toISOString().split('T')[0]
     
     const preview: { id: number; name: string; currentStatus: string; expectedStatus: string; needsUpdate: boolean }[] = []

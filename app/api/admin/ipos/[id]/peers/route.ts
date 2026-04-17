@@ -1,14 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { parsePeerComparison } from '@/lib/bulk-data-parsers'
-
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  if (!url || !key) return null
-  return createClient(url, key)
-}
 
 // GET: Fetch peer companies for an IPO
 export async function GET(
@@ -16,10 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
-  }
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from('peer_companies')
@@ -41,10 +30,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
-  }
+  const supabase = createAdminClient()
 
   try {
     const { text, clearExisting } = await request.json()
@@ -129,10 +115,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const supabase = getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Database not configured' }, { status: 500 })
-  }
+  const supabase = createAdminClient()
 
   const { error } = await supabase
     .from('peer_companies')
