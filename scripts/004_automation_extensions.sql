@@ -15,13 +15,14 @@ ALTER TABLE ipos
   ADD COLUMN IF NOT EXISTS anchor_investors JSONB,
   ADD COLUMN IF NOT EXISTS promoter_holding_pre NUMERIC(5,2),
   ADD COLUMN IF NOT EXISTS promoter_holding_post NUMERIC(5,2),
-  ADD COLUMN IF NOT EXISTS pe_ratio NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS sector_pe NUMERIC(10,2),
   ADD COLUMN IF NOT EXISTS fresh_issue_cr NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS ofs_cr NUMERIC(12,2),
-  ADD COLUMN IF NOT EXISTS issue_size_cr NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS listing_price NUMERIC(12,2),
   ADD COLUMN IF NOT EXISTS listing_gain_percent NUMERIC(8,2);
+
+-- Note: pe_ratio and issue_size_cr are already defined on ipos in 001_create_ipo_tables.sql.
+-- They are intentionally omitted here to avoid type conflicts with the existing columns.
 
 -- =============================================================================
 -- B) Extend `gmp_history` with kostak / subject-to-sauda
@@ -50,7 +51,7 @@ ALTER TABLE subscription_history
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS ipo_news (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+  ipo_id INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
   title TEXT NOT NULL,
   url TEXT UNIQUE NOT NULL,
   source TEXT,
@@ -69,7 +70,7 @@ CREATE INDEX IF NOT EXISTS idx_ipo_news_ipo_published
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS ipo_youtube_summaries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+  ipo_id INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
   video_id TEXT UNIQUE NOT NULL,
   video_url TEXT,
   channel_name TEXT,
@@ -90,7 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_ipo_youtube_ipo_published
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS ipo_predictions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  ipo_id UUID NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
+  ipo_id INTEGER NOT NULL REFERENCES ipos(id) ON DELETE CASCADE,
   model_version TEXT NOT NULL,
   predicted_listing_price NUMERIC(12,2),
   predicted_gain_percent NUMERIC(8,2),
