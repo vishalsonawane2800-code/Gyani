@@ -1,336 +1,386 @@
-import { NextResponse } from 'next/server'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+// app/api/cron/scrape-subscription/route.ts
+// Subscription scraper orchestrator.
+//
+// Source routing (primary -> fallback):
+//   Mainboard / NSE SME -> NSE API  -> Chittorgarh
+//   BSE SME             -> BSE page -> Chittorgarh
+//
+// Key behaviours:
+//   - Redis cache per-IPO (`subscription:<id>`) for 5 min to avoid
+//     hammering sources across back-to-back cron ticks.
+//   - Dedup: skip insert into subscription_history if the latest row
+//     for this IPO has identical total/retail/nii/qib.
+//   - Writes a `scraper_health` row once per cron run.
+//   - Auth handled by middleware.ts (JWT) + optional CRON_SECRET check.
+//   - NEVER throws out of per-IPO processing; one bad IPO can't fail
+//     the whole run.
 
-// Verify cron secret to prevent unauthorized access
-const CRON_SECRET = process.env.CRON_SECRET
+import { NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { cacheGet, cacheSet } from "@/lib/redis"
+import { logScraperRun } from "@/lib/scraper/base"
+import { scrapeNSESubscription } from "@/lib/scraper/sources/subscription-nse"
+import { scrapeBSESubscription } from "@/lib/scraper/sources/subscription-bse"
+import { scrapeChittorgarhSubscription } from "@/lib/scraper/sources/subscription-chittorgarh"
 
-// Create Supabase client for server-side
-function getSupabase() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  
-  if (!url || !key) {
-    console.error('[v0] Supabase credentials not configured')
-    return null
-  }
-  
-  return createSupabaseClient(url, key)
+export const runtime = "nodejs"
+export const maxDuration = 60
+
+const SCRAPER_NAME = "scrape-subscription"
+const CACHE_TTL_SECONDS = 300 // 5 min
+
+type IpoRow = {
+  id: number
+  company_name: string
+  slug: string
+  exchange: string | null
+  status: string
+  nse_symbol: string | null
+  bse_scrip_code: string | null
+  chittorgarh_url: string | null
 }
 
-interface SubscriptionData {
-  total: number
-  retail: string
-  nii: string
-  qib: string
-  day: number
-  isFinal: boolean
+type SourceKey = "nse" | "bse" | "chittorgarh"
+
+export type SubscriptionSnapshot = {
+  total: number | null
+  retail: number | null
+  nii: number | null
+  qib: number | null
 }
 
-/**
- * Scrape subscription data from InvestorGain
- * URL format: https://www.investorgain.com/subscription/{ipo-slug}/{id}/
- * Example: https://www.investorgain.com/subscription/om-power-transmission-ipo/1941/
- */
-async function scrapeInvestorGainSubscription(url: string): Promise<SubscriptionData | null> {
+export type ProcessResult = {
+  ipo_id: number
+  company_name: string
+  source: SourceKey | null
+  snapshot: SubscriptionSnapshot | null
+  inserted: boolean
+  skipped: boolean
+  cached: boolean
+  error?: string
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function exchangeOrder(exchange: string | null): SourceKey[] {
+  if (exchange === "BSE SME") return ["bse", "chittorgarh"]
+  // Mainboard, REIT, NSE SME all prefer NSE.
+  return ["nse", "chittorgarh"]
+}
+
+async function runSource(
+  source: SourceKey,
+  ipo: IpoRow
+): Promise<SubscriptionSnapshot | null> {
   try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Referer': 'https://www.google.com/',
+    if (source === "nse") {
+      return await scrapeNSESubscription({ nse_symbol: ipo.nse_symbol })
     }
-
-    const response = await fetch(url, { 
-      headers,
-      next: { revalidate: 0 }
-    })
-
-    if (!response.ok) {
-      console.log(`[v0] InvestorGain Subscription returned ${response.status} for ${url}`)
-      return null
-    }
-
-    const html = await response.text()
-    // Clean HTML for easier parsing
-    const cleanHtml = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ')
-    
-    let total = 0, retail = '0x', nii = '0x', qib = '0x', day = 1
-    let isFinal = false
-
-    // Parse total subscription - try table first, then text patterns
-    // InvestorGain typically shows: "Total: 1.23x" or "1.23 times subscribed"
-    const totalPatterns = [
-      /Total[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /Overall[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /"totalSubscription"[:\s]*"?([0-9.]+)/i,
-      /Total\s*Subscription[^0-9]*?([0-9]+\.?[0-9]*)/i,
-      /subscribed[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /([0-9]+\.?[0-9]*)\s*times\s*subscribed/i,
-    ]
-
-    for (const pattern of totalPatterns) {
-      const match = cleanHtml.match(pattern)
-      if (match && match[1]) {
-        const val = parseFloat(match[1])
-        if (!isNaN(val) && val > 0 && val < 1000) {
-          total = val
-          break
-        }
-      }
-    }
-
-    // Parse retail subscription (RII - Retail Individual Investors)
-    const retailPatterns = [
-      /Retail[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /RII[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /Retail\s*Individual[^0-9]*?([0-9]+\.?[0-9]*)/i,
-      /"retailSubscription"[:\s]*"?([0-9.]+)/i,
-      /Retail\s*Portion[^0-9]*?([0-9]+\.?[0-9]*)/i,
-    ]
-
-    for (const pattern of retailPatterns) {
-      const match = cleanHtml.match(pattern)
-      if (match && match[1]) {
-        const val = parseFloat(match[1])
-        if (!isNaN(val) && val > 0 && val < 1000) {
-          retail = `${val.toFixed(2)}x`
-          break
-        }
-      }
-    }
-
-    // Parse NII subscription (may have sNII and bNII separately)
-    const niiPatterns = [
-      /(?:s)?NII[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /Non[- ]?Institutional[^0-9]*?([0-9]+\.?[0-9]*)/i,
-      /HNI[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /"niiSubscription"[:\s]*"?([0-9.]+)/i,
-    ]
-
-    for (const pattern of niiPatterns) {
-      const match = cleanHtml.match(pattern)
-      if (match && match[1]) {
-        const val = parseFloat(match[1])
-        if (!isNaN(val) && val > 0 && val < 1000) {
-          nii = `${val.toFixed(2)}x`
-          break
-        }
-      }
-    }
-
-    // Parse QIB subscription
-    const qibPatterns = [
-      /QIB[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /Qualified\s*Institutional[^0-9]*?([0-9]+\.?[0-9]*)/i,
-      /Anchor[^0-9]*?([0-9]+\.?[0-9]*)\s*(?:x|times)/i,
-      /"qibSubscription"[:\s]*"?([0-9.]+)/i,
-    ]
-
-    for (const pattern of qibPatterns) {
-      const match = cleanHtml.match(pattern)
-      if (match && match[1]) {
-        const val = parseFloat(match[1])
-        if (!isNaN(val) && val > 0 && val < 1000) {
-          qib = `${val.toFixed(2)}x`
-          break
-        }
-      }
-    }
-
-    // Parse day information
-    const dayPatterns = [
-      /Day\s*(\d+)\s*(?:of|\/|\-)/i,
-      /Day\s*(\d+)/i,
-      /"day"[:\s]*"?(\d+)/i,
-      /(\d+)(?:st|nd|rd|th)\s*Day/i,
-    ]
-
-    for (const pattern of dayPatterns) {
-      const match = cleanHtml.match(pattern)
-      if (match && match[1]) {
-        const val = parseInt(match[1])
-        if (!isNaN(val) && val >= 1 && val <= 5) {
-          day = val
-          break
-        }
-      }
-    }
-
-    // Check if subscription is final
-    isFinal = /subscription\s*closed|final\s*subscription|status[:\s]*closed|bidding\s*closed|issue\s*closed/i.test(cleanHtml)
-
-    // Only return if we found some data
-    if (total > 0 || retail !== '0x') {
-      console.log(`[v0] Scraped subscription from ${url}: Total=${total}, Retail=${retail}, NII=${nii}, QIB=${qib}`)
-      return { total, retail, nii, qib, day, isFinal }
-    }
-
-    return null
-  } catch (error) {
-    console.error(`[v0] Error scraping InvestorGain subscription ${url}:`, error)
-    return null
-  }
-}
-
-/**
- * Scrape subscription from Chittorgarh as fallback
- */
-async function scrapeChittorgarhSubscription(url: string): Promise<SubscriptionData | null> {
-  try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-    }
-
-    const response = await fetch(url, { headers, next: { revalidate: 0 } })
-    if (!response.ok) return null
-
-    const html = await response.text()
-    
-    let total = 0, retail = '0x', nii = '0x', qib = '0x', day = 1
-    let isFinal = false
-
-    // Similar patterns but adjusted for Chittorgarh's HTML structure
-    const totalMatch = html.match(/Total[^<]*?([0-9.]+)\s*(?:x|times)/i)
-    if (totalMatch) total = parseFloat(totalMatch[1])
-
-    const retailMatch = html.match(/Retail[^<]*?([0-9.]+)\s*(?:x|times)/i)
-    if (retailMatch) retail = `${parseFloat(retailMatch[1]).toFixed(2)}x`
-
-    const niiMatch = html.match(/NII[^<]*?([0-9.]+)\s*(?:x|times)/i)
-    if (niiMatch) nii = `${parseFloat(niiMatch[1]).toFixed(2)}x`
-
-    const qibMatch = html.match(/QIB[^<]*?([0-9.]+)\s*(?:x|times)/i)
-    if (qibMatch) qib = `${parseFloat(qibMatch[1]).toFixed(2)}x`
-
-    const dayMatch = html.match(/Day\s*(\d+)/i)
-    if (dayMatch) day = parseInt(dayMatch[1])
-
-    isFinal = /subscription\s*closed|final/i.test(html)
-
-    if (total > 0 || retail !== '0x') {
-      return { total, retail, nii, qib, day, isFinal }
-    }
-
-    return null
-  } catch (error) {
-    console.error(`[v0] Error scraping Chittorgarh subscription ${url}:`, error)
-    return null
-  }
-}
-
-export async function GET(request: Request) {
-  // Authorization is handled by middleware.ts
-  const supabase = getSupabase()
-  if (!supabase) {
-    return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
-  }
-
-  const results: { name: string; subscription: SubscriptionData | null; updated: boolean; error?: string }[] = []
-
-  try {
-    // Get all IPOs that are open or lastday (subscription tracking relevant)
-    const { data: ipos, error: fetchError } = await supabase
-      .from('ipos')
-      .select('id, company_name, slug, investorgain_sub_url, chittorgarh_url')
-      .in('status', ['open', 'lastday'])
-
-    if (fetchError) {
-      console.error('[v0] Error fetching IPOs for subscription scrape:', fetchError)
-      return NextResponse.json({ error: 'Failed to fetch IPOs' }, { status: 500 })
-    }
-
-    if (!ipos || ipos.length === 0) {
-      return NextResponse.json({ 
-        message: 'No open IPOs to scrape subscription for', 
-        updatedAt: new Date().toISOString() 
+    if (source === "bse") {
+      return await scrapeBSESubscription({
+        bse_scrip_code: ipo.bse_scrip_code,
       })
     }
-
-    // Scrape subscription for each IPO
-    for (const ipo of ipos) {
-      let subscriptionData: SubscriptionData | null = null
-
-      // Priority 1: InvestorGain Subscription URL
-      if (ipo.investorgain_sub_url) {
-        subscriptionData = await scrapeInvestorGainSubscription(ipo.investorgain_sub_url)
-      }
-
-      // Priority 2: Chittorgarh URL (fallback)
-      if (!subscriptionData && ipo.chittorgarh_url) {
-        subscriptionData = await scrapeChittorgarhSubscription(ipo.chittorgarh_url)
-      }
-
-      if (subscriptionData) {
-        const now = new Date().toISOString()
-        const today = now.split('T')[0]
-        // Round to nearest 30-min slot for deduplication
-        const d = new Date()
-        const mins = d.getMinutes() < 30 ? '00' : '30'
-        const currentTime = `${String(d.getHours()).padStart(2, '0')}:${mins}`
-
-        // Update IPO with subscription data
-        const { error: updateError } = await supabase
-          .from('ipos')
-          .update({
-            subscription_total: subscriptionData.total,
-            subscription_retail: parseFloat(subscriptionData.retail.replace('x', '')) || 0,
-            subscription_nii: parseFloat(subscriptionData.nii.replace('x', '')) || 0,
-            subscription_qib: parseFloat(subscriptionData.qib.replace('x', '')) || 0,
-            subscription_day: subscriptionData.day,
-            subscription_is_final: subscriptionData.isFinal,
-            last_scraped_at: now,
-          })
-          .eq('id', ipo.id)
-
-        // Upsert into subscription history (one record per 30-min slot)
-        await supabase
-          .from('subscription_history')
-          .upsert({
-            ipo_id: ipo.id,
-            date: today,
-            time: currentTime,
-            retail: parseFloat(subscriptionData.retail.replace('x', '')) || 0,
-            nii: parseFloat(subscriptionData.nii.replace('x', '')) || 0,
-            qib: parseFloat(subscriptionData.qib.replace('x', '')) || 0,
-            total: subscriptionData.total,
-            recorded_at: now,
-          }, {
-            onConflict: 'ipo_id,date,time',
-            ignoreDuplicates: false,
-          })
-
-        if (updateError) {
-          results.push({ name: ipo.company_name, subscription: subscriptionData, updated: false, error: updateError.message })
-        } else {
-          results.push({ name: ipo.company_name, subscription: subscriptionData, updated: true })
-        }
-      } else {
-        results.push({ name: ipo.company_name, subscription: null, updated: false, error: 'No subscription data found' })
-      }
-
-      // Small delay to avoid rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500))
-    }
-
-    return NextResponse.json({
-      message: 'Subscription scrape completed',
-      updatedAt: new Date().toISOString(),
-      results,
-      successCount: results.filter(r => r.updated).length,
-      totalCount: results.length,
+    return await scrapeChittorgarhSubscription({
+      chittorgarh_url: ipo.chittorgarh_url,
+      company_name: ipo.company_name,
+      slug: ipo.slug,
     })
-
-  } catch (error) {
-    console.error('[v0] Subscription scrape cron error:', error)
-    return NextResponse.json({ 
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+  } catch (err) {
+    console.error(`[v0] ${source} source threw for ${ipo.slug}:`, err)
+    return null
   }
 }
 
-// Support POST for manual triggers from admin dashboard
+function snapshotsEqual(
+  a: SubscriptionSnapshot,
+  b: { retail: number | null; nii: number | null; qib: number | null; total: number | null }
+): boolean {
+  const eq = (x: number | null, y: number | null) => {
+    if (x == null && y == null) return true
+    if (x == null || y == null) return false
+    return Math.abs(x - y) < 0.005
+  }
+  return eq(a.total, b.total) && eq(a.retail, b.retail) && eq(a.nii, b.nii) && eq(a.qib, b.qib)
+}
+
+function hasAnyValue(s: SubscriptionSnapshot | null): s is SubscriptionSnapshot {
+  if (!s) return false
+  return s.total != null || s.retail != null || s.nii != null || s.qib != null
+}
+
+// ---------------------------------------------------------------------------
+// Per-IPO processor — exported so the admin manual-trigger route can reuse it.
+// ---------------------------------------------------------------------------
+
+export async function processIpoSubscription(
+  ipo: IpoRow
+): Promise<ProcessResult> {
+  const supabase = createAdminClient()
+  const cacheKey = `subscription:${ipo.id}`
+
+  // Redis short-circuit.
+  const cached = await cacheGet<{ source: SourceKey; snapshot: SubscriptionSnapshot }>(
+    cacheKey
+  )
+  if (cached && hasAnyValue(cached.snapshot)) {
+    return {
+      ipo_id: ipo.id,
+      company_name: ipo.company_name,
+      source: cached.source,
+      snapshot: cached.snapshot,
+      inserted: false,
+      skipped: true,
+      cached: true,
+    }
+  }
+
+  const order = exchangeOrder(ipo.exchange)
+  let chosen: { source: SourceKey; snapshot: SubscriptionSnapshot } | null = null
+
+  for (const src of order) {
+    // Skip sources that obviously can't work for this IPO.
+    if (src === "nse" && !ipo.nse_symbol) continue
+    if (src === "bse" && !ipo.bse_scrip_code) continue
+
+    const snap = await runSource(src, ipo)
+    if (hasAnyValue(snap)) {
+      chosen = { source: src, snapshot: snap }
+      break
+    }
+  }
+
+  if (!chosen) {
+    return {
+      ipo_id: ipo.id,
+      company_name: ipo.company_name,
+      source: null,
+      snapshot: null,
+      inserted: false,
+      skipped: false,
+      cached: false,
+      error: "All sources returned no data",
+    }
+  }
+
+  // Dedup against the most recent subscription_history row.
+  const { data: latest } = await supabase
+    .from("subscription_history")
+    .select("total, retail, nii, qib")
+    .eq("ipo_id", ipo.id)
+    .order("date", { ascending: false })
+    .order("time", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const now = new Date()
+  const today = now.toISOString().slice(0, 10)
+  const mins = now.getMinutes() < 30 ? "00" : "30"
+  const timeSlot = `${String(now.getHours()).padStart(2, "0")}:${mins}`
+
+  let inserted = false
+  let skipped = false
+
+  if (
+    latest &&
+    snapshotsEqual(chosen.snapshot, {
+      total: toNumOrNull(latest.total),
+      retail: toNumOrNull(latest.retail),
+      nii: toNumOrNull(latest.nii),
+      qib: toNumOrNull(latest.qib),
+    })
+  ) {
+    skipped = true
+  } else {
+    // Upsert respects UNIQUE(ipo_id, date, time).
+    const { error: histErr } = await supabase
+      .from("subscription_history")
+      .upsert(
+        {
+          ipo_id: ipo.id,
+          date: today,
+          time: timeSlot,
+          retail: chosen.snapshot.retail ?? 0,
+          nii: chosen.snapshot.nii ?? 0,
+          qib: chosen.snapshot.qib ?? 0,
+          total: chosen.snapshot.total ?? 0,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "ipo_id,date,time", ignoreDuplicates: false }
+      )
+    if (histErr) {
+      console.error(`[v0] subscription_history upsert failed for ${ipo.slug}:`, histErr.message)
+    } else {
+      inserted = true
+    }
+  }
+
+  // Always update ipos with the latest numbers + source + timestamp,
+  // even when the history row is deduped (keeps `subscription_last_scraped`
+  // fresh so the UI shows "Updated X min ago").
+  const { error: ipoErr } = await supabase
+    .from("ipos")
+    .update({
+      subscription_total: chosen.snapshot.total,
+      subscription_retail: chosen.snapshot.retail,
+      subscription_nii: chosen.snapshot.nii,
+      subscription_qib: chosen.snapshot.qib,
+      subscription_source: chosen.source,
+      subscription_last_scraped: now.toISOString(),
+    })
+    .eq("id", ipo.id)
+
+  if (ipoErr) {
+    console.error(`[v0] ipos update failed for ${ipo.slug}:`, ipoErr.message)
+  }
+
+  // Cache the snapshot so subsequent runs within the TTL can short-circuit.
+  await cacheSet(cacheKey, chosen, CACHE_TTL_SECONDS)
+
+  return {
+    ipo_id: ipo.id,
+    company_name: ipo.company_name,
+    source: chosen.source,
+    snapshot: chosen.snapshot,
+    inserted,
+    skipped,
+    cached: false,
+  }
+}
+
+function toNumOrNull(v: unknown): number | null {
+  if (v == null) return null
+  const n = typeof v === "number" ? v : parseFloat(String(v))
+  return Number.isFinite(n) ? n : null
+}
+
+// ---------------------------------------------------------------------------
+// GET / POST handler
+// ---------------------------------------------------------------------------
+
+export async function GET(_request: Request) {
+  const started = Date.now()
+  const supabase = createAdminClient()
+
+  // Window: status in (open|lastday|closed) AND close_date >= today - 3d.
+  const threshold = new Date()
+  threshold.setDate(threshold.getDate() - 3)
+  const thresholdIso = threshold.toISOString().slice(0, 10)
+
+  const { data: ipos, error: fetchErr } = await supabase
+    .from("ipos")
+    .select(
+      "id, company_name, slug, exchange, status, nse_symbol, bse_scrip_code, chittorgarh_url, close_date"
+    )
+    .in("status", ["open", "lastday", "closed"])
+    .gte("close_date", thresholdIso)
+
+  if (fetchErr) {
+    console.error("[v0] scrape-subscription: fetch IPOs failed:", fetchErr.message)
+    await logScraperRun({
+      scraperName: SCRAPER_NAME,
+      status: "failed",
+      itemsProcessed: 0,
+      errorMessage: fetchErr.message,
+      durationMs: Date.now() - started,
+    })
+    return NextResponse.json({ error: "Failed to fetch IPOs" }, { status: 500 })
+  }
+
+  const rows: IpoRow[] = (ipos ?? []).map((r) => ({
+    id: r.id,
+    company_name: r.company_name,
+    slug: r.slug,
+    exchange: r.exchange,
+    status: r.status,
+    nse_symbol: r.nse_symbol,
+    bse_scrip_code: r.bse_scrip_code,
+    chittorgarh_url: r.chittorgarh_url,
+  }))
+
+  if (rows.length === 0) {
+    await logScraperRun({
+      scraperName: SCRAPER_NAME,
+      status: "success",
+      itemsProcessed: 0,
+      durationMs: Date.now() - started,
+    })
+    return NextResponse.json({
+      message: "No IPOs in subscription window",
+      updated_at: new Date().toISOString(),
+      results: [],
+    })
+  }
+
+  const results: ProcessResult[] = []
+  let inserted = 0
+  let skipped = 0
+  let failed = 0
+  const sourceCounts: Record<string, number> = { nse: 0, bse: 0, chittorgarh: 0 }
+
+  for (const ipo of rows) {
+    try {
+      const r = await processIpoSubscription(ipo)
+      results.push(r)
+      if (r.source) sourceCounts[r.source] = (sourceCounts[r.source] ?? 0) + 1
+      if (r.inserted) inserted++
+      else if (r.skipped) skipped++
+      if (!r.snapshot) failed++
+    } catch (err) {
+      failed++
+      const message = err instanceof Error ? err.message : "unknown"
+      results.push({
+        ipo_id: ipo.id,
+        company_name: ipo.company_name,
+        source: null,
+        snapshot: null,
+        inserted: false,
+        skipped: false,
+        cached: false,
+        error: message,
+      })
+      console.error(`[v0] subscription scrape crashed for ${ipo.slug}:`, err)
+    }
+
+    // Stagger to avoid rate limiting (500-1500ms jitter).
+    await sleep(500 + Math.floor(Math.random() * 1000))
+  }
+
+  const duration = Date.now() - started
+  const status: "success" | "failed" = failed > 0 ? "failed" : "success"
+
+  await logScraperRun({
+    scraperName: SCRAPER_NAME,
+    status,
+    itemsProcessed: rows.length,
+    durationMs: duration,
+    errorMessage:
+      failed > 0
+        ? `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped})`
+        : null,
+  })
+
+  return NextResponse.json({
+    message: "Subscription scrape complete",
+    updated_at: new Date().toISOString(),
+    duration_ms: duration,
+    totals: {
+      processed: rows.length,
+      inserted,
+      skipped,
+      failed,
+      by_source: sourceCounts,
+    },
+    results,
+  })
+}
+
 export async function POST(request: Request) {
   return GET(request)
 }

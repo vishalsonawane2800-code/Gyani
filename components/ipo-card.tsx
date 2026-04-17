@@ -126,7 +126,13 @@ export function IPOCard({ ipo }: IPOCardProps) {
             {ipo.subscription.total > 0 ? `${ipo.subscription.total}x` : '-'}
           </p>
           <p className="text-xs text-ink4">
-            {ipo.subscription.isFinal ? 'Final' : ipo.subscription.day > 0 ? `Day ${ipo.subscription.day}` : 'Not open'}
+            {ipo.subscriptionLastScraped
+              ? `Updated ${formatTimeAgo(ipo.subscriptionLastScraped)}`
+              : ipo.subscription.isFinal
+              ? 'Final'
+              : ipo.subscription.day > 0
+              ? `Day ${ipo.subscription.day}`
+              : 'Not open'}
           </p>
         </div>
         <div className="bg-secondary rounded-lg p-2">
