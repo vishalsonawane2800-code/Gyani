@@ -75,6 +75,8 @@ interface IPOFormData {
   chittorgarh_url: string
   investorgain_gmp_url: string
   investorgain_sub_url: string
+  ipowatch_gmp_url: string
+  ipocentral_gmp_url: string
   nse_symbol: string
   bse_scrip_code: string
   bg_color: string
@@ -109,6 +111,8 @@ const defaultFormData: IPOFormData = {
   chittorgarh_url: '',
   investorgain_gmp_url: '',
   investorgain_sub_url: '',
+  ipowatch_gmp_url: '',
+  ipocentral_gmp_url: '',
   nse_symbol: '',
   bse_scrip_code: '',
   bg_color: '#f0f9ff',
@@ -876,8 +880,44 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               e.g., https://www.investorgain.com/subscription/om-power-transmission-ipo/1941/
             </p>
           </div>
+
+          <div className="md:col-span-3">
+            <Label htmlFor="ipowatch_gmp_url" className="text-slate-300">
+              IPOWatch GMP URL
+              <span className="text-xs text-emerald-400 ml-2">Optional second GMP source (averaged)</span>
+            </Label>
+            <Input
+              id="ipowatch_gmp_url"
+              name="ipowatch_gmp_url"
+              value={formData.ipowatch_gmp_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://ipowatch.in/ipo-name-gmp-today/"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Direct article URL on ipowatch.in. Leave blank to let the scraper derive one from the slug.
+            </p>
+          </div>
+
+          <div className="md:col-span-3">
+            <Label htmlFor="ipocentral_gmp_url" className="text-slate-300">
+              IPOCentral GMP URL
+              <span className="text-xs text-emerald-400 ml-2">Optional third GMP source (averaged)</span>
+            </Label>
+            <Input
+              id="ipocentral_gmp_url"
+              name="ipocentral_gmp_url"
+              value={formData.ipocentral_gmp_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://ipocentral.in/ipo-name-gmp/"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Direct article URL on ipocentral.in. Leave blank to let the scraper derive one from the slug.
+            </p>
+          </div>
         </div>
-        
+
         <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-lg">
           <p className="text-sm text-cyan-300 font-medium mb-2">How Auto-Refresh Works:</p>
           <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
