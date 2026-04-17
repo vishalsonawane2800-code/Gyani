@@ -23,7 +23,9 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Protect /api/cron/* and /api/admin/* routes with JWT token
+  // Protect /api/cron/* and /api/admin/* routes.
+  // /api/cron/* accepts EITHER a valid JWT (admin manual trigger) OR the
+  // shared CRON_SECRET (Vercel cron). /api/admin/* is JWT-only.
   if (pathname.startsWith('/api/cron') || pathname.startsWith('/api/admin')) {
     if (!authHeader) {
       return NextResponse.json({ error: 'Missing authorization header' }, { status: 401 })
@@ -35,6 +37,16 @@ export async function middleware(request: NextRequest) {
     }
 
     const token = parts[1]
+
+    // Vercel cron path: allow the shared secret for /api/cron/*
+    if (
+      pathname.startsWith('/api/cron') &&
+      process.env.CRON_SECRET &&
+      token === process.env.CRON_SECRET
+    ) {
+      return NextResponse.next()
+    }
+
     const payload = await verifyToken(token)
 
     if (!payload) {

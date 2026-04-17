@@ -7,8 +7,6 @@ import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { cacheGet, cacheSet } from "@/lib/redis"
 import {
-  verifyCronAuth,
-  cronUnauthorized,
   logScraperRun,
   circuitBreakerCheck,
   circuitBreakerRecordFailure,
@@ -243,13 +241,20 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
   }
 }
 
-export async function GET(request: Request) {
+/**
+ * Core GMP scraper pipeline. Exported so the dispatcher cron and admin
+ * manual-trigger route can call it directly without an HTTP hop.
+ * Always writes exactly one `scraper_health` row and never throws.
+ */
+export async function runGmpScraper(): Promise<{
+  processed: number
+  inserted: number
+  skipped: number
+  failed: number
+  duration_ms: number
+  error?: string
+}> {
   const started = Date.now()
-
-  if (!verifyCronAuth(request)) {
-    return cronUnauthorized()
-  }
-
   const supabase = createAdminClient()
   const todayIso = new Date().toISOString().split("T")[0]
 
@@ -262,16 +267,21 @@ export async function GET(request: Request) {
     .or(`listing_date.is.null,listing_date.gte.${todayIso}`)
 
   if (error) {
+    const duration = Date.now() - started
     await logScraperRun({
       scraperName: SCRAPER_NAME,
       status: "failed",
       errorMessage: error.message,
-      durationMs: Date.now() - started,
+      durationMs: duration,
     })
-    return NextResponse.json(
-      { error: "Failed to fetch IPOs", details: error.message },
-      { status: 500 }
-    )
+    return {
+      processed: 0,
+      inserted: 0,
+      skipped: 0,
+      failed: 0,
+      duration_ms: duration,
+      error: error.message,
+    }
   }
 
   const rows = (ipos || []) as IpoRow[]
@@ -293,8 +303,6 @@ export async function GET(request: Request) {
   }
 
   const duration = Date.now() - started
-  // scraper_health CHECK constraint only allows success|failed|skipped.
-  // Treat any failure count > 0 as a failed run (with error detail).
   const status: "success" | "failed" = failed === 0 ? "success" : "failed"
 
   await logScraperRun({
@@ -303,14 +311,21 @@ export async function GET(request: Request) {
     itemsProcessed: rows.length,
     durationMs: duration,
     errorMessage:
-      failed > 0 ? `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped})` : null,
+      failed > 0
+        ? `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped})`
+        : null,
   })
 
-  return NextResponse.json({
+  return {
     processed: rows.length,
     inserted,
     skipped,
     failed,
     duration_ms: duration,
-  })
+  }
+}
+
+export async function GET(_request: Request) {
+  const result = await runGmpScraper()
+  return NextResponse.json(result)
 }
