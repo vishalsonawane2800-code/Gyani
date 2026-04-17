@@ -154,6 +154,99 @@ export interface IPO {
   expertReviews?: ExpertReview[];
   peerCompanies?: PeerCompany[];
   kpi?: KPIData;
+
+  // Automation metadata (migration 004_automation_extensions)
+  gmpSourcesUsed?: string[];
+  subscriptionLastScraped?: string;
+  newsLastFetched?: string;
+  youtubeLastFetched?: string;
+  predictionLastGenerated?: string;
+  anchorInvestors?: AnchorInvestor[];
+  promoterHoldingPre?: number;
+  promoterHoldingPost?: number;
+  sectorPe?: number;
+  freshIssueCr?: number;
+  ofsCr?: number;
+  listingPrice?: number;
+  listingGainPercent?: number;
+
+  // Related content populated by server-side loaders
+  news?: NewsArticle[];
+  youtubeSummaries?: YouTubeSummary[];
+  predictions?: IPOPrediction[];
+}
+
+// -----------------------------------------------------------------------------
+// Automation / scraper / ML types (added in migration 004_automation_extensions)
+// -----------------------------------------------------------------------------
+
+export interface AnchorInvestor {
+  name: string;
+  sharesAllotted?: number;
+  amountCr?: number;
+  category?: string; // e.g. 'Mutual Fund', 'Foreign Portfolio Investor'
+}
+
+export interface NewsArticle {
+  id: string;
+  ipoId: number;
+  title: string;
+  url: string;
+  source?: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  summary?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  createdAt: string;
+}
+
+export interface YouTubeSummary {
+  id: string;
+  ipoId: number;
+  videoId: string;
+  videoUrl?: string;
+  channelName?: string;
+  thumbnailUrl?: string;
+  viewCount?: number;
+  publishedAt?: string;
+  aiSummary?: string;
+  keyPoints?: string[];
+  sentiment?: 'positive' | 'neutral' | 'negative';
+  createdAt: string;
+}
+
+export interface IPOPrediction {
+  id: string;
+  ipoId: number;
+  modelVersion: string;
+  predictedListingPrice?: number;
+  predictedGainPercent?: number;
+  confidenceLower?: number;
+  confidenceUpper?: number;
+  confidenceLabel?: 'low' | 'medium' | 'high';
+  reasoning?: string;
+  featuresUsed?: Record<string, unknown>;
+  generatedAt: string;
+}
+
+export interface ScraperHealth {
+  id: number;
+  scraperName: string;
+  status: 'success' | 'failed' | 'skipped';
+  itemsProcessed: number;
+  errorMessage?: string;
+  durationMs?: number;
+  ranAt: string;
+}
+
+export interface MLModelRegistryEntry {
+  id: string;
+  version: string;
+  blobUrl?: string;
+  featureSchemaUrl?: string;
+  metrics?: Record<string, unknown>;
+  isActive: boolean;
+  trainedAt: string;
 }
 
 export interface ListedIPO {

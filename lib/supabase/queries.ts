@@ -1,6 +1,13 @@
 // Simple Supabase queries for IPOGyani
 import { createClient } from './server'
-import type { IPO, ListedIPO } from '@/lib/data'
+import type {
+  IPO,
+  ListedIPO,
+  NewsArticle,
+  YouTubeSummary,
+  IPOPrediction,
+  AnchorInvestor,
+} from '@/lib/data'
 
 // Types matching the database schema
 export interface IPOSimple {
@@ -48,6 +55,65 @@ export interface IPOSimple {
   updated_at: string
   last_gmp_update: string | null
   last_subscription_update: string | null
+
+  // Automation columns (migration 004_automation_extensions)
+  gmp_sources_used?: string[] | null
+  subscription_last_scraped?: string | null
+  news_last_fetched?: string | null
+  youtube_last_fetched?: string | null
+  prediction_last_generated?: string | null
+  anchor_investors?: AnchorInvestor[] | null
+  promoter_holding_pre?: number | null
+  promoter_holding_post?: number | null
+  sector_pe?: number | null
+  fresh_issue_cr?: number | null
+  ofs_cr?: number | null
+  listing_price_v2?: number | null // alias guard; real column is listing_price
+}
+
+// Rows from the ipo_news table (migration 004)
+export interface IPONewsRow {
+  id: string
+  ipo_id: number
+  title: string
+  url: string
+  source: string | null
+  image_url: string | null
+  published_at: string | null
+  summary: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  created_at: string
+}
+
+// Rows from ipo_youtube_summaries table (migration 004)
+export interface IPOYouTubeRow {
+  id: string
+  ipo_id: number
+  video_id: string
+  video_url: string | null
+  channel_name: string | null
+  thumbnail_url: string | null
+  view_count: number | null
+  published_at: string | null
+  ai_summary: string | null
+  key_points: string[] | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  created_at: string
+}
+
+// Rows from ipo_predictions table (migration 004)
+export interface IPOPredictionRow {
+  id: string
+  ipo_id: number
+  model_version: string
+  predicted_listing_price: number | null
+  predicted_gain_percent: number | null
+  confidence_lower: number | null
+  confidence_upper: number | null
+  confidence_label: 'low' | 'medium' | 'high' | null
+  reasoning: string | null
+  features_used: Record<string, unknown> | null
+  generated_at: string
 }
 
 export interface GMPHistory {
@@ -110,6 +176,21 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
     marketCap: 'TBD',
     peRatio: 0,
     aboutCompany: ipo.description || '',
+
+    // Automation fields (migration 004_automation_extensions). All optional.
+    gmpSourcesUsed: ipo.gmp_sources_used ?? undefined,
+    subscriptionLastScraped: ipo.subscription_last_scraped ?? undefined,
+    newsLastFetched: ipo.news_last_fetched ?? undefined,
+    youtubeLastFetched: ipo.youtube_last_fetched ?? undefined,
+    predictionLastGenerated: ipo.prediction_last_generated ?? undefined,
+    anchorInvestors: ipo.anchor_investors ?? undefined,
+    promoterHoldingPre: ipo.promoter_holding_pre ?? undefined,
+    promoterHoldingPost: ipo.promoter_holding_post ?? undefined,
+    sectorPe: ipo.sector_pe ?? undefined,
+    freshIssueCr: ipo.fresh_issue_cr ?? undefined,
+    ofsCr: ipo.ofs_cr ?? undefined,
+    listingPrice: ipo.listing_price ?? undefined,
+    listingGainPercent: ipo.listing_gain_percent ?? undefined,
   }
 }
 
