@@ -6,10 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint .",
-    "deploy": "wrangler deploy",
-    "preview": "wrangler pages dev .open-next/static",
-    "cf-build": "pnpm run build && wrangler deploy"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -70,7 +67,6 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.18.0",
     "@tailwindcss/postcss": "^4.2.0",
     "@types/node": "^22",
     "@types/react": "^19",
@@ -78,7 +74,6 @@
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3",
-    "wrangler": "^4.80.0"
+    "typescript": "5.7.3"
   }
 }
