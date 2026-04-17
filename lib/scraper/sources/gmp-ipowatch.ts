@@ -12,82 +12,65 @@ type IPO = {
 const BASE_LIST_URL =
   "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/"
 
+/**
+ * Scrape GMP from IPOWatch.
+ * - If `ipo.ipowatch_gmp_url` is set, hit that page directly.
+ * - Otherwise hit the live GMP listing and search by company_name.
+ */
 export async function scrapeIPOWatchGMP(
   ipo: IPO
 ): Promise<{ gmp: number } | null> {
   try {
-    let url = ipo.ipowatch_gmp_url
+    const url = ipo.ipowatch_gmp_url || BASE_LIST_URL
 
-    // Fallback to listing page
-    if (!url) {
-      url = BASE_LIST_URL
-    }
+    const response = await fetchWithRetry(url)
+    if (!response.ok) return null
 
-    const html = await fetchWithRetry(url)
-    if (!html) return null
-
+    const html = await response.text()
     const $ = cheerio.load(html)
 
     // ================================
-    // CASE 1: Direct IPO Page
+    // CASE 1: Direct IPO page
     // ================================
     if (ipo.ipowatch_gmp_url) {
       let gmp: number | null = null
 
       $("table tr").each((_, el) => {
+        if (gmp !== null) return
         const rowText = $(el).text()
-
-        // Skip header
         if (/date/i.test(rowText)) return
 
-        // Extract GMP from first valid row
-        const match = rowText.match(/₹\s?([\d,.-]+)/)
-
-        if (match && gmp === null) {
-          const parsed = parseGMP(match[1])
-
-          if (parsed !== null) {
-            gmp = parsed
-          }
+        const m = rowText.match(/₹\s?([\d,.-]+)/)
+        if (m) {
+          const parsed = parseGMP(m[1])
+          if (parsed !== null) gmp = parsed
         }
       })
 
-      if (gmp !== null) {
-        return { gmp }
-      }
-
-      return null
+      return gmp !== null ? { gmp } : null
     }
 
     // ================================
-    // CASE 2: Listing Page
+    // CASE 2: Listing page
     // ================================
+    const company = ipo.company_name.toLowerCase().trim()
     let foundGMP: number | null = null
-    const company = ipo.company_name.toLowerCase()
 
     $("table tr").each((_, el) => {
+      if (foundGMP !== null) return
       const rowText = $(el).text().toLowerCase()
+      if (!rowText.includes(company)) return
 
-      if (rowText.includes(company)) {
-        const match = rowText.match(/₹\s?([\d,.-]+)/)
-
-        if (match) {
-          const parsed = parseGMP(match[1])
-
-          if (parsed !== null) {
-            foundGMP = parsed
-          }
-        }
+      const m = rowText.match(/₹\s?([\d,.-]+)/)
+      if (m) {
+        const parsed = parseGMP(m[1])
+        if (parsed !== null) foundGMP = parsed
       }
     })
 
-    if (foundGMP !== null) {
-      return { gmp: foundGMP }
-    }
-
-    return null
+    return foundGMP !== null ? { gmp: foundGMP } : null
   } catch (error) {
-    console.error("scrapeIPOWatchGMP error:", error)
+    console.error("[v0] scrapeIPOWatchGMP error:", error)
     return null
   }
 }
