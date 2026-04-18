@@ -1,5 +1,9 @@
 import { MetadataRoute } from 'next'
 import { currentIPOs, listedIPOs } from '@/lib/data'
+import {
+  getAllListedIpoParams,
+  getAvailableYears,
+} from '@/lib/listed-ipos/loader'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://ipogyani.com'
@@ -126,5 +130,27 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }))
 
-  return [...staticPages, ...currentIPOPages, ...listedIPOPages]
+  // Listed-IPO year archive pages (CSV-driven, statically generated)
+  const listedYearPages = getAvailableYears().map((y) => ({
+    url: `${baseUrl}/listed/${y}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
+  }))
+
+  // Listed-IPO per-company detail pages
+  const listedArchiveIPOPages = getAllListedIpoParams().map(({ year, slug }) => ({
+    url: `${baseUrl}/listed/${year}/${slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'monthly' as const,
+    priority: 0.7,
+  }))
+
+  return [
+    ...staticPages,
+    ...currentIPOPages,
+    ...listedIPOPages,
+    ...listedYearPages,
+    ...listedArchiveIPOPages,
+  ]
 }

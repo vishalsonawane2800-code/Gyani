@@ -64,6 +64,10 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     ai_confidence: ipo.ai_confidence || 50,
     sentiment_score: ipo.sentiment_score || 50,
     sentiment_label: ipo.sentiment_label || 'Neutral',
+    allotment_url: ipo.allotment_url || '',
+    listing_price: ipo.listing_price ?? null,
+    list_day_close: ipo.list_day_close ?? null,
+    list_day_change_pct: ipo.list_day_change_pct ?? null,
   }
 
   return (

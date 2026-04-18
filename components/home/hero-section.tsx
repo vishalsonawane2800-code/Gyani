@@ -25,9 +25,25 @@ const stats = [
 ];
 
 export function HeroSection({ ipos }: HeroSectionProps) {
-  const liveIPOs = ipos.filter(ipo => 
-    ipo.status === 'open' || ipo.status === 'lastday'
+  // Prefer live (open / lastday) IPOs. When there are none, fall back to
+  // upcoming IPOs so the hero card never goes empty between IPO windows.
+  const openLiveIPOs = ipos.filter(
+    (ipo) => ipo.status === 'open' || ipo.status === 'lastday'
+  );
+  const hasLive = openLiveIPOs.length > 0;
+  const displayIPOs = (hasLive
+    ? openLiveIPOs
+    : ipos.filter((ipo) => ipo.status === 'upcoming')
   ).slice(0, 3);
+
+  const snapshotHeading = hasLive ? 'Live IPO Snapshot' : 'Upcoming IPO Snapshot';
+  const pillLabel = hasLive ? 'Live' : 'Upcoming';
+  const pillColor = hasLive ? 'text-emerald-400' : 'text-amber-300';
+  const pillDotColor = hasLive ? 'bg-emerald-400' : 'bg-amber-300';
+  const viewAllLabel = hasLive ? 'View all live IPOs' : 'View upcoming IPOs';
+  const emptyLabel = hasLive
+    ? 'No live IPOs at the moment'
+    : 'No upcoming IPOs scheduled';
 
   return (
     <section className="relative overflow-hidden" style={{ background: 'linear-gradient(155deg, #0d0b1e 0%, #1a0f3c 40%, #0f2050 100%)' }}>
@@ -119,20 +135,20 @@ export function HeroSection({ ipos }: HeroSectionProps) {
           >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-white/50 text-xs font-bold tracking-wider uppercase">
-                Live IPO Snapshot
+                {snapshotHeading}
               </h2>
-              <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold">
-                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
-                Live
+              <span className={`flex items-center gap-1.5 text-xs font-semibold ${pillColor}`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${pillDotColor}`} />
+                {pillLabel}
               </span>
             </div>
             
             <div className="space-y-0">
-              {liveIPOs.length > 0 ? liveIPOs.map((ipo, index) => (
+              {displayIPOs.length > 0 ? displayIPOs.map((ipo, index) => (
                 <Link 
                   key={ipo.id} 
                   href={`/ipo/${ipo.slug}`}
-                  className={`flex items-center gap-3 py-3 group ${index < liveIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
+                  className={`flex items-center gap-3 py-3 group ${index < displayIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
                 >
                   <div 
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
@@ -152,18 +168,24 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                     <div className={`text-sm sm:text-base font-extrabold ${ipo.aiPrediction >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       {ipo.aiPrediction >= 0 ? '+' : ''}{ipo.aiPrediction}%
                     </div>
-                    <div className="text-white/50 text-xs mt-0.5">
-                      GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>Rs {ipo.gmp}</span>
-                      <span className="text-white/30 mx-0.5">|</span>
-                      <span className={ipo.gmpPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                        {ipo.gmpPercent >= 0 ? '+' : ''}{ipo.gmpPercent}%
-                      </span>
-                    </div>
+                    {hasLive ? (
+                      <div className="text-white/50 text-xs mt-0.5">
+                        GMP: <span className={ipo.gmp >= 0 ? 'text-emerald-400' : 'text-red-400'}>Rs {ipo.gmp}</span>
+                        <span className="text-white/30 mx-0.5">|</span>
+                        <span className={ipo.gmpPercent >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                          {ipo.gmpPercent >= 0 ? '+' : ''}{ipo.gmpPercent}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-white/40 text-xs mt-0.5">
+                        Opens {ipo.openDate || 'TBD'}
+                      </div>
+                    )}
                   </div>
                 </Link>
               )) : (
                 <div className="text-center py-6 text-white/40 text-sm">
-                  No live IPOs at the moment
+                  {emptyLabel}
                 </div>
               )}
             </div>
@@ -173,7 +195,7 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                 href="#current" 
                 className="flex items-center justify-center gap-2 text-violet-400 hover:text-violet-300 text-xs sm:text-sm font-semibold transition-colors"
               >
-                View all live IPOs
+                {viewAllLabel}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>

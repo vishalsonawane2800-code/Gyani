@@ -84,6 +84,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
       ai_confidence: body.ai_confidence || 50,
       sentiment_score: body.sentiment_score || 50,
       sentiment_label: body.sentiment_label || 'Neutral',
+      // Admin-entered allotment URL (migration 014)
+      allotment_url: body.allotment_url || null,
+      // Listing-day data (migration 015)
+      list_day_close: body.list_day_close ?? null,
+      list_day_change_pct: body.list_day_change_pct ?? null,
+      listing_price: body.listing_price ?? null,
     }
 
     const { data, error } = await supabase
