@@ -8,10 +8,14 @@ import { ArchiveTable } from '@/components/listed/archive-table';
 import {
   getAvailableYears,
   getListedIposByYear,
+  getMergedListedIposByYear,
+  getMergedAvailableYears,
 } from '@/lib/listed-ipos/loader';
 
-export const dynamic = 'force-static';
-export const dynamicParams = false;
+// ISR: revalidate every hour so DB-sourced IPOs appear without a full rebuild
+export const revalidate = 3600;
+// Allow dynamic params for DB-only years not in CSV
+export const dynamicParams = true;
 
 export function generateStaticParams() {
   return getAvailableYears().map((y) => ({ year: String(y) }));

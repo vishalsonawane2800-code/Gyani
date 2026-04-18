@@ -299,3 +299,66 @@ export function getAllListedIpoParams(): Array<{ year: string; slug: string }> {
   }
   return out;
 }
+
+// -----------------------------------------------------------------------------
+// Async merged loaders (CSV + DB)
+// These fetch from both CSV files and the `listed_ipos` DB table, merging
+// results. CSV records win on slug conflict since they have richer data.
+// Use these in pages that need to show DB-sourced rows without a CSV commit.
+// -----------------------------------------------------------------------------
+
+import {
+  getListedIposFromDbByYear,
+  getListedIpoFromDb,
+  getAvailableYearsFromDb,
+} from './db';
+
+/**
+ * Merge CSV and DB records for a year. CSV wins on slug conflict.
+ */
+export async function getMergedListedIposByYear(
+  year: number
+): Promise<ListedIpoRecord[]> {
+  const csvRows = getListedIposByYear(year);
+  const dbRows = await getListedIposFromDbByYear(year);
+
+  // Build a map keyed by slug, CSV first so DB doesn't overwrite
+  const bySlug = new Map<string, ListedIpoRecord>();
+  for (const r of csvRows) {
+    bySlug.set(r.slug, r);
+  }
+  for (const r of dbRows) {
+    if (!bySlug.has(r.slug)) {
+      bySlug.set(r.slug, r);
+    }
+  }
+
+  // Sort newest listing first
+  const merged = Array.from(bySlug.values());
+  merged.sort((a, b) => (a.listingDate < b.listingDate ? 1 : -1));
+  return merged;
+}
+
+/**
+ * Get a single IPO by year + slug, checking CSV first then DB.
+ */
+export async function getMergedListedIpo(
+  year: number,
+  slug: string
+): Promise<ListedIpoRecord | null> {
+  // CSV first (richer data)
+  const csvMatch = getListedIpo(year, slug);
+  if (csvMatch) return csvMatch;
+  // Fallback to DB
+  return getListedIpoFromDb(year, slug);
+}
+
+/**
+ * Get all available years from both CSV and DB, deduplicated and sorted desc.
+ */
+export async function getMergedAvailableYears(): Promise<number[]> {
+  const csvYears = getAvailableYears();
+  const dbYears = await getAvailableYearsFromDb();
+  const all = new Set([...csvYears, ...dbYears]);
+  return Array.from(all).sort((a, b) => b - a);
+}
