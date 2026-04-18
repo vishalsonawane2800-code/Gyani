@@ -7,7 +7,7 @@
  *   CRON_SECRET   - Secret, must match the Next.js app's CRON_SECRET
  *
  * Cron triggers (configure in dashboard -> Triggers -> Cron Triggers):
- *   */15 * * * *   -> POST /api/cron/dispatch
+ *   every 15 min   -> POST /api/cron/dispatch
  *   30 6 * * *     -> POST /api/cron/scrape-gmp-history (12:00 PM IST)
  *   30 16 * * *    -> POST /api/cron/scrape-gmp-history (10:00 PM IST)
  */
