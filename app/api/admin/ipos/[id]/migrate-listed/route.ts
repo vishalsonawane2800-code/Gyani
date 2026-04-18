@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /**
@@ -142,6 +143,22 @@ export async function migrateIpoToListed(
       console.error('[migrate-listed] status update error:', updateError)
       // Not fatal — the listed_ipos row exists; a later run will retry.
     }
+  }
+
+  // Revalidate archive pages so the newly migrated IPO appears immediately
+  // without waiting for the ISR window or a redeploy.
+  try {
+    const year = listedIpoData.year
+    revalidatePath('/listed')
+    if (year) {
+      revalidatePath(`/listed/${year}`)
+      revalidatePath(`/listed/${year}/${listedIpoData.slug}`)
+    }
+  } catch (revalidateError) {
+    // revalidatePath throws if called outside a server request (e.g. from a
+    // cron). That's fine — ISR will still pick up the change within the
+    // revalidate window. Don't fail the migration over it.
+    console.warn('[migrate-listed] revalidate skipped:', revalidateError)
   }
 
   return {

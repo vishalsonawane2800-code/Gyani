@@ -6,15 +6,18 @@ import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ArchiveTable } from '@/components/listed/archive-table';
 import {
-  getAvailableYears,
-  getListedIposByYear,
+  getMergedListedIposByYear,
+  getMergedAvailableYears,
 } from '@/lib/listed-ipos/loader';
 
-export const dynamic = 'force-static';
-export const dynamicParams = false;
+// ISR: revalidate every hour so DB-sourced IPOs appear without a full rebuild
+export const revalidate = 3600;
+// Allow dynamic params for DB-only years not in CSV
+export const dynamicParams = true;
 
-export function generateStaticParams() {
-  return getAvailableYears().map((y) => ({ year: String(y) }));
+export async function generateStaticParams() {
+  const years = await getMergedAvailableYears();
+  return years.map((y) => ({ year: String(y) }));
 }
 
 function parseYear(raw: string): number | null {
@@ -33,7 +36,7 @@ export async function generateMetadata({
   const year = parseYear(yearStr);
   if (!year) return {};
 
-  const rows = getListedIposByYear(year);
+  const rows = await getMergedListedIposByYear(year);
   const total = rows.length;
   const positive = rows.filter(
     (r) => (r.listingGainPct ?? 0) > 0
@@ -90,10 +93,10 @@ export default async function ListedYearPage({
   const year = parseYear(yearStr);
   if (!year) notFound();
 
-  const rows = getListedIposByYear(year);
+  const rows = await getMergedListedIposByYear(year);
   if (rows.length === 0) notFound();
 
-  const availableYears = getAvailableYears();
+  const availableYears = await getMergedAvailableYears();
   const total = rows.length;
   const positive = rows.filter((r) => (r.listingGainPct ?? 0) > 0).length;
   const negative = rows.filter((r) => (r.listingGainPct ?? 0) < 0).length;
