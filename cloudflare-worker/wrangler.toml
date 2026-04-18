@@ -1,20 +1,25 @@
-name = "ipo-cron-worker"
-main = "src/index-jwt.ts"
-compatibility_date = "2024-01-01"
+name = "ipogyani-cron-worker"
+main = "src/index.ts"
+compatibility_date = "2024-10-01"
 
-# Cron Triggers
+# Cron triggers
+#   */15 * * * *  -> every 15 min, calls /api/cron/dispatch (gmp + subscription + auto-status)
+#   30 6 * * *    -> 06:30 UTC (12:00 PM IST), morning GMP history snapshot
+#   30 16 * * *   -> 16:30 UTC (10:00 PM IST), evening GMP history snapshot
 [triggers]
 crons = [
-  "*/15 * * * *",   # Every 15 minutes - main cron jobs
-  "30 6 * * *",     # 6:30 AM daily - GMP history scrape (morning)
-  "30 16 * * *"     # 4:30 PM daily - GMP history scrape (evening)
+  "*/15 * * * *",
+  "30 6 * * *",
+  "30 16 * * *",
 ]
 
-# Environment Variables (required)
-# Set these in Cloudflare Dashboard under Settings > Secrets & Variables
+# Public (non-secret) environment variables.
+# Change API_BASE_URL to your deployed Next.js app URL (no trailing slash).
 [vars]
 API_BASE_URL = "https://your-domain.com"
 
-# Note: Set these as secrets in Cloudflare Dashboard:
-# - ADMIN_USERNAME = "admin"
-# - ADMIN_PASSWORD = "your-admin-password"
+# Required secret (NOT in this file, set via wrangler):
+#   wrangler secret put CRON_SECRET
+# Its value MUST match the `CRON_SECRET` env var configured in the Next.js
+# app (Vercel / Cloudflare Pages) so that `middleware.ts` accepts the
+# `Authorization: Bearer <CRON_SECRET>` header the worker sends.

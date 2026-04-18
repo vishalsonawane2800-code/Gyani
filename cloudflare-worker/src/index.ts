@@ -1,12 +1,28 @@
 /**
- * Cloudflare Worker for IPO Cron Jobs
- * 
- * This worker triggers your Next.js API endpoints on a schedule.
- * 
- * Cron Schedules:
- * - Every 15 minutes: Run main cron jobs (GMP, subscriptions, auto-status)
- * - 6:30 AM daily: Scrape GMP history (morning)
- * - 4:30 PM daily: Scrape GMP history (evening)
+ * IPOGyani Cron Worker
+ * --------------------
+ * Replaces the old Vercel cron (`vercel.json` -> `/api/cron/dispatch`, which
+ * is locked to >=1 hour on the Hobby plan) with a Cloudflare Worker that
+ * can fire every 15 minutes for free.
+ *
+ * Schedules (see `wrangler.toml` [triggers]):
+ *   - Every 15 min (`*\/15 * * * *`) -> POST /api/cron/dispatch
+ *       Runs the three scrapers (gmp, subscription, auto-status) in parallel,
+ *       same as the original Vercel dispatcher.
+ *   - 06:30 UTC daily (`30 6 * * *`)  -> POST /api/cron/scrape-gmp-history
+ *       Morning IPO GMP snapshot (12:00 PM IST).
+ *   - 16:30 UTC daily (`30 16 * * *`) -> POST /api/cron/scrape-gmp-history
+ *       Evening IPO GMP snapshot (10:00 PM IST).
+ *
+ * Auth:
+ *   `middleware.ts` in the Next.js app accepts either a valid admin JWT
+ *   or `Authorization: Bearer <CRON_SECRET>` on /api/cron/*. The worker
+ *   uses the shared-secret path so there's no login hop every tick.
+ *
+ * Required environment variables (see wrangler.toml):
+ *   API_BASE_URL  - Base URL of the deployed Next.js app (e.g. https://ipogyani.com)
+ *   CRON_SECRET   - Must match the Next.js app's `CRON_SECRET` env var. Set as a
+ *                   Wrangler secret: `wrangler secret put CRON_SECRET`.
  */
 
 export interface Env {
@@ -18,141 +34,147 @@ interface CronResult {
   endpoint: string
   success: boolean
   status?: number
+  durationMs: number
   message?: string
   error?: string
 }
 
+/** Fetch helper that always sends Bearer auth + timeout + sensible UA. */
 async function callEndpoint(
-  baseUrl: string,
+  env: Env,
   path: string,
-  cronSecret: string
+  timeoutMs = 55_000
 ): Promise<CronResult> {
-  const url = `${baseUrl}${path}`
-  
+  const url = `${env.API_BASE_URL.replace(/\/$/, "")}${path}`
+  const started = Date.now()
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
   try {
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cronSecret}`,
-        'User-Agent': 'Cloudflare-Worker-Cron/1.0',
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.CRON_SECRET}`,
+        "User-Agent": "IPOGyani-Cloudflare-Cron/1.0",
       },
+      signal: controller.signal,
     })
 
     const text = await response.text()
     let message = text
-
     try {
-      const json = JSON.parse(text)
-      message = json.message || text
+      const parsed = JSON.parse(text) as { message?: string }
+      if (parsed && typeof parsed.message === "string") {
+        message = parsed.message
+      }
     } catch {
-      // Response is not JSON, use raw text
+      // not JSON, keep raw text
     }
 
     return {
       endpoint: path,
       success: response.ok,
       status: response.status,
-      message,
+      durationMs: Date.now() - started,
+      message: message?.slice(0, 500),
     }
-  } catch (error) {
+  } catch (err) {
     return {
       endpoint: path,
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      durationMs: Date.now() - started,
+      error: err instanceof Error ? err.message : String(err),
     }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Route a cron tick to the right Next.js endpoint based on which schedule
+ * fired. Cloudflare exposes the cron expression via `controller.cron`.
+ */
+function resolveTargets(cronExpression: string): string[] {
+  switch (cronExpression) {
+    case "30 6 * * *":
+    case "30 16 * * *":
+      return ["/api/cron/scrape-gmp-history"]
+    case "*/15 * * * *":
+    default:
+      return ["/api/cron/dispatch"]
   }
 }
 
 export default {
-  // Handle scheduled cron triggers
+  /** Scheduled (cron) trigger. */
   async scheduled(
     controller: ScheduledController,
     env: Env,
-    ctx: ExecutionContext
+    _ctx: ExecutionContext
   ): Promise<void> {
-    const cronTime = controller.cron
+    const targets = resolveTargets(controller.cron)
+    console.log(
+      `[cron] trigger=${controller.cron} scheduledTime=${new Date(
+        controller.scheduledTime
+      ).toISOString()} targets=${targets.join(",")}`
+    )
+
     const results: CronResult[] = []
-
-    console.log(`Cron triggered: ${cronTime} at ${new Date().toISOString()}`)
-
-    // Check if this is the GMP history schedule (6:30 AM or 4:30 PM)
-    const isGmpHistorySchedule = cronTime === '30 6 * * *' || cronTime === '30 16 * * *'
-
-    if (isGmpHistorySchedule) {
-      // Only run GMP history scrape
-      const result = await callEndpoint(
-        env.API_BASE_URL,
-        '/api/cron/scrape-gmp-history',
-        env.CRON_SECRET
-      )
+    for (const path of targets) {
+      const result = await callEndpoint(env, path)
       results.push(result)
-    } else {
-      // Run main cron jobs (every 15 minutes)
-      // Option 1: Call the master run-all endpoint
-      const result = await callEndpoint(
-        env.API_BASE_URL,
-        '/api/cron/run-all',
-        env.CRON_SECRET
+      console.log(
+        `[cron] ${path} -> ok=${result.success} status=${result.status ?? "-"} ` +
+          `duration=${result.durationMs}ms ${result.error ? "err=" + result.error : ""}`
       )
-      results.push(result)
-
-      // Option 2: Or call individual endpoints (uncomment if needed)
-      // const endpoints = [
-      //   '/api/cron/scrape-gmp',
-      //   '/api/cron/scrape-subscription',
-      //   '/api/cron/update-subscriptions',
-      // ]
-      // 
-      // for (const endpoint of endpoints) {
-      //   const result = await callEndpoint(env.API_BASE_URL, endpoint, env.CRON_SECRET)
-      //   results.push(result)
-      // }
     }
 
-    // Log results
-    const successCount = results.filter(r => r.success).length
-    console.log(`Cron completed: ${successCount}/${results.length} successful`)
-    console.log('Results:', JSON.stringify(results, null, 2))
+    const failed = results.filter((r) => !r.success).length
+    if (failed > 0) {
+      // Surface the failure to Workers logs / tail so `wrangler tail` is useful.
+      throw new Error(
+        `Cron completed with ${failed}/${results.length} failures: ` +
+          JSON.stringify(results)
+      )
+    }
   },
 
-  // Optional: HTTP handler for manual testing
-  async fetch(
-    request: Request,
-    env: Env,
-    ctx: ExecutionContext
-  ): Promise<Response> {
+  /** Optional HTTP interface for manual checks via `wrangler dev` or curl. */
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url)
 
-    if (url.pathname === '/test') {
-      // Manual trigger for testing
-      const result = await callEndpoint(
-        env.API_BASE_URL,
-        '/api/cron/run-all',
-        env.CRON_SECRET
-      )
-
-      return new Response(JSON.stringify({
-        message: 'Manual cron test executed',
-        timestamp: new Date().toISOString(),
-        result,
-      }, null, 2), {
-        headers: { 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (url.pathname === '/health') {
-      return new Response(JSON.stringify({
-        status: 'ok',
+    if (url.pathname === "/health") {
+      return Response.json({
+        status: "ok",
         timestamp: new Date().toISOString(),
         apiBaseUrl: env.API_BASE_URL,
-      }), {
-        headers: { 'Content-Type': 'application/json' },
+        hasSecret: Boolean(env.CRON_SECRET),
       })
     }
 
-    return new Response('IPO Cron Worker\n\nEndpoints:\n- /health - Health check\n- /test - Manual cron test', {
-      headers: { 'Content-Type': 'text/plain' },
-    })
+    if (url.pathname === "/test/dispatch") {
+      const result = await callEndpoint(env, "/api/cron/dispatch")
+      return Response.json({ triggered: "/api/cron/dispatch", result })
+    }
+
+    if (url.pathname === "/test/gmp-history") {
+      const result = await callEndpoint(env, "/api/cron/scrape-gmp-history")
+      return Response.json({ triggered: "/api/cron/scrape-gmp-history", result })
+    }
+
+    return new Response(
+      [
+        "IPOGyani Cron Worker",
+        "",
+        "Endpoints:",
+        "  GET /health            Health check",
+        "  GET /test/dispatch     Manually fire /api/cron/dispatch",
+        "  GET /test/gmp-history  Manually fire /api/cron/scrape-gmp-history",
+        "",
+        "Schedules configured in wrangler.toml.",
+      ].join("\n"),
+      { headers: { "Content-Type": "text/plain" } }
+    )
   },
-}
+} satisfies ExportedHandler<Env>
