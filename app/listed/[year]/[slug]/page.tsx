@@ -5,18 +5,27 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import {
-  getAllListedIpoParams,
-  getAvailableYears,
-  getListedIpo,
-  getListedIposByYear,
+  getMergedAvailableYears,
+  getMergedListedIpo,
+  getMergedListedIposByYear,
   type ListedIpoRecord,
 } from '@/lib/listed-ipos/loader';
 
-export const dynamic = 'force-static';
-export const dynamicParams = false;
+// ISR: revalidate every hour so newly migrated IPOs show up
+export const revalidate = 3600;
+// Allow on-demand rendering for IPOs added via the DB after build
+export const dynamicParams = true;
 
-export function generateStaticParams() {
-  return getAllListedIpoParams();
+export async function generateStaticParams() {
+  const years = await getMergedAvailableYears();
+  const params: Array<{ year: string; slug: string }> = [];
+  for (const y of years) {
+    const rows = await getMergedListedIposByYear(y);
+    for (const r of rows) {
+      params.push({ year: String(y), slug: r.slug });
+    }
+  }
+  return params;
 }
 
 function parseYear(raw: string): number | null {
@@ -75,7 +84,7 @@ export async function generateMetadata({
   const { year: yearStr, slug } = await params;
   const year = parseYear(yearStr);
   if (!year) return {};
-  const ipo = getListedIpo(year, slug);
+  const ipo = await getMergedListedIpo(year, slug);
   if (!ipo) return {};
 
   const gainPart =
@@ -202,12 +211,12 @@ export default async function ListedIpoDetail({
   const year = parseYear(yearStr);
   if (!year) notFound();
 
-  const ipo = getListedIpo(year, slug);
+  const ipo = await getMergedListedIpo(year, slug);
   if (!ipo) notFound();
 
-  const allYear = getListedIposByYear(year);
+  const allYear = await getMergedListedIposByYear(year);
   const related = relatedByYear(allYear, ipo);
-  const availableYears = getAvailableYears();
+  const availableYears = await getMergedAvailableYears();
 
   // Derived display values
   const listingDateDisplay = formatDate(ipo.listingDate, ipo.listingDateRaw);
