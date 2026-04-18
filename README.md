@@ -56,13 +56,22 @@ Set these in your Vercel project settings (Settings > Environment Variables):
 
 ### Cron Jobs
 
-The project uses a single dispatcher cron (Vercel Hobby tier supports 2 crons):
+Cron is driven by a Cloudflare Worker (`cloudflare-worker/`), not by Vercel
+cron. The Vercel Hobby plan restricts cron to one run per hour, so the
+15-minute cadence required by the GMP and subscription scrapers is not
+possible there. The worker simply POSTs to the Next.js app's existing
+`/api/cron/*` routes using a shared `CRON_SECRET`.
 
-| Schedule | Endpoint | Description |
-|----------|----------|-------------|
-| Every 15 min | `/api/cron/dispatch` | Routes to GMP, subscription, and news scrapers |
+| Schedule           | UTC           | IST          | Endpoint called                       |
+|--------------------|---------------|--------------|---------------------------------------|
+| `*/15 * * * *`     | every 15 min  | every 15 min | `/api/cron/dispatch`                  |
+| `30 6 * * *`       | 06:30 daily   | 12:00 PM     | `/api/cron/scrape-gmp-history`        |
+| `30 16 * * *`      | 16:30 daily   | 10:00 PM     | `/api/cron/scrape-gmp-history`        |
 
-The dispatcher internally manages which scrapers to run based on time-of-day and data freshness.
+`/api/cron/dispatch` fans out to `runGmpScraper()`, `runSubscriptionScraper()`,
+and `runAutoStatusJob()` in parallel.
+
+See `cloudflare-worker/README.md` for deployment instructions.
 
 ## Project Structure
 
