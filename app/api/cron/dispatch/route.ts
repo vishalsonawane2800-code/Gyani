@@ -17,6 +17,7 @@ import { NextResponse } from "next/server"
 import { logScraperRun } from "@/lib/scraper/base"
 import { runGmpScraper } from "@/app/api/cron/scrape-gmp/route"
 import { runSubscriptionScraper } from "@/app/api/cron/scrape-subscription/route"
+import { runAutoStatusJob } from "@/app/api/admin/auto-status/route"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -60,11 +61,14 @@ export async function GET(_request: Request) {
   const started = Date.now()
   const now = new Date()
 
-  // Build the schedule. Always runs: gmp + subscription.
+  // Build the schedule. Always runs: gmp + subscription + auto-status.
+  // auto-status handles the IST 5pm lastday->closed transition and the
+  // day-after-listing migration into listed_ipos.
   // Extend here when news/youtube pipelines exist.
   const jobs: Array<{ name: string; fn: () => Promise<unknown> }> = [
     { name: "gmp", fn: runGmpScraper },
     { name: "subscription", fn: runSubscriptionScraper },
+    { name: "auto-status", fn: runAutoStatusJob },
   ]
 
   const settled = await Promise.allSettled(

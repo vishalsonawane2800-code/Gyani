@@ -170,6 +170,12 @@ export interface IPO {
   listingPrice?: number;
   listingGainPercent?: number;
 
+  // Admin-entered registrar allotment URL (overrides default registrarUrls map)
+  allotmentUrl?: string;
+  // Listing-day data (migration 015)
+  listDayClose?: number;
+  listDayChangePct?: number;
+
   // Related content populated by server-side loaders
   news?: NewsArticle[];
   youtubeSummaries?: YouTubeSummary[];

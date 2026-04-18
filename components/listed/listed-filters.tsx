@@ -12,7 +12,7 @@ export function ListedFilters() {
     sort, setSort 
   } = useListedFilters();
 
-  const years = ['all', '2026', '2025', '2024'];
+  const years = ['all', '2026', '2025', '2024', '2023', '2022', '2021'];
   const exchanges = ['all', 'BSE SME', 'NSE SME', 'Mainboard'];
   const gains = [
     { value: 'all', label: 'All' },

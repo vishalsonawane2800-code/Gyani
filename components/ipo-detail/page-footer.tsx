@@ -5,48 +5,67 @@ interface PageFooterProps {
   ipo: IPO;
 }
 
-export function PageFooter({ ipo }: PageFooterProps) {
-  // Registrar URL mapping
-  const registrarUrls: Record<string, string> = {
-    'KFin Technologies': 'https://kosmic.kfintech.com/ipostatus/',
-    'Link Intime': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
-    'Bigshare Services': 'https://www.bigshareonline.com/IPOStatus.aspx',
-    'Skyline Financial': 'https://ipo.bigshareonline.com/',
-    'Cameo Corporate': 'https://ipostatus.cameoindia.com/',
-  };
+// Fallback map keyed by registrar name. Used when the admin has not
+// provided a per-IPO allotment URL on the IPO record itself.
+const registrarUrls: Record<string, string> = {
+  'KFin Technologies': 'https://kosmic.kfintech.com/ipostatus/',
+  'Link Intime': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+  'Link Intime India': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+  'Bigshare Services': 'https://www.bigshareonline.com/IPOStatus.aspx',
+  'Skyline Financial': 'https://ipo.bigshareonline.com/',
+  'Cameo Corporate': 'https://ipostatus.cameoindia.com/',
+};
 
-  const registrarUrl = registrarUrls[ipo.registrar] || 'https://kosmic.kfintech.com/ipostatus/';
+// Allotment button is only meaningful between allotment day and listing day.
+// For open / lastday / upcoming / closed statuses, the registrar won't have
+// anything to show, so we hide the block entirely.
+const ALLOTMENT_VISIBLE_STATUSES: IPO['status'][] = ['allot', 'listing'];
+
+export function PageFooter({ ipo }: PageFooterProps) {
+  const allotmentUrl =
+    ipo.allotmentUrl?.trim() ||
+    (ipo.registrar ? registrarUrls[ipo.registrar] : undefined) ||
+    null;
+
+  const showAllotment =
+    ALLOTMENT_VISIBLE_STATUSES.includes(ipo.status) && !!allotmentUrl;
+
+  const gridCols = showAllotment
+    ? 'grid-cols-1 md:grid-cols-2'
+    : 'grid-cols-1';
 
   return (
     <div className="mt-10 border-t border-border pt-8">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Check Allotment */}
-        <div className="bg-primary-bg border border-primary/20 rounded-2xl p-6">
-          <h3 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-2">
-            Check Allotment Status
-          </h3>
-          <p className="text-[13px] text-ink3 mb-4">
-            Check your {ipo.name} IPO allotment status on the registrar website.
-          </p>
-          <div className="flex items-center gap-3 mb-4 p-3 bg-background rounded-xl">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <span className="font-bold text-primary text-sm">R</span>
+      <div className={`grid ${gridCols} gap-6`}>
+        {/* Check Allotment - only visible once allotment has started */}
+        {showAllotment && (
+          <div className="bg-primary-bg border border-primary/20 rounded-2xl p-6">
+            <h3 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-2">
+              Check Allotment Status
+            </h3>
+            <p className="text-[13px] text-ink3 mb-4">
+              Check your {ipo.name} IPO allotment status on the registrar website.
+            </p>
+            <div className="flex items-center gap-3 mb-4 p-3 bg-background rounded-xl">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <span className="font-bold text-primary text-sm">R</span>
+              </div>
+              <div>
+                <p className="text-[12px] font-semibold">{ipo.registrar}</p>
+                <p className="text-[11px] text-ink3">IPO Registrar</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[12px] font-semibold">{ipo.registrar}</p>
-              <p className="text-[11px] text-ink3">IPO Registrar</p>
-            </div>
+            <a
+              href={allotmentUrl!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[13px] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
+            >
+              Check Allotment Status
+              <ExternalLink className="w-4 h-4" />
+            </a>
           </div>
-          <a
-            href={registrarUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full flex items-center justify-center gap-2 bg-primary text-white text-[13px] font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
-          >
-            Check Allotment Status
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
+        )}
 
         {/* Disclaimer */}
         <div className="bg-gold-bg/50 border border-gold/20 rounded-2xl p-6">

@@ -51,6 +51,9 @@ export interface IPOSimple {
   listing_price: number | null
   current_price: number | null
   listing_gain_percent: number | null
+  allotment_url: string | null
+  list_day_close: number | null
+  list_day_change_pct: number | null
   created_at: string
   updated_at: string
   last_gmp_update: string | null
@@ -191,6 +194,9 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
     ofsCr: ipo.ofs_cr ?? undefined,
     listingPrice: ipo.listing_price ?? undefined,
     listingGainPercent: ipo.listing_gain_percent ?? undefined,
+    allotmentUrl: ipo.allotment_url ?? undefined,
+    listDayClose: ipo.list_day_close ?? undefined,
+    listDayChangePct: ipo.list_day_change_pct ?? undefined,
   }
 }
 

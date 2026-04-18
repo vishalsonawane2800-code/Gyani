@@ -18,6 +18,8 @@ const statusPriority: Record<string, number> = {
 
 // Only show open/active IPOs (not listed - they move to listed section)
 const openStatuses: string[] = ['open', 'lastday', 'allot', 'listing'];
+// When nothing is actively live, fall back to upcoming so the section is never blank.
+const upcomingStatuses: string[] = ['upcoming'];
 
 interface IPO {
   id: string;
@@ -41,12 +43,16 @@ interface CurrentIPOsProps {
 export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
 
-  // Filter only open IPOs and sort by priority
-  const openIPOs = ipos.filter((ipo) =>
-    openStatuses.includes(ipo.status)
+  // Prefer active IPOs. If there are none, fall back to upcoming so the
+  // homepage never renders an empty grid between IPO cycles.
+  const openIPOs = ipos.filter((ipo) => openStatuses.includes(ipo.status));
+  const upcomingIPOs = ipos.filter((ipo) =>
+    upcomingStatuses.includes(ipo.status)
   );
+  const hasLive = openIPOs.length > 0;
+  const sourceIPOs = hasLive ? openIPOs : upcomingIPOs;
 
-  const sortedIPOs = [...openIPOs].sort((a, b) => {
+  const sortedIPOs = [...sourceIPOs].sort((a, b) => {
     return (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0);
   });
 
@@ -59,7 +65,12 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
     return true;
   });
 
-  const activeCount = openIPOs.length;
+  const activeCount = sourceIPOs.length;
+  const headingLabel = hasLive ? 'Current IPO' : 'Upcoming IPOs';
+  const countPillLabel = hasLive ? 'Active' : 'Upcoming';
+  const countPillClass = hasLive
+    ? 'bg-emerald-bg text-emerald'
+    : 'bg-primary-bg text-primary';
 
   return (
     <section id="current" className="mb-7">
@@ -67,10 +78,10 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <h2 className="text-lg font-bold">
-            Current IPO
+            {headingLabel}
           </h2>
-          <span className="text-xs font-extrabold py-1 px-3 rounded-full bg-emerald-bg text-emerald">
-            {activeCount} Active
+          <span className={`text-xs font-extrabold py-1 px-3 rounded-full ${countPillClass}`}>
+            {activeCount} {countPillLabel}
           </span>
         </div>
 

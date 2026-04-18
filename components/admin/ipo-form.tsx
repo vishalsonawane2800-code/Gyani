@@ -87,6 +87,12 @@ interface IPOFormData {
   ai_confidence: number
   sentiment_score: number
   sentiment_label: string
+  // Allotment URL (admin override for "Check Allotment" button)
+  allotment_url: string
+  // Listing day data (captured post-listing to enable auto-migration to listed_ipos)
+  listing_price: number | null
+  list_day_close: number | null
+  list_day_change_pct: number | null
 }
 
 const defaultFormData: IPOFormData = {
@@ -122,6 +128,10 @@ const defaultFormData: IPOFormData = {
   ai_confidence: 50,
   sentiment_score: 50,
   sentiment_label: 'Neutral',
+  allotment_url: '',
+  listing_price: null,
+  list_day_close: null,
+  list_day_change_pct: null,
 }
 
 const exchanges = ['Mainboard', 'BSE SME', 'NSE SME', 'REIT']
@@ -949,6 +959,24 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
             />
           </div>
           <div>
+            <Label htmlFor="allotment_url" className="text-slate-300">
+              Allotment URL
+              <span className="text-xs text-slate-500 ml-2">Overrides default registrar link</span>
+            </Label>
+            <Input
+              id="allotment_url"
+              name="allotment_url"
+              value={formData.allotment_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://kosmic.kfintech.com/ipostatus/?ipoid=..."
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Direct link to the registrar&apos;s allotment-status page for this IPO. If blank,
+              the public page falls back to the default link for the chosen registrar.
+            </p>
+          </div>
+          <div>
             <Label htmlFor="lead_manager" className="text-slate-300">Lead Manager</Label>
             <Input
               id="lead_manager"
@@ -1002,6 +1030,109 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
               placeholder="e.g., 543555"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 9: LISTING DAY DATA */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">9. Listing Day Data</h2>
+          <span className="text-xs text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded">
+            Fill on / after listing day
+          </span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Enter the listing-day open price, close price, and change %. Once both listing price
+          and list-day close are set, the IPO is eligible for automatic migration to the Listed
+          IPOs directory on the day after the listing date.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <Label htmlFor="listing_price" className="text-slate-300">
+              Listing Price (Rs)
+              <span className="text-xs text-slate-500 ml-1">Open on listing day</span>
+            </Label>
+            <Input
+              id="listing_price"
+              name="listing_price"
+              type="number"
+              step="0.01"
+              value={formData.listing_price ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                const listingPrice = raw === '' ? null : parseFloat(raw)
+                setFormData((prev) => {
+                  const close = prev.list_day_close
+                  const computed =
+                    listingPrice && listingPrice > 0 && close != null
+                      ? Math.round(((close - listingPrice) / listingPrice) * 10000) / 100
+                      : prev.list_day_change_pct
+                  return {
+                    ...prev,
+                    listing_price: listingPrice,
+                    list_day_change_pct: computed,
+                  }
+                })
+              }}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., 125.50"
+            />
+          </div>
+          <div>
+            <Label htmlFor="list_day_close" className="text-slate-300">
+              List Day Close (Rs)
+              <span className="text-xs text-slate-500 ml-1">Close on listing day</span>
+            </Label>
+            <Input
+              id="list_day_close"
+              name="list_day_close"
+              type="number"
+              step="0.01"
+              value={formData.list_day_close ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                const close = raw === '' ? null : parseFloat(raw)
+                setFormData((prev) => {
+                  const listingPrice = prev.listing_price
+                  const computed =
+                    listingPrice && listingPrice > 0 && close != null
+                      ? Math.round(((close - listingPrice) / listingPrice) * 10000) / 100
+                      : prev.list_day_change_pct
+                  return {
+                    ...prev,
+                    list_day_close: close,
+                    list_day_change_pct: computed,
+                  }
+                })
+              }}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., 138.75"
+            />
+          </div>
+          <div>
+            <Label htmlFor="list_day_change_pct" className="text-slate-300">
+              List Day Change (%)
+              <span className="text-xs text-slate-500 ml-1">Auto-computed, editable</span>
+            </Label>
+            <Input
+              id="list_day_change_pct"
+              name="list_day_change_pct"
+              type="number"
+              step="0.01"
+              value={formData.list_day_change_pct ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value
+                const pct = raw === '' ? null : parseFloat(raw)
+                setFormData((prev) => ({ ...prev, list_day_change_pct: pct }))
+              }}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="e.g., 10.56"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              Auto-computed from listing price and close. Override manually if needed.
+            </p>
           </div>
         </div>
       </div>
