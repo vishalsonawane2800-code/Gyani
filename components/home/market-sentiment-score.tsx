@@ -61,6 +61,15 @@ const DEFAULT_SIGNALS: SentimentSignal[] = [
   { label: 'Avg listing gain', value: '+3.2%', tone: 'neutral' },
 ];
 
+// Gauge geometry: a 270deg arc (gap at the bottom).
+const GAUGE_SIZE = 180;
+const GAUGE_RADIUS = 72;
+const GAUGE_STROKE = 14;
+const GAUGE_CENTER = GAUGE_SIZE / 2;
+const GAUGE_CIRC = 2 * Math.PI * GAUGE_RADIUS;
+const GAUGE_ARC_FRACTION = 0.75; // 270 of 360 deg
+const GAUGE_ARC_LEN = GAUGE_CIRC * GAUGE_ARC_FRACTION;
+
 export function MarketSentimentScore({
   score = 38,
   description = 'FY26 IPO returns disappoint — investors lost money in 2 out of 3 issues. Retail applications are down 40%. Exercise caution.',
@@ -70,6 +79,8 @@ export function MarketSentimentScore({
   const clamped = Math.max(0, Math.min(100, score));
   const zoneKey = getZone(clamped);
   const zone = ZONES[zoneKey];
+
+  const progressLen = (clamped / 100) * GAUGE_ARC_LEN;
 
   return (
     <section
@@ -91,78 +102,77 @@ export function MarketSentimentScore({
           <h2 className="font-[family-name:var(--font-sora)] text-[15px] font-bold leading-tight text-ink text-balance sm:text-[17px]">
             Overall Market Sentiment
           </h2>
-          <span
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider shrink-0"
-            style={{
-              background: zone.soft,
-              color: zone.text,
-            }}
+        </div>
+
+        {/* Main row: circular gauge + description */}
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center sm:gap-6">
+          {/* Circular gauge */}
+          <div
+            className="relative shrink-0"
+            style={{ width: GAUGE_SIZE, height: GAUGE_SIZE }}
+            role="img"
+            aria-label={`Sentiment score ${clamped} out of 100, ${zone.label.toLowerCase()}`}
           >
-            <span
-              className="inline-flex h-1.5 w-1.5 rounded-full"
-              style={{ background: zone.stroke }}
-            />
-            {zone.label}
-          </span>
-        </div>
-
-        {/* Score + Bar */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline gap-2">
-            <span
-              className="font-[family-name:var(--font-sora)] text-[32px] font-black leading-none tabular-nums sm:text-[36px]"
-              style={{ color: zone.text }}
+            <svg
+              width={GAUGE_SIZE}
+              height={GAUGE_SIZE}
+              viewBox={`0 0 ${GAUGE_SIZE} ${GAUGE_SIZE}`}
+              className="-rotate-[135deg]"
             >
-              {clamped}
-            </span>
-            <span className="text-[12px] font-semibold text-ink3">/ 100</span>
+              {/* Track */}
+              <circle
+                cx={GAUGE_CENTER}
+                cy={GAUGE_CENTER}
+                r={GAUGE_RADIUS}
+                fill="none"
+                stroke="var(--muted)"
+                strokeWidth={GAUGE_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={`${GAUGE_ARC_LEN} ${GAUGE_CIRC}`}
+              />
+              {/* Progress */}
+              <circle
+                cx={GAUGE_CENTER}
+                cy={GAUGE_CENTER}
+                r={GAUGE_RADIUS}
+                fill="none"
+                stroke={zone.stroke}
+                strokeWidth={GAUGE_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={`${progressLen} ${GAUGE_CIRC}`}
+                style={{ transition: 'stroke-dasharray 0.8s ease, stroke 0.4s ease' }}
+              />
+            </svg>
+
+            {/* Center label */}
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span
+                className="font-[family-name:var(--font-sora)] text-[44px] font-black leading-none tabular-nums"
+                style={{ color: zone.text }}
+              >
+                {clamped}
+              </span>
+              <span className="mt-1 text-[11px] font-semibold text-ink3">
+                / 100
+              </span>
+              <span
+                className="mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wider"
+                style={{ background: zone.soft, color: zone.text }}
+              >
+                <span
+                  className="inline-flex h-1.5 w-1.5 rounded-full"
+                  style={{ background: zone.stroke }}
+                />
+                {zone.label}
+              </span>
+            </div>
           </div>
 
-          {/* Horizontal gradient bar with indicator */}
-          <div className="relative">
-            <div
-              className="h-2 w-full rounded-full"
-              style={{
-                background:
-                  'linear-gradient(to right, var(--destructive) 0%, var(--destructive) 25%, var(--gold) 35%, var(--gold-mid) 55%, var(--emerald) 75%, var(--emerald) 100%)',
-                opacity: 0.25,
-              }}
-            />
-            <div
-              className="absolute top-0 h-2 rounded-full"
-              style={{
-                left: 0,
-                width: `${clamped}%`,
-                background:
-                  'linear-gradient(to right, var(--destructive) 0%, var(--destructive) 25%, var(--gold) 35%, var(--gold-mid) 55%, var(--emerald) 75%, var(--emerald) 100%)',
-                backgroundSize: `${100 / (clamped / 100)}% 100%`,
-                transition: 'width 0.8s ease',
-              }}
-            />
-            {/* Marker dot */}
-            <div
-              className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-card shadow-md"
-              style={{
-                left: `${clamped}%`,
-                borderColor: zone.stroke,
-                transition: 'left 0.8s ease',
-              }}
-            />
-          </div>
-
-          {/* Zone scale labels */}
-          <div className="flex justify-between px-0.5 text-[9px] font-semibold uppercase tracking-wider text-ink4">
-            <span>Bearish</span>
-            <span>Cautious</span>
-            <span>Neutral</span>
-            <span>Bullish</span>
-          </div>
+          {/* Description on the right (below on mobile) */}
+          <p className="text-[12.5px] leading-relaxed text-ink2 text-pretty sm:text-[13.5px]">
+            {description}
+          </p>
         </div>
-
-        {/* Description */}
-        <p className="text-[12.5px] leading-relaxed text-ink2 text-pretty sm:text-[13.5px]">
-          {description}
-        </p>
 
         {/* Signal chips */}
         {signals.length > 0 && (
