@@ -11,6 +11,18 @@ interface MarketSentimentProps {
   };
 }
 
+function isEmptyStats(stats: IPOCategoryStats | undefined): boolean {
+  if (!stats) return true;
+  return (
+    stats.total === 0 &&
+    stats.upcoming === 0 &&
+    stats.inGainOnListing === 0 &&
+    stats.inLossOnListing === 0 &&
+    stats.avgListingGain === 0 &&
+    stats.avgSubscription === 0
+  );
+}
+
 // Fallback static stats if Supabase is unavailable
 const fallbackStats = {
   mainboard: {
@@ -101,7 +113,10 @@ function CategoryStats({
 
 export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
   const [activeTab, setActiveTab] = useState<'mainboard' | 'sme'>('mainboard');
-  const stats = ipoStats || fallbackStats;
+  const stats = {
+    mainboard: isEmptyStats(ipoStats?.mainboard) ? fallbackStats.mainboard : ipoStats!.mainboard,
+    sme: isEmptyStats(ipoStats?.sme) ? fallbackStats.sme : ipoStats!.sme,
+  };
   const active = stats[activeTab];
 
   return (
