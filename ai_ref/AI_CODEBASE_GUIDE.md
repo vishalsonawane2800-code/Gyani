@@ -580,4 +580,4 @@ always use the token classes.
    Do not replicate it; call `runAutoStatusJob()` if you need it inline.
 6. **For the listed archive**, CSV is authoritative for historical rows,
    DB for fresh ones. Never "sync CSV from DB" without a ticket — the
-   CSV is hand-curated.
+   CSV is hand-curated...
