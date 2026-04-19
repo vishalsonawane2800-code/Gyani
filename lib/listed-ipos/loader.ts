@@ -67,16 +67,41 @@ const DATA_DIR = path.join(process.cwd(), 'data', 'listed-ipos');
 const cache = new Map<number, ListedIpoRecord[]>();
 let allYearsCache: number[] | null = null;
 
-/** Parse a single CSV line respecting double-quoted fields. */
-function parseLine(line: string): string[] {
-  const out: string[] = [];
+/**
+ * Parse an entire CSV text into rows of cells, correctly handling:
+ *   - Quoted fields containing commas
+ *   - Quoted fields containing embedded newlines
+ *   - Escaped double quotes ("")
+ *   - Both LF and CRLF line endings
+ *
+ * Within quoted headers we collapse internal newlines to spaces so that
+ * headers like  "Nifty 3D\nReturn (%)"  become  "Nifty 3D Return (%)" .
+ */
+function parseCsvRows(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
   let cur = '';
   let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+  let rowHasContent = false;
+
+  const pushCell = () => {
+    // Collapse internal whitespace/newlines that came from multi-line quoted headers
+    row.push(cur.replace(/\s+/g, ' ').trim());
+    cur = '';
+  };
+  const pushRow = () => {
+    pushCell();
+    // Skip fully-empty rows
+    if (rowHasContent) rows.push(row);
+    row = [];
+    rowHasContent = false;
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
     if (inQuotes) {
       if (ch === '"') {
-        if (line[i + 1] === '"') {
+        if (text[i + 1] === '"') {
           cur += '"';
           i++;
         } else {
@@ -84,20 +109,29 @@ function parseLine(line: string): string[] {
         }
       } else {
         cur += ch;
+        if (ch !== '\n' && ch !== '\r') rowHasContent = true;
       }
     } else {
       if (ch === ',') {
-        out.push(cur);
-        cur = '';
+        pushCell();
       } else if (ch === '"') {
         inQuotes = true;
+        rowHasContent = true;
+      } else if (ch === '\r') {
+        // handle CRLF / CR as row terminator
+        if (text[i + 1] === '\n') i++;
+        pushRow();
+      } else if (ch === '\n') {
+        pushRow();
       } else {
         cur += ch;
+        if (ch !== ' ' && ch !== '\t') rowHasContent = true;
       }
     }
   }
-  out.push(cur);
-  return out.map((s) => s.trim());
+  // Flush final row
+  if (cur.length > 0 || row.length > 0) pushRow();
+  return rows;
 }
 
 function toNumber(raw: string | undefined): number | null {
@@ -143,13 +177,33 @@ export function slugify(name: string): string {
     .replace(/-{2,}/g, '-');
 }
 
+/**
+ * Normalize a column header so small cosmetic differences don't break lookups.
+ * Examples that should all normalize to the same key:
+ *   - "Listing Price (Rs)"
+ *   - "Listing Price (₹)"
+ *   - "Listing Price ( ₹ )"
+ *   - "listing price"
+ *   - "Listing\nPrice"
+ */
+function normalizeHeader(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/₹/g, '')
+    .replace(/\brs\.?\b/g, '')
+    .replace(/[^a-z0-9%]+/g, '');
+}
+
 /** Column-name -> record-key resolver (flexible to small header variations). */
 function getCol(row: Record<string, string>, ...names: string[]): string | undefined {
   for (const n of names) {
     if (n in row) return row[n];
     const lower = n.toLowerCase();
-    const match = Object.keys(row).find((k) => k.toLowerCase() === lower);
-    if (match) return row[match];
+    const ciMatch = Object.keys(row).find((k) => k.toLowerCase() === lower);
+    if (ciMatch) return row[ciMatch];
+    const norm = normalizeHeader(n);
+    const normMatch = Object.keys(row).find((k) => normalizeHeader(k) === norm);
+    if (normMatch) return row[normMatch];
   }
   return undefined;
 }
@@ -225,16 +279,14 @@ function rowToRecord(
 }
 
 function parseCsv(text: string, year: number): ListedIpoRecord[] {
-  const lines = text
-    .split(/\r?\n/)
-    .filter((l) => l.trim().length > 0);
-  if (lines.length < 2) return [];
-  const header = parseLine(lines[0]);
+  const rows = parseCsvRows(text);
+  if (rows.length < 2) return [];
+  const header = rows[0];
   const records: ListedIpoRecord[] = [];
   const seen = new Map<string, number>();
 
-  for (let i = 1; i < lines.length; i++) {
-    const cells = parseLine(lines[i]);
+  for (let i = 1; i < rows.length; i++) {
+    const cells = rows[i];
     const row: Record<string, string> = {};
     header.forEach((h, idx) => {
       row[h] = cells[idx] ?? '';
@@ -255,25 +307,71 @@ function parseCsv(text: string, year: number): ListedIpoRecord[] {
   return records;
 }
 
+/**
+ * Resolve the CSV file path for a given year.
+ *
+ * Supports two layouts (in order of preference):
+ *   1. data/listed-ipos/<year>/<year>.csv   (current repo layout)
+ *   2. data/listed-ipos/<year>.csv          (legacy flat layout)
+ *
+ * Also falls back to the first *.csv file found inside
+ * data/listed-ipos/<year>/ so adding a differently named CSV still works.
+ */
+function resolveYearCsvPath(year: number): string | null {
+  const candidates = [
+    path.join(DATA_DIR, String(year), `${year}.csv`),
+    path.join(DATA_DIR, `${year}.csv`),
+  ];
+  for (const c of candidates) {
+    try {
+      if (fs.statSync(c).isFile()) return c;
+    } catch {
+      // not found, try next
+    }
+  }
+  // Fallback: any .csv inside the year subfolder
+  const yearDir = path.join(DATA_DIR, String(year));
+  try {
+    const files = fs.readdirSync(yearDir).filter((f) => f.toLowerCase().endsWith('.csv'));
+    if (files.length > 0) return path.join(yearDir, files[0]);
+  } catch {
+    // no year dir
+  }
+  return null;
+}
+
 export function getAvailableYears(): number[] {
   if (allYearsCache) return allYearsCache;
+  const years = new Set<number>();
   try {
-    const files = fs.readdirSync(DATA_DIR);
-    const years = files
-      .filter((f) => /^\d{4}\.csv$/.test(f))
-      .map((f) => parseInt(f.slice(0, 4), 10))
-      .sort((a, b) => b - a);
-    allYearsCache = years;
-    return years;
+    const entries = fs.readdirSync(DATA_DIR, { withFileTypes: true });
+    for (const entry of entries) {
+      // Directory layout: data/listed-ipos/<year>/...
+      if (entry.isDirectory() && /^\d{4}$/.test(entry.name)) {
+        const y = parseInt(entry.name, 10);
+        if (resolveYearCsvPath(y)) years.add(y);
+        continue;
+      }
+      // Legacy flat layout: data/listed-ipos/<year>.csv
+      if (entry.isFile() && /^\d{4}\.csv$/.test(entry.name)) {
+        years.add(parseInt(entry.name.slice(0, 4), 10));
+      }
+    }
   } catch {
-    allYearsCache = [];
-    return [];
+    // DATA_DIR missing - leave years empty
   }
+  const sorted = Array.from(years).sort((a, b) => b - a);
+  allYearsCache = sorted;
+  return sorted;
 }
 
 export function getListedIposByYear(year: number): ListedIpoRecord[] {
   if (cache.has(year)) return cache.get(year)!;
-  const file = path.join(DATA_DIR, `${year}.csv`);
+  const file = resolveYearCsvPath(year);
+  if (!file) {
+    cache.set(year, []);
+    return [];
+  }
   try {
     const text = fs.readFileSync(file, 'utf8');
     const parsed = parseCsv(text, year);
