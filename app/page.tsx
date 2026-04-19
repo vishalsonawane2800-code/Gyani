@@ -9,7 +9,6 @@ import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
 import { getCurrentIPOs, getListedIPOs, getIPOStats } from '@/lib/supabase/queries';
-import { currentIPOs as fallbackIPOs, listedIPOs as fallbackListedIPOs } from '@/lib/data';
 import Link from 'next/link';
 
 const allPages = [
@@ -33,18 +32,14 @@ const allPages = [
 ];
 
 export default async function HomePage() {
-  // Fetch data from Supabase with fallback to static data
-  let ipos = await getCurrentIPOs();
-  let listedIpos = await getListedIPOs({ limit: 10 });
-  const ipoStats = await getIPOStats();
-  
-  // Use fallback data if Supabase returns empty (no data seeded yet)
-  if (ipos.length === 0) {
-    ipos = fallbackIPOs;
-  }
-  if (listedIpos.length === 0) {
-    listedIpos = fallbackListedIPOs;
-  }
+  // Fetch data from Supabase. Sections render empty states when no admin
+  // data has been added yet - we intentionally do NOT fall back to the
+  // hardcoded demo IPOs in lib/data.ts.
+  const [ipos, listedIpos, ipoStats] = await Promise.all([
+    getCurrentIPOs(),
+    getListedIPOs({ limit: 10 }),
+    getIPOStats(),
+  ]);
   
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">

@@ -117,11 +117,22 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       </div>
 
       {/* IPO Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filteredIPOs.map((ipo) => (
-          <IPOCard key={ipo.id} ipo={ipo} />
-        ))}
-      </div>
+      {filteredIPOs.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredIPOs.map((ipo) => (
+            <IPOCard key={ipo.id} ipo={ipo} />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <p className="text-sm font-semibold text-ink2">
+            No {hasLive ? 'active' : 'upcoming'} IPOs right now.
+          </p>
+          <p className="text-[12.5px] text-ink3 mt-1">
+            Add IPOs from the admin panel and they will appear here.
+          </p>
+        </div>
+      )}
 
       {/* Status Legend */}
       <div className="flex flex-wrap gap-4 mt-4 text-xs">
