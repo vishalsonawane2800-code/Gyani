@@ -68,7 +68,15 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
               {recentListedIPOs.map((ipo, idx) => {
                 const isPositive = ipo.gainPct > 0;
                 const isNegative = ipo.gainPct < 0;
-                
+                // Listed IPO detail pages live at /listed/[year]/[slug].
+                // Prefer the record's own year; otherwise derive from listDate.
+                const listedYear =
+                  ipo.year ||
+                  (ipo.listDate
+                    ? new Date(ipo.listDate).getFullYear().toString()
+                    : new Date().getFullYear().toString());
+                const detailHref = `/listed/${listedYear}/${ipo.slug}`;
+
                 return (
                   <tr 
                     key={ipo.id} 
@@ -77,7 +85,7 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
                     }`}
                   >
                     <td className="py-3 px-4">
-                      <Link href={`/ipo/${ipo.slug}`} className="flex items-center gap-2.5 group">
+                      <Link href={detailHref} className="flex items-center gap-2.5 group">
               <div
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
                 style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
