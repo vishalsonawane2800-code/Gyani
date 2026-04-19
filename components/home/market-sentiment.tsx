@@ -23,8 +23,8 @@ const fallbackStats = {
   },
 };
 
-// Manual "medium" values for quick UI editing without backend changes
-const manualMediumListingGain: Record<'mainboard' | 'sme', number> = {
+// Manual median values for quick UI editing without backend changes
+const manualMedianListingGain: Record<'mainboard' | 'sme', number> = {
   mainboard: -1.27,
   sme: 12.6,
 };
@@ -56,12 +56,6 @@ function CategoryStats({
             {stats.avgSubscription}x
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Subscription</div>
-        {/* 2. Upcoming IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-cobalt-mid leading-none">
-            {stats.upcoming}
-          </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
 
         {/* 3. Avg Listing Gains */}
@@ -77,9 +71,9 @@ function CategoryStats({
         {/* 4. Median Listing Gains */}
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
           <div className={`text-xl sm:text-2xl font-black leading-none ${
-            manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
+            manualMedianListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
-            {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
+            {manualMedianListingGain[category] >= 0 ? '+' : ''}{manualMedianListingGain[category]}%
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Median Listing Gains</div>
         </div>
