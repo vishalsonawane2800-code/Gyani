@@ -5,10 +5,23 @@ import { createClient } from '@supabase/supabase-js'
 // Run with: node scripts/seed-admin.js
 
 async function main() {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+  // Prefer the service role key so we bypass RLS when upserting the admin row.
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY
+
+  if (!url || !key) {
+    console.error(
+      'Missing Supabase env vars. Need SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.'
+    )
+    process.exit(1)
+  }
+
+  const supabase = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  })
 
   console.log('Seeding admin user...')
 
