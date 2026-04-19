@@ -58,15 +58,7 @@ function CategoryStats({
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
 
-        {/* 3. Avg Subscription */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-gold-mid leading-none">
-            {stats.avgSubscription}x
-          </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Subscription</div>
-        </div>
-
-        {/* 4. Avg Listing Gains with Median (combined box) */}
+        {/* 3. Avg Listing Gains */}
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
           <div className={`text-xl sm:text-2xl font-black leading-none ${
             stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
@@ -74,12 +66,16 @@ function CategoryStats({
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
-          <div className={`text-sm sm:text-base font-black mt-1 ${
+        </div>
+
+        {/* 4. Median Listing Gains */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
+          <div className={`text-xl sm:text-2xl font-black leading-none ${
             manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
             {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
           </div>
-          <div className="text-xs sm:text-sm text-ink3 leading-tight font-semibold">Median Listing Gains</div>
+          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Median Listing Gains</div>
         </div>
 
         {/* 5. IPOs Open in Profit */}
