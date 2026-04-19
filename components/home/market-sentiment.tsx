@@ -14,8 +14,8 @@ interface MarketSentimentProps {
 // Fallback static stats if Supabase is unavailable
 const fallbackStats = {
   mainboard: {
-    total: 19, upcoming: 1, inGainOnListing: 9, inLossOnListing: 9,
-    currentlyInGain: 6, currentlyInLoss: 12, totalRaisedCr: 18240, avgListingGain: 12.4, avgSubscription: 28.6,
+    total: 19, upcoming: 1, inGainOnListing: 7, inLossOnListing: 12,
+    currentlyInGain: 6, currentlyInLoss: 12, totalRaisedCr: 18240, avgListingGain: -1.43, avgSubscription: 2.66,
   },
   sme: {
     total: 44, upcoming: 3, inGainOnListing: 20, inLossOnListing: 21,
@@ -23,9 +23,9 @@ const fallbackStats = {
   },
 };
 
-// Manual "medium" values for quick UI editing without backend changes
-const manualMediumListingGain: Record<'mainboard' | 'sme', number> = {
-  mainboard: 7.8,
+// Manual median values for quick UI editing without backend changes
+const manualMedianListingGain: Record<'mainboard' | 'sme', number> = {
+  mainboard: -1.27,
   sme: 12.6,
 };
 
@@ -50,15 +50,7 @@ function CategoryStats({
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">{label} Listed</div>
         </div>
 
-        {/* 2. Upcoming IPOs */}
-        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
-          <div className="text-xl sm:text-2xl font-black text-cobalt-mid leading-none">
-            {stats.upcoming}
-          </div>
-          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Upcoming IPOs</div>
-        </div>
-
-        {/* 3. Avg Subscription */}
+        {/* 2. Avg Subscription */}
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
           <div className="text-xl sm:text-2xl font-black text-gold-mid leading-none">
             {stats.avgSubscription}x
@@ -66,7 +58,7 @@ function CategoryStats({
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Subscription</div>
         </div>
 
-        {/* 4. Avg Listing Gains with Median (combined box) */}
+        {/* 3. Avg Listing Gains */}
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
           <div className={`text-xl sm:text-2xl font-black leading-none ${
             stats.avgListingGain >= 0 ? 'text-emerald' : 'text-destructive'
@@ -74,12 +66,16 @@ function CategoryStats({
             {stats.avgListingGain >= 0 ? '+' : ''}{stats.avgListingGain}%
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Listing Gains</div>
-          <div className={`text-sm sm:text-base font-black mt-1 ${
-            manualMediumListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
+        </div>
+
+        {/* 4. Median Listing Gains */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
+          <div className={`text-xl sm:text-2xl font-black leading-none ${
+            manualMedianListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
-            {manualMediumListingGain[category] >= 0 ? '+' : ''}{manualMediumListingGain[category]}%
+            {manualMedianListingGain[category] >= 0 ? '+' : ''}{manualMedianListingGain[category]}%
           </div>
-          <div className="text-xs sm:text-sm text-ink3 leading-tight font-semibold">Median Listing Gains</div>
+          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Median Listing Gains</div>
         </div>
 
         {/* 5. IPOs Open in Profit */}

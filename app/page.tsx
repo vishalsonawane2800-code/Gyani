@@ -8,7 +8,9 @@ import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
-import { getCurrentIPOs, getListedIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
+import { getCurrentIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
+import { getMergedAvailableYears, getMergedListedIposByYear } from '@/lib/listed-ipos/loader';
+import type { ListedIPO } from '@/lib/data';
 import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
 
@@ -32,13 +34,53 @@ const allPages = [
   { href: '/disclaimer', label: 'Disclaimer' },
 ];
 
+function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYear>>[number], index: number): ListedIPO {
+  const abbr = row.name
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'IP';
+
+  return {
+    id: index + 1,
+    name: row.name,
+    slug: row.slug,
+    abbr,
+    bgColor: '#f0f9ff',
+    fgColor: '#0369a1',
+    exchange: 'NSE',
+    sector: row.sector || 'General',
+    listDate: row.listingDate,
+    issuePrice: row.issuePriceUpper ?? 0,
+    listPrice: row.listingPrice ?? 0,
+    gainPct: row.listingGainPct ?? 0,
+    subTimes: row.day3Sub ?? 0,
+    gmpPeak: '-',
+    aiPred: '-',
+    aiErr: 0,
+    year: String(row.year),
+  };
+}
+
+async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
+  const years = await getMergedAvailableYears();
+  const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYear(y)));
+  const merged = rowsByYear
+    .flat()
+    .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
+    .slice(0, limit);
+
+  return merged.map(toListedIpoCard);
+}
+
 export default async function HomePage() {
   // Fetch data from Supabase. Sections render empty states when no admin
   // data has been added yet - we intentionally do NOT fall back to the
   // hardcoded demo IPOs in lib/data.ts.
   const [ipos, listedIpos, ipoStats, marketNews] = await Promise.all([
     getCurrentIPOs(),
-    getListedIPOs({ limit: 10 }),
+    getRecentListedIpos(10),
     getIPOStats(),
     getMarketNews({ limit: 6 }),
   ]);
