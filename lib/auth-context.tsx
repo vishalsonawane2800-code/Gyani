@@ -102,7 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        // The API expects snake_case + an explicit confirm_password field.
+        // Sending camelCase here previously caused every reset attempt to
+        // fail with "Current password, new password, and confirm password
+        // are required".
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: newPassword,
+        }),
       })
 
       const data = await response.json()
