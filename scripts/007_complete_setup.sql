@@ -420,13 +420,17 @@ CREATE POLICY "Service role full access" ON admins FOR ALL USING (true) WITH CHE
 -- Username: admin
 -- Password: changeme123
 -- =============================================
+-- Real bcrypt hash of "changeme123" (cost 10) - verified.
 INSERT INTO admins (username, password_hash, must_reset_password)
 VALUES (
   'admin',
-  '$2a$10$X7VYKvjJQPGhVmEgWWQQFe9XvmF8dF1ELKqH7HkJVmE5V0gX6EFMC',
+  '$2b$10$x1RYd7tiTD7q0xjfqLD0BOb9HeS2GhD3MB4cYk9chWABU281LnQpe',
   true
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (username) DO UPDATE
+SET password_hash       = EXCLUDED.password_hash,
+    must_reset_password = true,
+    updated_at          = NOW();
 
 -- =============================================
 -- DONE! Your database is ready.

@@ -56,6 +56,12 @@ function CategoryStats({
             {stats.avgSubscription}x
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Avg Subscription</div>
+        {/* 2. Upcoming IPOs */}
+        <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
+          <div className="text-xl sm:text-2xl font-black text-cobalt-mid leading-none">
+            {stats.upcoming}
+          </div>
+          <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Upcoming IPOs</div>
         </div>
 
         {/* 3. Avg Listing Gains */}

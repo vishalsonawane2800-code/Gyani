@@ -37,11 +37,17 @@ CREATE POLICY "Service role full access" ON admins FOR ALL USING (true) WITH CHE
 -- =============================================
 
 -- Insert default admin (you can run this separately or include in your seed script)
--- The hash below is for password "changeme123"
+-- The hash below is a REAL bcrypt hash of "changeme123" (cost 10) - verified.
+-- Previous revision of this file shipped a placeholder hash that silently
+-- failed verifyPassword(), causing "Invalid credentials" even with the right
+-- password. Keep this value in sync with scripts/seed-admin.ts if you rotate it.
 INSERT INTO admins (username, password_hash, must_reset_password)
 VALUES (
   'admin',
-  '$2b$10$8N.Z5t7VF7H3Q1R9X2Y3Z.5F8E6D4C3B2A1Z9X8W7V6U5T4S3R2Q', -- bcrypt hash of "changeme123"
+  '$2b$10$x1RYd7tiTD7q0xjfqLD0BOb9HeS2GhD3MB4cYk9chWABU281LnQpe',
   true
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (username) DO UPDATE
+SET password_hash       = EXCLUDED.password_hash,
+    must_reset_password = true,
+    updated_at          = NOW();
