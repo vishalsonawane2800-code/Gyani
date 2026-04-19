@@ -1138,3 +1138,89 @@ export async function getRecentScraperRuns(options?: { scraperName?: string; lim
   
   return (data ?? []) as ScraperHealthRow[]
 }
+
+// =============================================================================
+// Market News (migration 016_create_market_news.sql)
+// -----------------------------------------------------------------------------
+// Curated "IPO Market News" items shown on the public homepage. Each row
+// links to an external article (`url`). Distinct from `ipo_news`, which is
+// scraped per-IPO.
+// =============================================================================
+
+export interface MarketNewsRow {
+  id: string
+  title: string
+  url: string
+  source: string | null
+  tag: string
+  impact: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  image_url: string | null
+  summary: string | null
+  published_at: string | null
+  is_published: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface MarketNewsItem {
+  id: string
+  title: string
+  url: string
+  source: string | null
+  tag: string
+  impact: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  imageUrl: string | null
+  summary: string | null
+  publishedAt: string | null
+  isPublished: boolean
+  displayOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
+function transformMarketNewsRow(row: MarketNewsRow): MarketNewsItem {
+  return {
+    id: row.id,
+    title: row.title,
+    url: row.url,
+    source: row.source,
+    tag: row.tag,
+    impact: row.impact,
+    sentiment: row.sentiment,
+    imageUrl: row.image_url,
+    summary: row.summary,
+    publishedAt: row.published_at,
+    isPublished: row.is_published,
+    displayOrder: row.display_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+// Fetch published market news for the public homepage, newest/pinned first.
+export async function getMarketNews(options?: { limit?: number }): Promise<MarketNewsItem[]> {
+  const supabase = await createClient()
+  if (!supabase) return []
+
+  const limit = options?.limit ?? 5
+
+  const { data, error } = await supabase
+    .from('market_news')
+    .select('*')
+    .eq('is_published', true)
+    .order('display_order', { ascending: false })
+    .order('published_at', { ascending: false, nullsFirst: false })
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    // Table may not exist yet (before migration 016 is run). Fail soft.
+    console.error('Error fetching market news:', error)
+    return []
+  }
+
+  return (data ?? []).map(row => transformMarketNewsRow(row as MarketNewsRow))
+}

@@ -8,8 +8,8 @@ import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
-import { getCurrentIPOs, getListedIPOs, getIPOStats } from '@/lib/supabase/queries';
-import { currentIPOs as fallbackIPOs, listedIPOs as fallbackListedIPOs } from '@/lib/data';
+import { getCurrentIPOs, getListedIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
+import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
 
 const allPages = [
@@ -33,18 +33,26 @@ const allPages = [
 ];
 
 export default async function HomePage() {
-  // Fetch data from Supabase with fallback to static data
-  let ipos = await getCurrentIPOs();
-  let listedIpos = await getListedIPOs({ limit: 10 });
-  const ipoStats = await getIPOStats();
-  
-  // Use fallback data if Supabase returns empty (no data seeded yet)
-  if (ipos.length === 0) {
-    ipos = fallbackIPOs;
-  }
-  if (listedIpos.length === 0) {
-    listedIpos = fallbackListedIPOs;
-  }
+  // Fetch data from Supabase. Sections render empty states when no admin
+  // data has been added yet - we intentionally do NOT fall back to the
+  // hardcoded demo IPOs in lib/data.ts.
+  const [ipos, listedIpos, ipoStats, marketNews] = await Promise.all([
+    getCurrentIPOs(),
+    getListedIPOs({ limit: 10 }),
+    getIPOStats(),
+    getMarketNews({ limit: 6 }),
+  ]);
+
+  // Map DB rows to the shape NewsSection expects.
+  const newsItems: NewsSectionItem[] = marketNews.map(n => ({
+    id: n.id,
+    title: n.title,
+    url: n.url,
+    source: n.source,
+    publishedAt: n.publishedAt,
+    tag: n.tag,
+    impact: n.impact,
+  }));
   
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -60,7 +68,7 @@ export default async function HomePage() {
             <CurrentIPOs ipos={ipos} />
             <ListedIPOs listedIpos={listedIpos} />
             <GMPTracker ipos={ipos} />
-            <NewsSection />
+            <NewsSection items={newsItems} />
           </div>
           
           {/* Sidebar */}
