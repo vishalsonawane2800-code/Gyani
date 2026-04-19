@@ -49,6 +49,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       token,
+      // Return both casings so the current client (camelCase) and any older
+      // server-side consumer (snake_case) keep working. The auth-context
+      // reads `mustResetPassword`; previous revisions returned only
+      // `must_reset_password`, which silently broke the forced-reset redirect.
+      mustResetPassword: admin.must_reset_password,
       must_reset_password: admin.must_reset_password,
       username: admin.username,
     })
