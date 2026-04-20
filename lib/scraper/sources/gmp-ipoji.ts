@@ -27,6 +27,7 @@
 
 import * as cheerio from "cheerio"
 import { fetchWithRetry } from "../base"
+import { namesMatch, normalizeName } from "../name-match"
 
 type IPO = {
   company_name: string
@@ -44,34 +45,6 @@ const DESKTOP_HEADERS: Record<string, string> = {
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
-}
-
-/**
- * Normalize a name for fuzzy matching. Strips corporate suffixes, the
- * "IPO"/"SME"/"REIT"/"InvIT" tokens, and punctuation.
- */
-function normalizeName(name: string): string {
-  if (!name) return ""
-  return name
-    .toLowerCase()
-    .replace(/\b(limited|ltd\.?|pvt\.?|private|the|ipo|sme|reit|invit)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/**
- * Match if either normalized name starts with the other AND the shorter
- * one is at least 6 chars, preventing false positives like "ABC" matching
- * "ABC Corp Holdings".
- */
-function namesMatch(a: string, b: string): boolean {
-  if (!a || !b) return false
-  if (a === b) return true
-  const short = a.length <= b.length ? a : b
-  const long = a.length <= b.length ? b : a
-  if (short.length < 6) return false
-  return long.startsWith(short)
 }
 
 /**
@@ -183,6 +156,17 @@ export async function scrapeIpojiGMP(
       })
     })
 
+    // NOTE: if the card was matched but has no "Exp. Premium" stat block
+    // at all, we intentionally return null (not 0). Observed Apr-2026 on
+    // InvIT / REIT cards like Citius Transnet, which render only
+    // Offer Price / Lot Size / Subscription / Issue Size. Returning 0
+    // here would collide with the post-close case (PropShare Celestia
+    // still appears on the list with the same stripped-down layout)
+    // and we can't distinguish the two from card markup alone. Let
+    // IPOWatch (which DOES publish the explicit dash → 0 for these
+    // listings) carry the signal, and let the averaging pipeline treat
+    // ipoji's null as no-data for this IPO — the handover explicitly
+    // only requires numeric data back from *at least one* source.
     return gmp !== null ? { gmp } : null
   } catch (err) {
     console.error("[v0] scrapeIpojiGMP error:", err)
