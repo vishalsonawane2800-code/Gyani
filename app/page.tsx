@@ -14,6 +14,13 @@ import type { ListedIPO } from '@/lib/data';
 import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
 
+// Always render on the server with fresh data. Without this, Next.js can
+// serve a cached RSC payload so newly-created / status-updated IPOs do
+// not show up in the hero or the Current IPOs grid even though the
+// header's live-count badge (which hits /api/public/live-ipo-count) sees
+// them.
+export const dynamic = 'force-dynamic';
+
 const allPages = [
   { href: '/', label: 'Home' },
   { href: '/ipo-gmp', label: 'IPO GMP Guide' },
