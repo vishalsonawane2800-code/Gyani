@@ -70,9 +70,11 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   };
 
   useEffect(() => {
-    const pollStatuses = ['open', 'closing', 'lastday', 'closed'];
-    const isTrackable =
-      typeof ipo.status === 'string' && pollStatuses.includes(ipo.status);
+    // `closing` is not a real IPOStatus value but kept here for forward-compat
+    // in case the lifecycle ever adds it. We always coerce to string first.
+    const pollStatuses: string[] = ['open', 'closing', 'lastday', 'closed'];
+    const statusStr = String(ipo.status ?? '');
+    const isTrackable = pollStatuses.includes(statusStr);
 
     // Seed from scraped ipos columns immediately so the UI is never empty
     // while the first fetch is in flight.
@@ -145,7 +147,8 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
     if (ipo.id && isTrackable) {
       fetchSubscriptionData();
       // Only poll while the issue is actually live.
-      if (ipo.status === 'open' || ipo.status === 'closing' || ipo.status === 'lastday') {
+      const livePollStatuses: string[] = ['open', 'closing', 'lastday'];
+      if (livePollStatuses.includes(statusStr)) {
         const interval = setInterval(fetchSubscriptionData, 30000);
         return () => clearInterval(interval);
       }
@@ -197,7 +200,7 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
           </div>
           <div>
             <h3 className="font-bold text-white">Live Subscription Tracker</h3>
-            <p className="text-xs text-slate-400">Day {ipo.subscriptionDay || '1'} • Real-time updates</p>
+            <p className="text-xs text-slate-400">Day {ipo.subscription?.day || '1'} • Real-time updates</p>
           </div>
         </div>
         
