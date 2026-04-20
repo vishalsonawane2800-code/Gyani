@@ -1,11 +1,50 @@
 # GMP Scraper Handover — next v0 agent
 
 Read `ai_ref/SCRAPER_CONTEXT.md` **first** for the full system overview.
-This file documents only the single bug that is in flight right now.
+This file documents only the single bug that was in flight.
 
 ---
 
-## TL;DR for the next agent
+## STATUS: Resolved on branch `scraper-handover-check` (Apr 2026)
+
+The name-matching bug described below is fixed. `scripts/verify-scrapers-e2e.ts`
+is now 27/27 green including two new Citius Transnet guard cases. If you
+are picking this up to add a NEW bug, leave the rest of this file intact
+as a historical record of why `lib/scraper/name-match.ts` exists.
+
+### What shipped
+
+- **New**: `lib/scraper/name-match.ts` — shared `normalizeName` +
+  `namesMatch` helpers. `normalizeName` now strips the InvIT / REIT /
+  `investment trust` / `infrastructure investment trust` boilerplate
+  tokens in addition to the existing limited/ltd/pvt/the/ipo/sme
+  vocabulary. `namesMatch` still requires ≥6 chars of overlap on the
+  shorter side to avoid ABC→ABC-Corp style false positives.
+- `lib/scraper/sources/gmp-ipowatch.ts` + `gmp-ipoji.ts` — both delete
+  their private name-match copies and import from the shared module.
+  Everything else in these files is untouched.
+- `scripts/verify-scrapers-e2e.ts` — added an IPOWatch Citius case that
+  asserts the long-form DB name `"Citius Transnet Investment Trust
+  InvIT"` resolves to the short-form source row and returns numeric 0
+  (the site publishes `₹-` for every day, which the dashAsZero contract
+  converts). Also added an ipoji Citius case that expects `null` — see
+  the inline comment there for why (InvIT / REIT cards ship without an
+  Exp. Premium stat block on the list page, and we can't distinguish
+  that from the post-close PropShare layout from markup alone; the
+  averaging pipeline only requires numeric data from at least one
+  source).
+
+### Acceptance bar hit
+
+- 27/27 in verify-scrapers-e2e.ts, zero regressions on the Adisoft
+  zero-GMP / PropShare post-close / Mehul Telecom guards.
+- No change to `parseGMP`, `dashAsZero`, or the orchestrator in
+  `app/api/cron/scrape-gmp/route.ts`.
+- No hard-coded company names in the scraper path.
+
+---
+
+## Original bug writeup (kept for context)
 
 **Active bug:** Admin dashboard shows `GMP -` for the live IPO
 `citius-transnet-investment-trust-invit-ipo`, with cron message
