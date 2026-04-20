@@ -9,7 +9,9 @@ import { fetchWithRetry } from "../lib/scraper/base"
 const URL = "https://ipoji.com/grey-market-premium-ipo-gmp-today.html"
 
 async function main() {
-  const html = await fetchWithRetry(URL)
+  const res = await fetchWithRetry(URL)
+  const html = await res.text()
+  console.log("html length:", html.length)
   const $ = cheerio.load(html)
   const cards = $(".ipo-card, article.ipo-card, [class*='ipo-card']")
   console.log("total card elements:", cards.length)
