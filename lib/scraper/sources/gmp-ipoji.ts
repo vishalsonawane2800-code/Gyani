@@ -1,0 +1,178 @@
+// lib/scraper/sources/gmp-ipoji.ts
+//
+// ipoji.com GMP scraper.
+//
+// Why this source: verified 2026-04-20 from Vercel egress — ipoji responds
+// 200 OK with desktop UA, no WAF, and server-renders a card-based grid of
+// ~46 live/current IPOs. This is our replacement for InvestorGain (SPA) and
+// IPOCentral (403 from cloud IPs) in the averaged GMP pipeline.
+//
+// Page layout:
+//   <div class="ipo-card">
+//     <... title: "Mehul Telecom Apr 17, 2026 – Apr 21, 2026 BSE SME Live" />
+//     <div class="ipo-card-body-stat">
+//       <span class="ipo-card-secondary-label">Exp. Premium</span>
+//       <span class="ipo-card-body-value">3-4 (3%)</span>
+//     </div>
+//     <div class="ipo-card-body-stat">Offer Price / Lot Size / Subscription / Issue Size...</div>
+//   </div>
+//
+// Value formats we handle:
+//   - "3-4 (3%)"      → midpoint of range → 3.5
+//   - "10 (5%)"       → 10
+//   - "₹ 5"           → 5
+//   - "-" / "" / "NA" → null
+//
+// Contract: NEVER throws. Returns null on any failure.
+
+import * as cheerio from "cheerio"
+import { fetchWithRetry } from "../base"
+
+type IPO = {
+  company_name: string
+}
+
+const BASE_LIST_URL =
+  "https://ipoji.com/grey-market-premium-ipo-gmp-today.html"
+
+const DESKTOP_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+const DESKTOP_HEADERS: Record<string, string> = {
+  "User-Agent": DESKTOP_UA,
+  Accept:
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+}
+
+/**
+ * Normalize a name for fuzzy matching. Strips corporate suffixes, the
+ * "IPO"/"SME"/"REIT"/"InvIT" tokens, and punctuation.
+ */
+function normalizeName(name: string): string {
+  if (!name) return ""
+  return name
+    .toLowerCase()
+    .replace(/\b(limited|ltd\.?|pvt\.?|private|the|ipo|sme|reit|invit)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/**
+ * Match if either normalized name starts with the other AND the shorter
+ * one is at least 6 chars, preventing false positives like "ABC" matching
+ * "ABC Corp Holdings".
+ */
+function namesMatch(a: string, b: string): boolean {
+  if (!a || !b) return false
+  if (a === b) return true
+  const short = a.length <= b.length ? a : b
+  const long = a.length <= b.length ? b : a
+  if (short.length < 6) return false
+  return long.startsWith(short)
+}
+
+/**
+ * Parse ipoji's "Exp. Premium" cell. Examples:
+ *   "3-4 (3%)"   → 3.5
+ *   "10 (5%)"    → 10
+ *   "₹ 5"        → 5
+ *   "-"          → null
+ */
+function parseIpojiPremium(raw: string): number | null {
+  if (!raw) return null
+  const s = String(raw).replace(/₹|rs\.?|inr/gi, "").trim()
+  if (!s || /^(-|n\/?a|nil)$/i.test(s)) return null
+
+  // Range first: "3-4 (3%)" → average 3.5. Keep the parenthetical
+  // percentage OUT of the range match.
+  const rangeMatch = s.match(/(-?\d+(?:\.\d+)?)\s*-\s*(-?\d+(?:\.\d+)?)/)
+  if (rangeMatch) {
+    const a = parseFloat(rangeMatch[1])
+    const b = parseFloat(rangeMatch[2])
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      return Math.round(((a + b) / 2) * 100) / 100
+    }
+  }
+
+  // Flat: first number encountered.
+  const flatMatch = s.match(/(-?\d+(?:\.\d+)?)/)
+  if (flatMatch) {
+    const n = parseFloat(flatMatch[1])
+    return Number.isFinite(n) ? n : null
+  }
+
+  return null
+}
+
+/**
+ * Strip trailing metadata from the ipoji card title. A card title looks like
+ *   "Mehul Telecom Apr 17, 2026 – Apr 21, 2026 BSE SME Live"
+ * We keep only the leading company-name portion.
+ */
+function cleanCardTitle(title: string): string {
+  const cut = title.split(
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/
+  )[0]
+  return (cut || title).replace(/\s+/g, " ").trim()
+}
+
+export async function scrapeIpojiGMP(
+  ipo: IPO
+): Promise<{ gmp: number } | null> {
+  try {
+    const response = await fetchWithRetry(BASE_LIST_URL, {
+      headers: DESKTOP_HEADERS,
+    })
+    if (!response.ok) return null
+
+    const html = await response.text()
+    const $ = cheerio.load(html)
+    const cards = $(".ipo-card")
+    if (!cards.length) {
+      console.warn("[v0] ipoji: no .ipo-card elements found")
+      return null
+    }
+
+    const targetNorm = normalizeName(ipo.company_name)
+    if (!targetNorm) return null
+
+    let gmp: number | null = null
+
+    cards.each((_, card) => {
+      if (gmp !== null) return
+      const $card = $(card)
+      const titleRaw = $card
+        .find(".ipo-card-title, .ipo-card-header, h2, h3, a")
+        .first()
+        .text()
+        .replace(/\s+/g, " ")
+        .trim()
+      if (!titleRaw) return
+
+      const cleaned = cleanCardTitle(titleRaw)
+      const titleNorm = normalizeName(cleaned)
+      if (!namesMatch(targetNorm, titleNorm)) return
+
+      $card.find(".ipo-card-body-stat").each((_, s) => {
+        if (gmp !== null) return
+        const label = $(s)
+          .find(".ipo-card-secondary-label")
+          .text()
+          .trim()
+          .toLowerCase()
+        if (!/gmp|exp\.?\s*premium|grey\s*market/.test(label)) return
+        const value = $(s).find(".ipo-card-body-value").text().trim()
+        const parsed = parseIpojiPremium(value)
+        if (parsed !== null) gmp = parsed
+      })
+    })
+
+    return gmp !== null ? { gmp } : null
+  } catch (err) {
+    console.error("[v0] scrapeIpojiGMP error:", err)
+    return null
+  }
+}
