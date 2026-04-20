@@ -4,18 +4,34 @@ import { parseMarketNews } from '@/lib/bulk-data-parsers'
 
 // POST /api/admin/market-news/bulk
 //
-// Body: { text: string, skipDuplicates?: boolean }
+// Body: {
+//   text: string,
+//   mode?: 'skip' | 'overwrite' | 'replace',
+//   // Back-compat with the old client:
+//   skipDuplicates?: boolean,
+// }
 //
-// Parses pasted bulk-format text and inserts/updates market_news rows.
-// The `url` column has a UNIQUE index, so we upsert on conflict(url):
-//   - skipDuplicates: true  -> existing rows by URL are left untouched.
-//   - skipDuplicates: false -> existing rows by URL are overwritten
-//     (title/source/tag/impact/published_at/... replaced).
+// Modes:
+//   - 'skip'      (default) Insert new items, silently ignore rows whose URL
+//                 already exists. Uses upsert(ignoreDuplicates) so there is
+//                 no separate pre-select that can fail.
+//   - 'overwrite' Upsert on conflict(url): existing rows are updated in place
+//                 with the pasted fields.
+//   - 'replace'   Delete ALL existing market_news rows, then insert the new
+//                 set. Destructive — the client should gate this behind a
+//                 confirmation dialog.
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const text = typeof body?.text === 'string' ? body.text : ''
-    const skipDuplicates = body?.skipDuplicates !== false // default true
+
+    // Back-compat: old client sent { skipDuplicates: boolean }.
+    const mode: 'skip' | 'overwrite' | 'replace' =
+      body?.mode === 'overwrite' || body?.mode === 'replace' || body?.mode === 'skip'
+        ? body.mode
+        : body?.skipDuplicates === false
+          ? 'overwrite'
+          : 'skip'
 
     if (!text.trim()) {
       return NextResponse.json({ error: 'No text provided' }, { status: 400 })
@@ -24,98 +40,118 @@ export async function POST(request: Request) {
     const parsed = parseMarketNews(text)
     if (!parsed.success || parsed.data.length === 0) {
       return NextResponse.json(
-        {
-          error: 'Failed to parse bulk news',
-          details: parsed.errors,
-        },
-        { status: 400 }
+        { error: 'Failed to parse bulk news', details: parsed.errors },
+        { status: 400 },
       )
     }
 
     const supabase = createAdminClient()
 
-    // Rows for insert/upsert — default published flag is true, published_at
-    // defaults to now() when the admin did not supply a DATE.
+    // Drop exact URL duplicates *within the pasted batch* so the upsert never
+    // has to resolve two identical conflict targets in one statement (Postgres
+    // rejects that with "ON CONFLICT DO UPDATE command cannot affect row a
+    // second time", which used to surface as a cryptic 500).
+    const seen = new Set<string>()
     const now = new Date().toISOString()
-    const rows = parsed.data.map(item => ({
-      title: item.title,
-      url: item.url,
-      source: item.source,
-      tag: item.tag || 'IPO',
-      impact: item.impact,
-      sentiment: item.sentiment,
-      image_url: item.image_url,
-      summary: item.summary,
-      published_at: item.published_at ?? now,
-      is_published: true,
-      display_order: item.display_order || 0,
-    }))
+    const rows = parsed.data
+      .filter(item => {
+        if (seen.has(item.url)) return false
+        seen.add(item.url)
+        return true
+      })
+      .map(item => ({
+        title: item.title,
+        url: item.url,
+        source: item.source,
+        tag: item.tag || 'IPO',
+        impact: item.impact,
+        sentiment: item.sentiment,
+        image_url: item.image_url,
+        summary: item.summary,
+        published_at: item.published_at ?? now,
+        is_published: true,
+        display_order: item.display_order || 0,
+      }))
 
     let inserted = 0
-    let skipped = 0
-    let updated = 0
+    let deleted = 0
 
-    if (skipDuplicates) {
-      // Fetch existing URLs so we can report how many were skipped.
-      const urls = rows.map(r => r.url)
-      const { data: existingRows, error: selectError } = await supabase
+    if (mode === 'replace') {
+      // Wipe the table first. We use a where-clause that matches every row
+      // (created_at is NOT NULL for all rows) because PostgREST refuses an
+      // unqualified delete().
+      const { count, error: delError } = await supabase
         .from('market_news')
-        .select('url')
-        .in('url', urls)
+        .delete({ count: 'exact' })
+        .not('created_at', 'is', null)
 
-      if (selectError) {
-        console.error('[market-news/bulk] lookup error:', selectError)
-        return NextResponse.json({ error: 'Failed to look up existing news' }, { status: 500 })
+      if (delError) {
+        console.error('[market-news/bulk] delete error:', delError)
+        return NextResponse.json(
+          { error: 'Failed to clear existing news', details: delError.message },
+          { status: 500 },
+        )
       }
+      deleted = count ?? 0
 
-      const existing = new Set((existingRows ?? []).map(r => r.url))
-      const toInsert = rows.filter(r => !existing.has(r.url))
-      skipped = rows.length - toInsert.length
-
-      if (toInsert.length > 0) {
-        const { data, error } = await supabase
-          .from('market_news')
-          .insert(toInsert)
-          .select('id')
-
-        if (error) {
-          console.error('[market-news/bulk] insert error:', error)
-          return NextResponse.json({ error: 'Failed to insert news' }, { status: 500 })
-        }
-        inserted = data?.length ?? toInsert.length
-      }
-    } else {
-      // Overwrite existing rows on url conflict.
       const { data, error } = await supabase
         .from('market_news')
-        .upsert(rows, { onConflict: 'url' })
+        .insert(rows)
+        .select('id')
+
+      if (error) {
+        console.error('[market-news/bulk] replace insert error:', error)
+        return NextResponse.json(
+          { error: 'Failed to insert news', details: error.message },
+          { status: 500 },
+        )
+      }
+      inserted = data?.length ?? rows.length
+    } else {
+      // skip + overwrite both use upsert — the only difference is whether
+      // duplicate URLs should win. ignoreDuplicates=true means "keep the
+      // existing row", false means "replace it with the pasted fields".
+      const { data, error } = await supabase
+        .from('market_news')
+        .upsert(rows, {
+          onConflict: 'url',
+          ignoreDuplicates: mode === 'skip',
+        })
         .select('id')
 
       if (error) {
         console.error('[market-news/bulk] upsert error:', error)
-        return NextResponse.json({ error: 'Failed to import news' }, { status: 500 })
+        return NextResponse.json(
+          { error: 'Failed to import news', details: error.message },
+          { status: 500 },
+        )
       }
 
-      // We don't get an insert-vs-update breakdown from upsert, so just
-      // report total rows written.
-      inserted = data?.length ?? rows.length
-      updated = 0
+      // With ignoreDuplicates=true, only newly-inserted rows come back in
+      // `data`; skipped ones are absent. We derive skipped from the diff.
+      inserted = data?.length ?? 0
     }
 
-    const message = skipDuplicates
-      ? `Imported ${inserted} new item(s), skipped ${skipped} duplicate(s).`
-      : `Imported ${inserted} item(s) (existing URLs were overwritten).`
+    const skipped = mode === 'skip' ? rows.length - inserted : 0
+    const message =
+      mode === 'replace'
+        ? `Replaced ${deleted} existing item(s) with ${inserted} new one(s).`
+        : mode === 'overwrite'
+          ? `Imported ${inserted} item(s). Existing URLs were overwritten.`
+          : `Imported ${inserted} new item(s), skipped ${skipped} duplicate(s).`
 
     return NextResponse.json({
       message,
+      mode,
       inserted,
       skipped,
-      updated,
+      deleted,
       total: rows.length,
       warnings: parsed.errors,
     })
   } catch (err) {
     console.error('[market-news/bulk] server error:', err)
-    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+    const detail = err instanceof Error ? err.message : 'Server error'
+    return NextResponse.json({ error: 'Server error', details: detail }, { status: 500 })
   }
 }
