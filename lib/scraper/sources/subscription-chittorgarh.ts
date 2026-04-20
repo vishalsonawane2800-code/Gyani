@@ -41,31 +41,47 @@ const UA =
 
 const FETCH_TIMEOUT_MS = 15_000
 
-function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .trim()
-    .replace(/\b(limited|ltd|pvt|private)\b\.?/g, "")
-    .replace(/[^a-z0-9\s-]/g, " ")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
+/**
+ * Given an admin-provided Chittorgarh URL like
+ *   https://www.chittorgarh.com/ipo/sai-parenterals-ipo/2681/
+ * derive the sibling subscription-only URL
+ *   https://www.chittorgarh.com/ipo_subscription/sai-parenterals-ipo/2681/
+ * which has far fewer unrelated tables and parses more reliably.
+ *
+ * Returns null if the input URL doesn't match the expected shape.
+ */
+function deriveSubscriptionUrl(detailUrl: string): string | null {
+  try {
+    const u = new URL(detailUrl)
+    if (!/chittorgarh\.com$/i.test(u.hostname)) return null
+    // Accept both `/ipo/<slug>/<id>/` and `/ipo/<slug>/<id>` (no trailing slash).
+    const m = u.pathname.match(/^\/ipo\/([^/]+)\/(\d+)\/?$/)
+    if (!m) return null
+    const [, slug, id] = m
+    return `https://www.chittorgarh.com/ipo_subscription/${slug}/${id}/`
+  } catch {
+    return null
+  }
 }
 
 function candidateUrls(ipo: IpoInput): string[] {
   const urls: string[] = []
+
+  // Admin-provided URL is always tried first. If it looks like a detail page
+  // (/ipo/<slug>/<id>/) we also try the cleaner /ipo_subscription/ sibling
+  // which has a single dedicated subscription table.
   if (ipo.chittorgarh_url && /^https?:\/\//i.test(ipo.chittorgarh_url)) {
+    const sub = deriveSubscriptionUrl(ipo.chittorgarh_url)
+    if (sub) urls.push(sub)
     urls.push(ipo.chittorgarh_url)
   }
-  const baseName = ipo.slug || ipo.company_name
-  if (baseName) {
-    const s = slugify(baseName)
-    if (s) {
-      // Chittorgarh commonly uses `/ipo/<slug>-ipo/<id>.html` but without
-      // the numeric ID we can only try the canonical search-style URL.
-      urls.push(`https://www.chittorgarh.com/ipo/${s}-ipo/`)
-    }
-  }
+
+  // NOTE: we deliberately do NOT build a fallback URL from the slug alone.
+  // Chittorgarh's canonical URLs require the numeric ID (e.g. /ipo/sai-parenterals-ipo/2681/);
+  // hitting /ipo/<slug>-ipo/ without an ID returns 404 and just wastes a round-trip.
+  // If the admin hasn't set `chittorgarh_url`, this source legitimately returns
+  // null and the orchestrator falls through to NSE/BSE data.
+
   return urls
 }
 

@@ -1,7 +1,18 @@
 // app/api/cron/scrape-gmp/route.ts
-// Multi-source GMP scraper. Averages GMP across InvestorGain, IPOWatch,
-// and IPOCentral. Writes one row per IPO per change to gmp_history and
-// updates the ipos table's gmp / gmp_last_updated / gmp_sources_used.
+// Multi-source GMP scraper. Averages GMP across active sources. Writes one
+// row per IPO per change to gmp_history and updates the ipos table's
+// gmp / gmp_last_updated / gmp_sources_used.
+//
+// Active sources (2026-04-20):
+//   - IPOWatch   (listing page, per-IPO article URL override supported)
+//   - ipoji      (listing page; replacement for InvestorGain/IPOCentral)
+//
+// Disabled sources (verified dead from Vercel egress — see ai_ref/SCRAPER_CONTEXT.md):
+//   - InvestorGain: client-rendered SPA, no data in server HTML
+//   - IPOCentral:   Cloudflare WAF returns 403 for all cloud IPs
+//
+// These URL columns are still SELECTed from `ipos` so the admin form doesn't
+// break, but they are not used as inputs to any live scraper.
 
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -11,9 +22,8 @@ import {
   circuitBreakerCheck,
   circuitBreakerRecordFailure,
 } from "@/lib/scraper/base"
-import { scrapeInvestorGainGMP } from "@/lib/scraper/sources/gmp-investorgain"
 import { scrapeIPOWatchGMP } from "@/lib/scraper/sources/gmp-ipowatch"
-import { scrapeIPOCentralGMP } from "@/lib/scraper/sources/gmp-ipocentral"
+import { scrapeIpojiGMP } from "@/lib/scraper/sources/gmp-ipoji"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -33,7 +43,7 @@ type IpoRow = {
   ipocentral_gmp_url: string | null
 }
 
-type SourceKey = "investorgain" | "ipowatch" | "ipocentral"
+type SourceKey = "ipowatch" | "ipoji"
 
 type SourceOutcome = {
   source: SourceKey
@@ -47,9 +57,8 @@ const SOURCES: {
   key: SourceKey
   scrape: (ipo: IpoRow) => Promise<{ gmp: number } | null>
 }[] = [
-  { key: "investorgain", scrape: (ipo) => scrapeInvestorGainGMP(ipo) },
   { key: "ipowatch", scrape: (ipo) => scrapeIPOWatchGMP(ipo) },
-  { key: "ipocentral", scrape: (ipo) => scrapeIPOCentralGMP(ipo) },
+  { key: "ipoji", scrape: (ipo) => scrapeIpojiGMP(ipo) },
 ]
 
 function sleep(ms: number) {
