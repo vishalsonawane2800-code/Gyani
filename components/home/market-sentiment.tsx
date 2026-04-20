@@ -11,11 +11,16 @@ interface MarketSentimentProps {
   };
 }
 
+// The six boxes in this panel are all driven by LISTED-IPO data
+// (total listed, avg subscription, avg / median listing gain, # open
+// in profit, # open in loss). `upcoming` is never rendered here, so
+// intentionally leaving it out of the emptiness check — otherwise a
+// single upcoming IPO in a fresh DB would block the static fallback
+// from firing and the entire panel would render as zeros.
 function isEmptyStats(stats: IPOCategoryStats | undefined): boolean {
   if (!stats) return true;
   return (
     stats.total === 0 &&
-    stats.upcoming === 0 &&
     stats.inGainOnListing === 0 &&
     stats.inLossOnListing === 0 &&
     stats.avgListingGain === 0 &&

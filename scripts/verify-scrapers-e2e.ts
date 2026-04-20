@@ -53,9 +53,43 @@ const GMP_CASES: GmpCase[] = [
     shouldFind: false,
   },
   {
+    // Regression guard for the Apr-2026 name-match bug. DB carries the
+    // long-form legal name "Citius Transnet Investment Trust InvIT" but
+    // IPOWatch lists the row under just "Citius Transnet InvIT". The
+    // shared name-match helper (lib/scraper/name-match.ts) must strip
+    // "investment trust" + "invit" so both sides normalize to
+    // "citius transnet" and the row matches. If Citius Transnet has since
+    // closed / listed, swap this fixture for another live mainboard
+    // InvIT / REIT — the point is the long-form-name → short-form-name
+    // reduction, not this specific company.
+    label: "IPOWatch listing - long-form InvIT name (Citius Transnet)",
+    ipo: {
+      company_name: "Citius Transnet Investment Trust InvIT",
+      ipowatch_gmp_url: null,
+    },
+    shouldFind: true,
+  },
+  {
     label: "ipoji cards - active SME IPO (Mehul Telecom)",
     ipo: { company_name: "Mehul Telecom" },
     shouldFind: true,
+  },
+  {
+    // Paired with the IPOWatch case above, but the assertion differs.
+    // The point of THIS case: the shared name-match helper must still
+    // LOCATE the ipoji card for the long-form DB name (otherwise the
+    // scraper would throw or silently walk every card). But ipoji
+    // renders its InvIT / REIT cards without an "Exp. Premium" stat
+    // block at all (only Offer Price / Lot Size / Subscription /
+    // Issue Size), so returning null here is the correct scraper
+    // output. Treating it as 0 would collide with the
+    // PropShare-Celestia post-close guard below — the two cards are
+    // structurally identical on the list page, and the averaging
+    // pipeline in app/api/cron/scrape-gmp/route.ts only requires
+    // numeric data from AT LEAST ONE source (IPOWatch covers Citius).
+    label: "ipoji cards - long-form InvIT name (Citius Transnet, no GMP expected)",
+    ipo: { company_name: "Citius Transnet Investment Trust InvIT" },
+    shouldFind: false,
   },
   {
     // PropShare Celestia is a mainboard REIT currently in "Allotment Awaited"
