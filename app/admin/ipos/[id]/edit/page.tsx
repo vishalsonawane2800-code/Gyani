@@ -68,6 +68,9 @@ export default async function EditIPOPage({ params }: EditIPOPageProps) {
     listing_price: ipo.listing_price ?? null,
     list_day_close: ipo.list_day_close ?? null,
     list_day_change_pct: ipo.list_day_change_pct ?? null,
+    drhp_url: ipo.drhp_url || '',
+    rhp_url: ipo.rhp_url || '',
+    anchor_investors_url: ipo.anchor_investors_url || '',
   }
 
   return (

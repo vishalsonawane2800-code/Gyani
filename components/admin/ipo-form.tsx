@@ -93,6 +93,10 @@ interface IPOFormData {
   listing_price: number | null
   list_day_close: number | null
   list_day_change_pct: number | null
+  // Document URLs (migration 020) - surfaced as buttons on the public page
+  drhp_url: string
+  rhp_url: string
+  anchor_investors_url: string
 }
 
 const defaultFormData: IPOFormData = {
@@ -132,6 +136,9 @@ const defaultFormData: IPOFormData = {
   listing_price: null,
   list_day_close: null,
   list_day_change_pct: null,
+  drhp_url: '',
+  rhp_url: '',
+  anchor_investors_url: '',
 }
 
 const exchanges = ['Mainboard', 'BSE SME', 'NSE SME', 'REIT']
@@ -996,6 +1003,67 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               onChange={handleChange}
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1 min-h-[100px]"
               placeholder="Brief description of the company and its business..."
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 7b: DOCUMENTS & DISCLOSURES */}
+      <div className="bg-slate-800 rounded-xl border border-slate-700 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-white">7b. Documents &amp; Disclosures</h2>
+          <span className="text-xs text-slate-400 bg-slate-600/50 px-2 py-0.5 rounded">Optional</span>
+        </div>
+        <p className="text-sm text-slate-400 mb-4">
+          Paste public PDF URLs. These render as DRHP, RHP and Anchor Investors
+          buttons at the bottom of the public IPO page. Leave blank to hide the
+          button.
+        </p>
+
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <Label htmlFor="drhp_url" className="text-slate-300">
+              DRHP URL
+              <span className="text-xs text-slate-500 ml-2">Draft Red Herring Prospectus (PDF)</span>
+            </Label>
+            <Input
+              id="drhp_url"
+              name="drhp_url"
+              type="url"
+              value={formData.drhp_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://.../drhp.pdf"
+            />
+          </div>
+          <div>
+            <Label htmlFor="rhp_url" className="text-slate-300">
+              RHP URL
+              <span className="text-xs text-slate-500 ml-2">Red Herring Prospectus (PDF)</span>
+            </Label>
+            <Input
+              id="rhp_url"
+              name="rhp_url"
+              type="url"
+              value={formData.rhp_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://.../rhp.pdf"
+            />
+          </div>
+          <div>
+            <Label htmlFor="anchor_investors_url" className="text-slate-300">
+              Anchor Investors URL
+              <span className="text-xs text-slate-500 ml-2">Exchange announcement / PDF</span>
+            </Label>
+            <Input
+              id="anchor_investors_url"
+              name="anchor_investors_url"
+              type="url"
+              value={formData.anchor_investors_url}
+              onChange={handleChange}
+              className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
+              placeholder="https://.../anchor-investors.pdf"
             />
           </div>
         </div>

@@ -4,10 +4,21 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { Menu, X, Search } from 'lucide-react';
+import useSWR from 'swr';
 
-const navLinks = [
+type NavLink = {
+  href: string;
+  label: string;
+  // If `liveBadge` is true, the badge count is driven by the live-ipo-count
+  // endpoint. Otherwise we fall back to the static badge string (if any).
+  badge?: string;
+  badgeColor?: string;
+  liveBadge?: boolean;
+};
+
+const navLinks: NavLink[] = [
   { href: '/', label: 'Home' },
-  { href: '#current', label: 'Live IPOs', badge: '3', badgeColor: 'bg-emerald-500' },
+  { href: '/#current', label: 'Live IPOs', badgeColor: 'bg-emerald-500', liveBadge: true },
   { href: '/listed', label: 'Listed' },
   { href: '/upcoming', label: 'Upcoming' },
   { href: '/gmp', label: 'GMP Today' },
@@ -16,11 +27,26 @@ const navLinks = [
   { href: '/accuracy', label: 'AI Accuracy' },
 ];
 
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+
+  // Live IPOs count — refreshes every 2 minutes so the badge stays current
+  // without hammering the API. Returns 0 if the endpoint is unreachable,
+  // in which case we hide the badge entirely.
+  const { data: liveData } = useSWR<{ count: number }>(
+    '/api/public/live-ipo-count',
+    fetcher,
+    {
+      refreshInterval: 120_000,
+      revalidateOnFocus: true,
+    }
+  );
+  const liveCount = liveData?.count ?? 0;
 
   useEffect(() => {
     const checkMarketHours = () => {
@@ -28,30 +54,50 @@ export function Header() {
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const day = now.getDay();
-      
+
       // Market open: Mon-Fri, 9:15 AM - 3:30 PM IST
       const isWeekday = day >= 1 && day <= 5;
       const currentMinutes = hours * 60 + minutes;
       const marketOpenMinutes = 9 * 60 + 15;
       const marketCloseMinutes = 15 * 60 + 30;
-      
-      setIsMarketOpen(isWeekday && currentMinutes >= marketOpenMinutes && currentMinutes <= marketCloseMinutes);
+
+      setIsMarketOpen(
+        isWeekday &&
+          currentMinutes >= marketOpenMinutes &&
+          currentMinutes <= marketCloseMinutes
+      );
     };
-    
+
     checkMarketHours();
     const interval = setInterval(checkMarketHours, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Resolve the badge value for a given nav link. For liveBadge links we
+  // only show the badge when the count is > 0 so an empty pipeline doesn't
+  // render a misleading "0" chip.
+  const renderBadge = (link: NavLink) => {
+    const value = link.liveBadge ? (liveCount > 0 ? String(liveCount) : '') : link.badge;
+    if (!value) return null;
+    return (
+      <span
+        className={`text-xs font-extrabold px-2 py-0.5 rounded-full text-white ${link.badgeColor ?? 'bg-primary'}`}
+        aria-label={link.liveBadge ? `${liveCount} live IPOs` : undefined}
+      >
+        {value}
+      </span>
+    );
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-card border-b border-border">
       <div className="max-w-[1440px] mx-auto flex items-center h-[58px] px-5">
         {/* Logo */}
         <Link href="/" className="flex items-center mr-5 shrink-0">
-          <Image 
-            src="/images/logo.png" 
-            alt="IPOGyani - India's Smartest IPO Platform" 
-            width={185} 
+          <Image
+            src="/images/logo.png"
+            alt="IPOGyani - India's Smartest IPO Platform"
+            width={185}
             height={47}
             className="h-[47px] w-auto"
             priority
@@ -67,11 +113,7 @@ export function Header() {
               className="text-sm font-medium text-ink3 px-3 py-2 rounded transition-colors hover:bg-background hover:text-foreground whitespace-nowrap flex items-center gap-2"
             >
               {link.label}
-              {link.badge && (
-                <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full text-white ${link.badgeColor}`}>
-                  {link.badge}
-                </span>
-              )}
+              {renderBadge(link)}
             </Link>
           ))}
         </div>
@@ -85,9 +127,11 @@ export function Header() {
           </div>
 
           {/* Compact Search Bar */}
-          <div className={`hidden md:flex items-center bg-secondary rounded border transition-all ${
-            isSearchFocused ? 'border-primary shadow-sm w-56' : 'border-transparent w-44'
-          }`}>
+          <div
+            className={`hidden md:flex items-center bg-secondary rounded border transition-all ${
+              isSearchFocused ? 'border-primary shadow-sm w-56' : 'border-transparent w-44'
+            }`}
+          >
             <Search className="w-4 h-4 text-ink4 ml-3 shrink-0" />
             <input
               type="search"
@@ -134,7 +178,7 @@ export function Header() {
               maxLength={60}
             />
           </div>
-          
+
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -143,11 +187,7 @@ export function Header() {
               onClick={() => setIsMenuOpen(false)}
             >
               {link.label}
-              {link.badge && (
-                <span className={`text-xs font-extrabold px-2 py-0.5 rounded-full text-white ${link.badgeColor}`}>
-                  {link.badge}
-                </span>
-              )}
+              {renderBadge(link)}
             </Link>
           ))}
 

@@ -176,6 +176,12 @@ export interface IPO {
   listDayClose?: number;
   listDayChangePct?: number;
 
+  // Admin-entered document URLs (migration 020). Surface as buttons at the
+  // bottom of the public IPO page when populated.
+  drhpUrl?: string;
+  rhpUrl?: string;
+  anchorInvestorsUrl?: string;
+
   // Related content populated by server-side loaders
   news?: NewsArticle[];
   youtubeSummaries?: YouTubeSummary[];

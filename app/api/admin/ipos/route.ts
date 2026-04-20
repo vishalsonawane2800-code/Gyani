@@ -81,6 +81,10 @@ export async function POST(request: Request) {
       list_day_close: body.list_day_close ?? null,
       list_day_change_pct: body.list_day_change_pct ?? null,
       listing_price: body.listing_price ?? null,
+      // Document URLs (migration 020)
+      drhp_url: body.drhp_url || null,
+      rhp_url: body.rhp_url || null,
+      anchor_investors_url: body.anchor_investors_url || null,
     }
 
     const { data, error } = await supabase
