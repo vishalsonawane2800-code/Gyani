@@ -57,9 +57,12 @@ const GMP_CASES: GmpCase[] = [
     shouldFind: true,
   },
   {
-    label: "ipoji cards - mainboard REIT (PropShare Celestia)",
+    // PropShare Celestia is a mainboard REIT currently in "Allotment Awaited"
+    // state on ipoji — its card intentionally has no "Exp. Premium" field,
+    // so gmp=null is the correct outcome, not a failure.
+    label: "ipoji cards - post-close IPO (PropShare Celestia, no GMP expected)",
     ipo: { company_name: "PropShare Celestia" },
-    shouldFind: true,
+    shouldFind: false,
   },
 ]
 
@@ -68,6 +71,15 @@ const SUB_CASES: SubCase[] = [
     label: "Chittorgarh - no URL configured (must return null, no crash)",
     ipo: { chittorgarh_url: null, company_name: "Mehul Telecom", slug: "mehul-telecom" },
     shouldFind: false,
+  },
+  {
+    label: "Chittorgarh - live mainboard IPO (Citius Transnet InvIT)",
+    ipo: {
+      chittorgarh_url: "https://www.chittorgarh.com/ipo/citius-transnet-invit-ipo/2862/",
+      company_name: "Citius Transnet InvIT",
+      slug: "citius-transnet-invit",
+    },
+    shouldFind: true,
   },
 ]
 
