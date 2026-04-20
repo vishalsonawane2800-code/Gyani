@@ -27,6 +27,7 @@
 
 import * as cheerio from "cheerio"
 import { fetchWithRetry } from "../base"
+import { namesMatch, normalizeName } from "../name-match"
 
 type IPO = {
   company_name: string
@@ -44,34 +45,6 @@ const DESKTOP_HEADERS: Record<string, string> = {
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
-}
-
-/**
- * Normalize a name for fuzzy matching. Strips corporate suffixes, the
- * "IPO"/"SME"/"REIT"/"InvIT" tokens, and punctuation.
- */
-function normalizeName(name: string): string {
-  if (!name) return ""
-  return name
-    .toLowerCase()
-    .replace(/\b(limited|ltd\.?|pvt\.?|private|the|ipo|sme|reit|invit)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/**
- * Match if either normalized name starts with the other AND the shorter
- * one is at least 6 chars, preventing false positives like "ABC" matching
- * "ABC Corp Holdings".
- */
-function namesMatch(a: string, b: string): boolean {
-  if (!a || !b) return false
-  if (a === b) return true
-  const short = a.length <= b.length ? a : b
-  const long = a.length <= b.length ? b : a
-  if (short.length < 6) return false
-  return long.startsWith(short)
 }
 
 /**

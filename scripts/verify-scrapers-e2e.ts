@@ -53,8 +53,32 @@ const GMP_CASES: GmpCase[] = [
     shouldFind: false,
   },
   {
+    // Regression guard for the Apr-2026 name-match bug. DB carries the
+    // long-form legal name "Citius Transnet Investment Trust InvIT" but
+    // IPOWatch lists the row under just "Citius Transnet InvIT". The
+    // shared name-match helper (lib/scraper/name-match.ts) must strip
+    // "investment trust" + "invit" so both sides normalize to
+    // "citius transnet" and the row matches. If Citius Transnet has since
+    // closed / listed, swap this fixture for another live mainboard
+    // InvIT / REIT — the point is the long-form-name → short-form-name
+    // reduction, not this specific company.
+    label: "IPOWatch listing - long-form InvIT name (Citius Transnet)",
+    ipo: {
+      company_name: "Citius Transnet Investment Trust InvIT",
+      ipowatch_gmp_url: null,
+    },
+    shouldFind: true,
+  },
+  {
     label: "ipoji cards - active SME IPO (Mehul Telecom)",
     ipo: { company_name: "Mehul Telecom" },
+    shouldFind: true,
+  },
+  {
+    // Paired with the IPOWatch case above — both sources must find
+    // Citius Transnet under the long-form DB name after normalization.
+    label: "ipoji cards - long-form InvIT name (Citius Transnet)",
+    ipo: { company_name: "Citius Transnet Investment Trust InvIT" },
     shouldFind: true,
   },
   {
