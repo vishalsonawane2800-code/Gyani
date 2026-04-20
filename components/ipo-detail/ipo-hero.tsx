@@ -94,12 +94,23 @@ export function IPOHero({ ipo }: IPOHeroProps) {
       {/* Top Row */}
       <div className="flex flex-wrap gap-6 items-start mb-6">
         {/* Logo & Info */}
-        <div
-                  className="w-16 h-16 rounded-xl flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-2xl shrink-0"
-                  style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-                >
-                  {generateAbbr(ipo.name)}
-        </div>
+        {ipo.logoUrl ? (
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-card border border-border flex items-center justify-center shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ipo.logoUrl}
+              alt={`${ipo.name} logo`}
+              className="w-full h-full object-contain"
+            />
+          </div>
+        ) : (
+          <div
+            className="w-16 h-16 rounded-xl flex items-center justify-center font-[family-name:var(--font-sora)] font-black text-2xl shrink-0"
+            style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+          >
+            {generateAbbr(ipo.name)}
+          </div>
+        )}
         
         <div className="flex-1 min-w-[200px]">
           <h1 className="font-[family-name:var(--font-sora)] text-xl font-extrabold mb-1">
