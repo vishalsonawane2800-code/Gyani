@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import {
   Loader2,
@@ -12,6 +11,7 @@ import {
   Copy,
   Check,
   AlertCircle,
+  AlertTriangle,
   Info,
   ChevronDown,
   ChevronUp,
@@ -33,6 +33,23 @@ interface BulkNewsEntryProps {
   onSuccess?: () => void
 }
 
+type ImportMode = 'skip' | 'overwrite' | 'replace'
+
+const MODE_LABELS: Record<ImportMode, { title: string; help: string }> = {
+  skip: {
+    title: 'Skip duplicates',
+    help: 'Insert new items. Rows whose URL already exists are left untouched.',
+  },
+  overwrite: {
+    title: 'Overwrite duplicates',
+    help: 'Insert new items. Rows whose URL already exists are overwritten with the pasted fields.',
+  },
+  replace: {
+    title: 'Replace all existing news',
+    help: 'Danger: deletes every row in market_news before inserting the pasted set. You will be asked to confirm.',
+  },
+}
+
 /**
  * Bulk import UI for the homepage "IPO Market News" section. Mirrors the
  * look + flow of `<BulkDataEntry />` (used on IPO admin pages) but scoped to
@@ -43,7 +60,7 @@ export function BulkNewsEntry({ onSuccess }: BulkNewsEntryProps) {
   const { authFetch } = useAuth()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
-  const [skipDuplicates, setSkipDuplicates] = useState(true)
+  const [mode, setMode] = useState<ImportMode>('skip')
   const [loading, setLoading] = useState(false)
   const [copiedTemplate, setCopiedTemplate] = useState(false)
   const [copiedPrompt, setCopiedPrompt] = useState(false)
@@ -81,21 +98,37 @@ export function BulkNewsEntry({ onSuccess }: BulkNewsEntryProps) {
       return
     }
 
+    // Destructive mode: block unless the admin explicitly confirms. We use
+    // window.confirm on purpose here — the rest of this admin page is built
+    // on native confirm dialogs, so this stays consistent and adds zero
+    // extra UI primitives.
+    if (mode === 'replace') {
+      const ok = window.confirm(
+        'This will DELETE all existing market news items, then insert the pasted set. This cannot be undone. Continue?',
+      )
+      if (!ok) return
+    }
+
     setLoading(true)
     try {
       const res = await authFetch('/api/admin/market-news/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, skipDuplicates }),
+        body: JSON.stringify({ text, mode }),
       })
 
       const json = await res.json()
       if (!res.ok) {
+        // The server now returns a `details` string (Supabase message) or
+        // a string[] (parser errors). Surface whichever we got so admins
+        // can see the real cause instead of "Failed to look up existing news".
+        const detail = Array.isArray(json.details)
+          ? json.details.join(', ')
+          : typeof json.details === 'string'
+            ? json.details
+            : ''
         throw new Error(
-          json.error ||
-            (json.details && Array.isArray(json.details)
-              ? json.details.join(', ')
-              : 'Import failed'),
+          [json.error, detail].filter(Boolean).join(' — ') || 'Import failed',
         )
       }
 
@@ -254,31 +287,65 @@ export function BulkNewsEntry({ onSuccess }: BulkNewsEntryProps) {
               </div>
             )}
 
-            {/* Options + submit */}
-            <div className="flex items-center justify-between flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="skip-duplicates"
-                  checked={skipDuplicates}
-                  onCheckedChange={checked => setSkipDuplicates(checked === true)}
-                  className="border-slate-600"
-                />
-                <Label
-                  htmlFor="skip-duplicates"
-                  className="text-sm text-slate-400 cursor-pointer"
-                >
-                  Skip duplicates (by URL)
-                </Label>
+            {/* Import mode */}
+            <div>
+              <Label className="text-slate-300 mb-2 block">Import mode</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {(Object.keys(MODE_LABELS) as ImportMode[]).map(key => {
+                  const active = mode === key
+                  const danger = key === 'replace'
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setMode(key)}
+                      className={`text-left p-3 rounded-lg border transition-colors ${
+                        active
+                          ? danger
+                            ? 'bg-red-500/10 border-red-500/50'
+                            : 'bg-emerald-500/10 border-emerald-500/50'
+                          : 'bg-slate-900/50 border-slate-700 hover:border-slate-600'
+                      }`}
+                    >
+                      <div
+                        className={`text-sm font-medium flex items-center gap-1.5 ${
+                          active
+                            ? danger
+                              ? 'text-red-300'
+                              : 'text-emerald-300'
+                            : 'text-slate-200'
+                        }`}
+                      >
+                        {danger && <AlertTriangle className="h-3.5 w-3.5" />}
+                        {MODE_LABELS[key].title}
+                      </div>
+                      <p className="text-[11px] mt-1 leading-snug text-slate-400">
+                        {MODE_LABELS[key].help}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
+            </div>
 
+            {/* Submit */}
+            <div className="flex items-center justify-end">
               <Button
                 type="button"
                 onClick={handleImport}
                 disabled={loading || !text.trim()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                className={
+                  mode === 'replace'
+                    ? 'bg-red-600 hover:bg-red-700 text-white'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                }
               >
                 {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Import News
+                {mode === 'replace'
+                  ? 'Replace All News'
+                  : mode === 'overwrite'
+                    ? 'Import & Overwrite'
+                    : 'Import News'}
               </Button>
             </div>
           </div>
