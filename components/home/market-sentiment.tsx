@@ -32,28 +32,22 @@ function isEmptyStats(stats: IPOCategoryStats | undefined): boolean {
 const fallbackStats = {
   mainboard: {
     total: 19, upcoming: 1, inGainOnListing: 7, inLossOnListing: 12,
-    currentlyInGain: 6, currentlyInLoss: 12, totalRaisedCr: 18240, avgListingGain: -1.43, avgSubscription: 2.66,
+    currentlyInGain: 6, currentlyInLoss: 12, totalRaisedCr: 18240,
+    avgListingGain: -1.43, medianListingGain: -1.27, avgSubscription: 2.66,
   },
   sme: {
     total: 44, upcoming: 3, inGainOnListing: 20, inLossOnListing: 21,
-    currentlyInGain: 22, currentlyInLoss: 19, totalRaisedCr: 4120, avgListingGain: 18.7, avgSubscription: 112.4,
+    currentlyInGain: 22, currentlyInLoss: 19, totalRaisedCr: 4120,
+    avgListingGain: 18.7, medianListingGain: 12.6, avgSubscription: 112.4,
   },
-};
-
-// Manual median values for quick UI editing without backend changes
-const manualMedianListingGain: Record<'mainboard' | 'sme', number> = {
-  mainboard: -1.27,
-  sme: 12.6,
 };
 
 function CategoryStats({
   stats,
   label,
-  category,
 }: {
   stats: IPOCategoryStats;
   label: string;
-  category: 'mainboard' | 'sme';
 }) {
   return (
     <div>
@@ -88,9 +82,9 @@ function CategoryStats({
         {/* 4. Median Listing Gains */}
         <div className="bg-white/70 backdrop-blur-sm border border-white/60 rounded-lg p-2 sm:p-3 text-center shadow-sm flex flex-col items-center justify-center min-h-fit sm:min-h-fit">
           <div className={`text-xl sm:text-2xl font-black leading-none ${
-            manualMedianListingGain[category] >= 0 ? 'text-emerald' : 'text-destructive'
+            stats.medianListingGain >= 0 ? 'text-emerald' : 'text-destructive'
           }`}>
-            {manualMedianListingGain[category] >= 0 ? '+' : ''}{manualMedianListingGain[category]}%
+            {stats.medianListingGain >= 0 ? '+' : ''}{stats.medianListingGain}%
           </div>
           <div className="text-xs sm:text-sm text-ink3 mt-1 leading-tight font-semibold">Median Listing Gains</div>
         </div>
@@ -160,7 +154,6 @@ export function MarketSentiment({ ipoStats }: MarketSentimentProps) {
         <CategoryStats
           stats={active}
           label={activeTab === 'mainboard' ? 'Mainboard' : 'SME'}
-          category={activeTab}
         />
       </div>
     </div>
