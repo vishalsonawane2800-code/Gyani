@@ -63,6 +63,7 @@ import {
   EyeOff,
   Newspaper,
 } from 'lucide-react'
+import { BulkNewsEntry } from '@/components/admin/bulk-news-entry'
 
 export interface MarketNewsRecord {
   id: string
@@ -110,34 +111,37 @@ const EMPTY_FORM: FormState = {
   display_order: 0,
 }
 
-function toDatetimeLocal(value: string | null | undefined): string {
+// News date helpers — we intentionally store/read only the YYYY-MM-DD part
+// so the admin form and the public homepage stay consistent (no time of day).
+function toDateInput(value: string | null | undefined): string {
   if (!value) return ''
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return ''
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
 }
 
-function fromDatetimeLocal(value: string): string | null {
+function fromDateInput(value: string): string | null {
   if (!value) return null
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return null
-  return d.toISOString()
+  // Parse as UTC midnight so we don't shift the date across timezones.
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  return Number.isNaN(d.getTime()) ? null : d.toISOString()
 }
 
-function formatTimeAgo(value: string | null): string {
+// News dates are intentionally shown as date-only (no time of day) to keep
+// the homepage + admin list consistent, regardless of when the article was
+// actually published during the day.
+function formatNewsDate(value: string | null): string {
   if (!value) return '-'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return '-'
-  const diffMs = Date.now() - d.getTime()
-  const mins = Math.round(diffMs / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.round(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.round(hrs / 24)
-  if (days < 30) return `${days}d ago`
-  return d.toLocaleDateString()
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] }) {
@@ -167,7 +171,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
     setEditing(null)
     setForm({
       ...EMPTY_FORM,
-      published_at: toDatetimeLocal(new Date().toISOString()),
+      published_at: toDateInput(new Date().toISOString()),
     })
     setDialogOpen(true)
   }
@@ -182,7 +186,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
       impact: record.impact ?? '',
       sentiment: (record.sentiment ?? '') as FormState['sentiment'],
       summary: record.summary ?? '',
-      published_at: toDatetimeLocal(record.published_at),
+      published_at: toDateInput(record.published_at),
       is_published: record.is_published,
       display_order: record.display_order ?? 0,
     })
@@ -209,7 +213,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
         impact: form.impact.trim() || null,
         sentiment: form.sentiment || null,
         summary: form.summary.trim() || null,
-        published_at: fromDatetimeLocal(form.published_at),
+        published_at: fromDateInput(form.published_at),
         is_published: form.is_published,
         display_order: Number(form.display_order) || 0,
       }
@@ -269,6 +273,19 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
     }
   }
 
+  async function refreshNews() {
+    try {
+      const res = await authFetch('/api/admin/market-news')
+      if (!res.ok) return
+      const json = await res.json()
+      if (Array.isArray(json.data)) {
+        setNews(json.data as MarketNewsRecord[])
+      }
+    } catch (err) {
+      console.error('[news-client] refresh error:', err)
+    }
+  }
+
   async function togglePublished(record: MarketNewsRecord) {
     setTogglingId(record.id)
     try {
@@ -311,6 +328,9 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
             Add News Item
           </Button>
         </div>
+
+        {/* Bulk import */}
+        <BulkNewsEntry onSuccess={refreshNews} />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-6">
@@ -379,7 +399,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
                     <div className="flex items-center gap-2 text-xs text-slate-400 mt-1 flex-wrap">
                       <span>{item.source || 'Unknown source'}</span>
                       <span className="text-slate-600">-</span>
-                      <span>{formatTimeAgo(item.published_at)}</span>
+                      <span>{formatNewsDate(item.published_at)}</span>
                       <a
                         href={item.url}
                         target="_blank"
@@ -486,14 +506,15 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="published_at">Published at</Label>
+                <Label htmlFor="published_at">Published on</Label>
                 <Input
                   id="published_at"
-                  type="datetime-local"
+                  type="date"
                   value={form.published_at}
                   onChange={e => setForm(f => ({ ...f, published_at: e.target.value }))}
                   className="bg-slate-900 border-slate-700 text-white"
                 />
+                <p className="text-xs text-slate-500">Date only — time is not shown.</p>
               </div>
             </div>
 
