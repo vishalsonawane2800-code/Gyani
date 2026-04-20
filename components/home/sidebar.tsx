@@ -3,6 +3,15 @@
 import Link from 'next/link';
 import { ExternalLink, Brain } from 'lucide-react';
 
+// Public IPO application pages for major Indian brokers. Links open the
+// broker's IPO dashboard; users must be logged in to apply.
+const BROKERS: { name: string; url: string }[] = [
+  { name: 'Zerodha', url: 'https://kite.zerodha.com/#oms/ipo' },
+  { name: 'Groww', url: 'https://groww.in/ipo' },
+  { name: 'Upstox', url: 'https://upstox.com/ipo/' },
+  { name: 'Angel One', url: 'https://www.angelone.in/ipo' },
+];
+
 export function Sidebar() {
   return (
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
@@ -43,20 +52,30 @@ export function Sidebar() {
           <h3 className="text-sm font-bold">Apply via Broker</h3>
         </div>
         <div className="p-4">
-          {['Zerodha', 'Groww', 'Upstox', 'Angel One'].map((broker, index, arr) => (
-            <div 
-              key={broker}
+          {BROKERS.map((broker, index) => (
+            <div
+              key={broker.name}
               className={`flex items-center justify-between py-2 ${
-                index !== arr.length - 1 ? 'border-b border-border' : ''
+                index !== BROKERS.length - 1 ? 'border-b border-border' : ''
               }`}
             >
-              <span className="text-sm font-medium">{broker}</span>
-              <button className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white hover:opacity-90 transition-opacity flex items-center gap-1">
+              <span className="text-sm font-medium">{broker.name}</span>
+              <a
+                href={broker.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open ${broker.name} IPO page in a new tab`}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white hover:opacity-90 transition-opacity flex items-center gap-1"
+              >
                 Apply
                 <ExternalLink className="w-3 h-3" />
-              </button>
+              </a>
             </div>
           ))}
+          <p className="text-[10px] text-ink3 mt-3 leading-relaxed">
+            Opens the broker&apos;s IPO page in a new tab. You&apos;ll need an
+            active demat + UPI to apply.
+          </p>
         </div>
       </div>
     </aside>
