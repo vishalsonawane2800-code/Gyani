@@ -20,30 +20,30 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Color coding for different categories
+  // Color coding for different categories - matching page theme
   const categoryConfig: Record<string, { bg: string; border: string; text: string; label: string }> = {
     retail: {
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/30',
-      text: 'text-blue-400',
+      bg: 'bg-cobalt-bg',
+      border: 'border-cobalt/20',
+      text: 'text-cobalt',
       label: 'Retail'
     },
     nii: {
-      bg: 'bg-purple-500/10',
-      border: 'border-purple-500/30',
-      text: 'text-purple-400',
+      bg: 'bg-gold-bg',
+      border: 'border-gold/20',
+      text: 'text-gold',
       label: 'NII (HNI)'
     },
     qib: {
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/30',
-      text: 'text-emerald-400',
+      bg: 'bg-emerald-bg',
+      border: 'border-emerald/20',
+      text: 'text-emerald',
       label: 'QIB'
     },
     total: {
-      bg: 'bg-primary-mid/10',
-      border: 'border-primary-mid/30',
-      text: 'text-primary-mid',
+      bg: 'bg-primary-bg',
+      border: 'border-primary/20',
+      text: 'text-primary',
       label: 'Total'
     }
   };
