@@ -50,30 +50,36 @@ now return an extra `no_data` field; types updated.
 
 ## What still needs to be done
 
-### 2. Treat `-` / `—` / `N/A` / empty as `0` — NOT YET DONE
+### 2. Treat `-` / `—` / `N/A` / empty as `0` — DONE
 
-**Why:** user's directive, and IPOWatch renders `-` when GMP is explicitly
-reported as zero by the market (confirmed against investorgain showing `₹0`
-for the same dates). The existing `parseGMPValue` in
-`lib/scraper/parsers.ts` returns `null` for non-numeric cells, which causes
-legit `0`-GMP IPOs to be misreported as "no data".
+Files changed:
+- `lib/scraper/parsers.ts` — `parseGMP` now accepts an options bag
+  `{ dashAsZero?: boolean }`. Default behaviour is unchanged (empty /
+  dash / N/A → `null`). With `dashAsZero: true`, the tokens `-`, `--`,
+  `—`, `–`, `N/A`, `NA`, `nil`, `none`, `not available` (and with
+  leading `₹` / `Rs.` / `INR`) all return numeric `0`. Truly empty
+  input and `null` still return `null` regardless.
+- `lib/scraper/sources/gmp-ipowatch.ts` — the matched-row caller in the
+  listing parser AND the article-page row parser both now pass
+  `{ dashAsZero: true }`. Only applied AFTER the row has been matched
+  by name (so "row missing entirely" still returns `null`, per the
+  user's careful-rule).
+- `lib/scraper/sources/gmp-ipoji.ts` — the stat-block caller inside the
+  matched card passes `{ dashAsZero: true }`. `parseIpojiPremium` also
+  now recognises the full placeholder set (`--`, `—`, `–`, `nil`,
+  `none`, `not available`).
+- `scripts/verify-scrapers-e2e.ts` — added 18 parser unit cases for
+  the new contract and kept the live-source cases; all 25/25 pass.
+  The existing live case "IPOWatch listing - zero-GMP IPO
+  (Adisoft Technologies)" is the regression guard for this change —
+  it expects `0`, not `null`.
 
-**Where to change:**
-- `lib/scraper/parsers.ts::parseGMPValue` — currently returns `null` for
-  unparseable input. Add a new helper or a flag like
-  `parseGMPValue(raw, { dashAsZero: true })` that returns `0` when `raw`
-  matches `/^[\-–—]+$/`, `/^n\/?a$/i`, or empty string after `₹` strip.
-  Keep the original behaviour for callers that need `null` sentinels.
-- Update the callers in `lib/scraper/sources/gmp-ipowatch.ts` and
-  `lib/scraper/sources/gmp-ipoji.ts` to pass `dashAsZero: true` when
-  reading the latest-row GMP cell (but NOT when detecting whether the row
-  exists at all — an empty row vs. a `0` row are different; the row must
-  still exist and have today's/yesterday's date).
+Sanity: `averageGMP` in `app/api/cron/scrape-gmp/route.ts` already uses
+`o.gmp !== null && typeof o.gmp === "number"` and preserves `0`; the
+Redis cache path uses `cached !== null && typeof cached === "number"`
+and also preserves `0`. No further orchestrator changes needed.
 
-**Careful:** only treat `-` as `0` when the IPO's row is actually present
-with a valid date. A missing row still = no data.
-
-### 3. Add investorgain.com as a 3rd GMP source — NOT YET DONE
+### 3. Add investorgain.com as a 3rd GMP source — SUPERSEDED (see SCRAPER_CONTEXT.md)
 
 **Blocker discovered while debugging:** the investorgain detail page
 (`https://investorgain.com/gmp/citius-transnet-invit-ipo-gmp/2126/`) is
