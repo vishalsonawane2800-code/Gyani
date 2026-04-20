@@ -124,6 +124,7 @@ export async function scrapeIpojiGMP(
     if (!targetNorm) return null
 
     let gmp: number | null = null
+    let cardMatched = false
 
     cards.each((_, card) => {
       if (gmp !== null) return
@@ -139,6 +140,7 @@ export async function scrapeIpojiGMP(
       const cleaned = cleanCardTitle(titleRaw)
       const titleNorm = normalizeName(cleaned)
       if (!namesMatch(targetNorm, titleNorm)) return
+      cardMatched = true
 
       $card.find(".ipo-card-body-stat").each((_, s) => {
         if (gmp !== null) return
@@ -156,7 +158,18 @@ export async function scrapeIpojiGMP(
       })
     })
 
-    return gmp !== null ? { gmp } : null
+    if (gmp !== null) return { gmp }
+
+    // Card was found but had no "Exp. Premium" stat block at all
+    // (observed Apr-2026 on InvIT/REIT cards like Citius Transnet, which
+    // ship only Offer Price / Lot Size / Subscription / Issue Size). The
+    // source listing the IPO without a premium row is the same implicit
+    // "no GMP today" signal as a present-but-dashed cell, so apply the
+    // same dashAsZero policy and report 0 — keeping us consistent with
+    // IPOWatch, which already returns 0 in this scenario.
+    if (cardMatched) return { gmp: 0 }
+
+    return null
   } catch (err) {
     console.error("[v0] scrapeIpojiGMP error:", err)
     return null
