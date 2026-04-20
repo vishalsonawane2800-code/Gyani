@@ -142,21 +142,51 @@ export async function processIpoSubscription(
   }
 
   const order = exchangeOrder(ipo.exchange)
-  let chosen: { source: SourceKey; snapshot: SubscriptionSnapshot } | null = null
+  const merged: SubscriptionSnapshot = {
+    total: null,
+    retail: null,
+    nii: null,
+    qib: null,
+  }
+  let primarySource: SourceKey | null = null
+  const usedSources: SourceKey[] = []
 
+  // Merge snapshots across sources so partial coverage from one provider
+  // (e.g. NSE giving only `total`) is complemented by another (Chittorgarh
+  // filling in retail/nii/qib). First non-null wins per field.
   for (const src of order) {
     // Skip sources that obviously can't work for this IPO.
     if (src === "nse" && !ipo.nse_symbol) continue
     if (src === "bse" && !ipo.bse_scrip_code) continue
 
     const snap = await runSource(src, ipo)
-    if (hasAnyValue(snap)) {
-      chosen = { source: src, snapshot: snap }
+    if (!hasAnyValue(snap)) continue
+
+    let contributed = false
+    for (const k of ["total", "retail", "nii", "qib"] as (keyof SubscriptionSnapshot)[]) {
+      if (merged[k] == null && snap[k] != null) {
+        merged[k] = snap[k]
+        contributed = true
+      }
+    }
+
+    if (contributed) {
+      usedSources.push(src)
+      if (!primarySource) primarySource = src
+    }
+
+    // Stop early once every category is filled.
+    if (
+      merged.total != null &&
+      merged.retail != null &&
+      merged.nii != null &&
+      merged.qib != null
+    ) {
       break
     }
   }
 
-  if (!chosen) {
+  if (!hasAnyValue(merged) || !primarySource) {
     return {
       ipo_id: ipo.id,
       company_name: ipo.company_name,
@@ -168,6 +198,8 @@ export async function processIpoSubscription(
       error: "All sources returned no data",
     }
   }
+
+  const chosen = { source: primarySource, snapshot: merged }
 
   // Dedup against the most recent subscription_history row.
   const { data: latest } = await supabase
@@ -238,6 +270,43 @@ export async function processIpoSubscription(
 
   if (ipoErr) {
     console.error(`[v0] ipos update failed for ${ipo.slug}:`, ipoErr.message)
+  }
+
+  // Populate subscription_live (category-wise breakdown) so the Live
+  // Subscription Tracker UI has something to render. One row per non-null
+  // category keyed by (ipo_id, category). Ordered retail, nii, qib, total
+  // to match the display grid.
+  const liveCategories: Array<{
+    category: "retail" | "nii" | "qib" | "total"
+    value: number | null
+    display_order: number
+  }> = [
+    { category: "retail", value: chosen.snapshot.retail, display_order: 0 },
+    { category: "nii", value: chosen.snapshot.nii, display_order: 1 },
+    { category: "qib", value: chosen.snapshot.qib, display_order: 2 },
+    { category: "total", value: chosen.snapshot.total, display_order: 3 },
+  ]
+
+  const liveRows = liveCategories
+    .filter((c) => c.value != null)
+    .map((c) => ({
+      ipo_id: ipo.id,
+      category: c.category,
+      subscription_times: c.value as number,
+      display_order: c.display_order,
+      updated_at: now.toISOString(),
+    }))
+
+  if (liveRows.length > 0) {
+    const { error: liveErr } = await supabase
+      .from("subscription_live")
+      .upsert(liveRows, { onConflict: "ipo_id,category", ignoreDuplicates: false })
+    if (liveErr) {
+      console.error(
+        `[v0] subscription_live upsert failed for ${ipo.slug}:`,
+        liveErr.message
+      )
+    }
   }
 
   // Cache the snapshot so subsequent runs within the TTL can short-circuit.

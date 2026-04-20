@@ -48,36 +48,119 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
     }
   };
 
+  // Build a snapshot from the ipos table columns (populated by the cron
+  // scraper) so the tracker has something to render even before the
+  // `subscription_live` table gets populated or if the API call fails.
+  const buildScrapedFallback = (): SubscriptionData[] => {
+    const sub = ipo.subscription;
+    if (!sub) return [];
+    const parseX = (v: string | number | undefined) => {
+      if (v == null) return 0;
+      if (typeof v === 'number') return v;
+      const n = parseFloat(String(v).replace(/x/gi, '').trim());
+      return Number.isFinite(n) ? n : 0;
+    };
+    const rows: SubscriptionData[] = [
+      { category: 'retail', applied: 0, times: parseX(sub.retail) },
+      { category: 'nii', applied: 0, times: parseX(sub.nii) },
+      { category: 'qib', applied: 0, times: parseX(sub.qib) },
+      { category: 'total', applied: 0, times: parseX(sub.total) },
+    ];
+    return rows.some((r) => r.times > 0) ? rows : [];
+  };
+
   useEffect(() => {
-    // Try to fetch subscription live data from API
+    // `closing` is not a real IPOStatus value but kept here for forward-compat
+    // in case the lifecycle ever adds it. We always coerce to string first.
+    const pollStatuses: string[] = ['open', 'closing', 'lastday', 'closed'];
+    const statusStr = String(ipo.status ?? '');
+    const isTrackable = pollStatuses.includes(statusStr);
+
+    // Seed from scraped ipos columns immediately so the UI is never empty
+    // while the first fetch is in flight.
+    if (isTrackable) {
+      const fallback = buildScrapedFallback();
+      if (fallback.length > 0) {
+        setSubscriptionData(fallback);
+        setIsLive(true);
+        setLastUpdated(
+          ipo.subscriptionLastScraped
+            ? new Date(ipo.subscriptionLastScraped)
+            : new Date()
+        );
+      }
+    }
+
     const fetchSubscriptionData = async () => {
       try {
-        const response = await fetch(`/api/admin/ipos/${ipo.id}/subscription-live`);
+        const response = await fetch(
+          `/api/admin/ipos/${ipo.id}/subscription-live`
+        );
         if (response.ok) {
           const data = await response.json();
-          setSubscriptionData(data);
+          if (Array.isArray(data) && data.length > 0) {
+            setSubscriptionData(data);
+            setIsLive(true);
+            setLastUpdated(new Date());
+            return;
+          }
+        }
+
+        // API returned no rows yet — fall back to scraped columns / bulk
+        // entry snapshot shipped with the RSC payload.
+        const fallback =
+          ipo.subscriptionLive && Array.isArray(ipo.subscriptionLive)
+            ? (ipo.subscriptionLive as any).map((s: any) => ({
+                category: s.category,
+                times: Number(s.subscriptionTimes ?? s.times ?? 0),
+                applied: Number(s.sharesBidFor ?? s.applied ?? 0),
+                updated_at: s.updatedAt,
+              }))
+            : buildScrapedFallback();
+
+        if (fallback.length > 0) {
+          setSubscriptionData(fallback);
           setIsLive(true);
-          setLastUpdated(new Date());
+          setLastUpdated(
+            ipo.subscriptionLastUpdated
+              ? new Date(ipo.subscriptionLastUpdated)
+              : ipo.subscriptionLastScraped
+                ? new Date(ipo.subscriptionLastScraped)
+                : new Date()
+          );
         }
       } catch (error) {
         console.error('Error fetching subscription data:', error);
-        // Fall back to data from IPO object if available
-        if (ipo.subscriptionLive && Array.isArray(ipo.subscriptionLive)) {
-          setSubscriptionData(ipo.subscriptionLive);
+        const fallback = buildScrapedFallback();
+        if (fallback.length > 0) {
+          setSubscriptionData(fallback);
           setIsLive(true);
-          setLastUpdated(new Date(ipo.subscriptionLastUpdated || new Date()));
+          setLastUpdated(
+            ipo.subscriptionLastScraped
+              ? new Date(ipo.subscriptionLastScraped)
+              : new Date()
+          );
         }
       }
     };
 
-    if (ipo.id && (ipo.status === 'open' || ipo.status === 'closing')) {
+    if (ipo.id && isTrackable) {
       fetchSubscriptionData();
-      
-      // Poll every 30 seconds if IPO is open
-      const interval = setInterval(fetchSubscriptionData, 30000);
-      return () => clearInterval(interval);
+      // Only poll while the issue is actually live.
+      const livePollStatuses: string[] = ['open', 'closing', 'lastday'];
+      if (livePollStatuses.includes(statusStr)) {
+        const interval = setInterval(fetchSubscriptionData, 30000);
+        return () => clearInterval(interval);
+      }
     }
-  }, [ipo.id, ipo.status, ipo.subscriptionLive, ipo.subscriptionLastUpdated]);
+  }, [
+    ipo.id,
+    ipo.status,
+    ipo.subscription,
+    ipo.subscriptionLive,
+    ipo.subscriptionLastUpdated,
+    ipo.subscriptionLastScraped,
+  ]);
 
   // If IPO hasn't opened for subscription yet, show placeholder
   if (!isLive || !subscriptionData || subscriptionData.length === 0) {
@@ -117,7 +200,7 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
           </div>
           <div>
             <h3 className="font-bold text-white">Live Subscription Tracker</h3>
-            <p className="text-xs text-slate-400">Day {ipo.subscriptionDay || '1'} • Real-time updates</p>
+            <p className="text-xs text-slate-400">Day {ipo.subscription?.day || '1'} • Real-time updates</p>
           </div>
         </div>
         
