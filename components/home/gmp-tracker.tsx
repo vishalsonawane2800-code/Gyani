@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RefreshCw, Calendar } from 'lucide-react';
 import type { IPO, IPOStatus } from '@/lib/data';
+import { useRefreshCountdown, formatRefreshCountdown } from '@/lib/use-refresh-countdown';
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -30,7 +31,10 @@ interface GMPTrackerProps {
 
 export function GMPTracker({ ipos }: GMPTrackerProps) {
   const [mounted, setMounted] = useState(false);
-  
+  // Shared 15-minute wall-clock-aligned countdown so this badge stays in
+  // sync with the refresh timers on the IPO detail pages.
+  const refreshSeconds = useRefreshCountdown(15);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -77,8 +81,13 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
             </span>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-ink3">
-            <RefreshCw className="w-3 h-3 text-primary" />
-            <span className="text-primary font-semibold">Refreshes in 5 mins</span>
+            <RefreshCw
+              className="w-3 h-3 text-primary"
+              style={{ animation: 'spin 3s linear infinite' }}
+            />
+            <span className="text-primary font-semibold tabular-nums">
+              Refreshes in {mounted ? formatRefreshCountdown(refreshSeconds) : '15:00'}
+            </span>
           </div>
         </div>
 
