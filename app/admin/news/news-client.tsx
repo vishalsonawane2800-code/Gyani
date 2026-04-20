@@ -21,6 +21,7 @@
    ========================================================================= */
 
 import { useMemo, useState } from 'react'
+import { useAuth } from '@/lib/auth-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -140,6 +141,11 @@ function formatTimeAgo(value: string | null): string {
 }
 
 export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] }) {
+  // The admin API is protected by middleware.ts which requires a Bearer
+  // JWT. Using authFetch here automatically attaches the token stored in
+  // AuthContext - without it every POST/PUT/DELETE from this page fails
+  // with 401 "Missing authorization header".
+  const { authFetch } = useAuth()
   const [news, setNews] = useState<MarketNewsRecord[]>(initialNews)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<MarketNewsRecord | null>(null)
@@ -213,7 +219,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
         : '/api/admin/market-news'
       const method = editing ? 'PUT' : 'POST'
 
-      const res = await fetch(url, {
+      const res = await authFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -245,7 +251,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
   async function handleDelete(record: MarketNewsRecord) {
     setSaving(true)
     try {
-      const res = await fetch(`/api/admin/market-news/${record.id}`, {
+      const res = await authFetch(`/api/admin/market-news/${record.id}`, {
         method: 'DELETE',
       })
       if (!res.ok) {
@@ -266,7 +272,7 @@ export function NewsClient({ initialNews }: { initialNews: MarketNewsRecord[] })
   async function togglePublished(record: MarketNewsRecord) {
     setTogglingId(record.id)
     try {
-      const res = await fetch(`/api/admin/market-news/${record.id}`, {
+      const res = await authFetch(`/api/admin/market-news/${record.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_published: !record.is_published }),

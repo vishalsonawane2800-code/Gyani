@@ -36,11 +36,15 @@ export function HeroSection({ ipos }: HeroSectionProps) {
     : ipos.filter((ipo) => ipo.status === 'upcoming')
   ).slice(0, 3);
 
-  const snapshotHeading = hasLive ? 'Live IPO Snapshot' : 'Upcoming IPO Snapshot';
+  // When there's an IPO currently open for bidding we surface it as
+  // "Current IPO" in blue (matches the cobalt / primary accent used on
+  // the Current IPO section below). If nothing is open we fall back to
+  // the amber "Upcoming IPO Snapshot".
+  const snapshotHeading = hasLive ? 'Current IPO' : 'Upcoming IPO Snapshot';
   const pillLabel = hasLive ? 'Live' : 'Upcoming';
-  const pillColor = hasLive ? 'text-emerald-400' : 'text-amber-300';
-  const pillDotColor = hasLive ? 'bg-emerald-400' : 'bg-amber-300';
-  const viewAllLabel = hasLive ? 'View all live IPOs' : 'View upcoming IPOs';
+  const pillColor = hasLive ? 'text-sky-400' : 'text-amber-300';
+  const pillDotColor = hasLive ? 'bg-sky-400' : 'bg-amber-300';
+  const viewAllLabel = hasLive ? 'View all current IPOs' : 'View upcoming IPOs';
   const emptyLabel = hasLive
     ? 'No live IPOs at the moment'
     : 'No upcoming IPOs scheduled';
@@ -157,7 +161,11 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                     {generateAbbr(ipo.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-white text-sm sm:text-base font-semibold truncate group-hover:text-violet-400 transition-colors">
+                    <div
+                      className={`text-white text-sm sm:text-base font-semibold truncate transition-colors ${
+                        hasLive ? 'group-hover:text-sky-400' : 'group-hover:text-violet-400'
+                      }`}
+                    >
                       {ipo.name}
                     </div>
                     <div className="text-white/40 text-xs mt-0.5">
@@ -193,7 +201,11 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             <div className="mt-4 pt-4 border-t border-white/[0.06]">
               <Link 
                 href="#current" 
-                className="flex items-center justify-center gap-2 text-violet-400 hover:text-violet-300 text-xs sm:text-sm font-semibold transition-colors"
+                className={`flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold transition-colors ${
+                  hasLive
+                    ? 'text-sky-400 hover:text-sky-300'
+                    : 'text-violet-400 hover:text-violet-300'
+                }`}
               >
                 {viewAllLabel}
                 <ArrowRight className="w-4 h-4" />
