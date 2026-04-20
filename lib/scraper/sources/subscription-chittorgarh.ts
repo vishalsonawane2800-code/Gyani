@@ -4,6 +4,20 @@
 // from `company_name`.
 //
 // Contract: NEVER throws. Returns `null` on any failure.
+//
+// Parsing strategy:
+//   Chittorgarh's pages contain many tables ("Company Financials",
+//   "Total Issue Size", "Objects of the Issue", etc.). A naive pass
+//   that greps for "total" will happily pick up garbage numbers from
+//   those unrelated tables. Instead we:
+//     1. Locate only tables whose header row contains a subscription
+//        signal (e.g. "Subscription (times)", "No. of times subscribed",
+//        "Subscription Status").
+//     2. Within those tables, match the first column against a known
+//        list of category labels — including InvIT / REIT specific
+//        ones ("Institutional Investors", "Other Investors").
+//     3. Read the subscription multiplier from the numeric "times"
+//        column when present, falling back to the last numeric cell.
 
 import * as cheerio from "cheerio"
 import { parseSubscriptionTimes } from "@/lib/scraper/parsers"
@@ -55,19 +69,110 @@ function candidateUrls(ipo: IpoInput): string[] {
   return urls
 }
 
-function categorize(label: string): keyof ChittorgarhSubscription | null {
-  const l = label.toLowerCase().trim()
-  if (/qualified[- ]?institutional|\bqib\b/i.test(l)) return "qib"
-  if (/non[- ]?institutional|\bnii\b|\bhni\b/i.test(l)) return "nii"
-  if (/retail|\brii\b|individual/i.test(l)) return "retail"
-  if (/total|overall|aggregate/i.test(l)) return "total"
+type Category = keyof ChittorgarhSubscription
+
+/**
+ * Map a row label to one of our four subscription buckets.
+ * Returns null for labels we don't want to pick up (e.g.
+ * "Total Issue Size", "Total Income", employee reservations).
+ *
+ * Supports:
+ *   - Mainboard/SME: "Retail", "RII", "NII", "HNI", "QIB",
+ *     "QIB (Ex Anchor)", "bNII", "sNII".
+ *   - InvIT/REIT:    "Institutional Investors" -> qib-equivalent,
+ *                    "Non-Institutional Investors" / "Other
+ *                    Investors" -> nii-equivalent.
+ *   - Totals:        "Total" / "Overall" / "Grand Total" / "Total
+ *                    (Ex Anchor)" / "Subscription Total".
+ */
+function categorize(rawLabel: string): Category | null {
+  const l = rawLabel.toLowerCase().trim()
+  if (!l) return null
+
+  // ---- Explicit negatives: reject labels we don't want to collect
+  //      even though they contain a category-like word.
+  if (/\bissue\s+size\b/.test(l)) return null
+  if (/\btotal\s+(income|assets|amount|equity|liabilities|expenses|shares?|issue)\b/.test(l))
+    return null
+  if (/\bshares?\s+offered\b/.test(l)) return null
+  if (/\bshares?\s+bid\b/.test(l)) return null
+  if (/\bamount\b/.test(l) && !/\bsubscri/.test(l)) return null
+  if (/\banchor\b/.test(l) && !/ex[\s-]*anchor/.test(l)) return null
+  if (/\bemployee|reservation\b/.test(l)) return null
+  if (/\bmarket\s+cap\b/.test(l)) return null
+
+  // ---- Totals --------------------------------------------------------
+  if (/^total$/i.test(l)) return "total"
+  if (/^total[\s(]/.test(l)) return "total"
+  if (/\b(grand\s+total|overall|aggregate|subscription\s+total)\b/.test(l)) return "total"
+  if (/^total\s+(subscrib|subscri)/.test(l)) return "total"
+
+  // ---- QIB / Institutional ------------------------------------------
+  if (/\bqib\b/.test(l)) return "qib"
+  if (/qualified[\s-]*institutional/.test(l)) return "qib"
+  // InvIT / REIT specific: "Institutional Investors"
+  if (/\binstitutional\s+investors?\b/.test(l) && !/non[\s-]*institutional/.test(l))
+    return "qib"
+
+  // ---- NII / HNI ----------------------------------------------------
+  if (/non[\s-]*institutional/.test(l)) return "nii"
+  if (/\bnii\b/.test(l)) return "nii"
+  if (/\bhni\b/.test(l)) return "nii"
+  // InvIT / REIT specific: "Other Investors" (kept below NII so QIB
+  // takes precedence when both are present).
+  if (/^other\s+investors?$/.test(l)) return "nii"
+
+  // ---- Retail / RII -------------------------------------------------
+  if (/\bretail\b/.test(l)) return "retail"
+  if (/\brii\b/.test(l)) return "retail"
+  if (/retail[\s-]*individual/.test(l)) return "retail"
+
   return null
 }
 
-function extractTimes(cells: string[]): number | null {
-  for (let i = cells.length - 1; i >= 0; i--) {
-    const n = parseSubscriptionTimes(cells[i])
-    if (n != null && n >= 0) return n
+/**
+ * Return true if a table header row looks like it belongs to a
+ * subscription table. We check *only* the header, because data rows
+ * can have noisy first-column labels.
+ */
+function isSubscriptionTable(headers: string[]): boolean {
+  const joined = headers.join(" | ").toLowerCase()
+  // Must have some "subscription"-like signal in the header.
+  if (!/subscri|\btimes\b|no\.\s*of\s*times|oversubscribed/.test(joined))
+    return false
+  // Must not be a GMP-only table.
+  if (/gmp|grey\s*market/.test(joined) && !/subscri/.test(joined)) return false
+  return true
+}
+
+/**
+ * Pick the subscription-multiplier cell from a data row. Prefers the
+ * column whose header contains "times" or "subscription"; otherwise
+ * falls back to the last numeric cell, ignoring share counts.
+ */
+function pickTimes(cells: string[], headers: string[]): number | null {
+  // 1. Try header-aligned lookup.
+  for (let i = 0; i < cells.length; i++) {
+    const h = (headers[i] || "").toLowerCase()
+    if (!h) continue
+    if (
+      /subscri|\btimes\b|no\.\s*of\s*times|oversubscribed/.test(h) &&
+      !/shares?|amount/.test(h)
+    ) {
+      const n = parseSubscriptionTimes(cells[i])
+      if (n != null && n >= 0 && n < 10_000) return n
+    }
+  }
+  // 2. Fallback: walk cells right-to-left and return the first plausible
+  //    "times" value (< 10,000 — share counts are typically much bigger).
+  for (let i = cells.length - 1; i >= 1; i--) {
+    const raw = cells[i].trim()
+    if (!raw) continue
+    // Skip obvious share counts / money values.
+    if (/₹|\brs\.?\b|\bcr\b|crore|lakh|lac/i.test(raw)) continue
+    if (/,\d{3}/.test(raw)) continue // numbers with thousands separators likely share counts
+    const n = parseSubscriptionTimes(raw)
+    if (n != null && n >= 0 && n < 10_000) return n
   }
   return null
 }
@@ -105,22 +210,33 @@ function parseFromHtml(html: string): ChittorgarhSubscription | null {
     }
 
     $("table").each((_, tbl) => {
-      $(tbl)
-        .find("tr")
-        .each((_i, tr) => {
-          const cells: string[] = []
-          $(tr)
-            .find("td, th")
-            .each((_j, el) => {
-              cells.push($(el).text().replace(/\s+/g, " ").trim())
-            })
-          if (cells.length < 2) return
-          const cat = categorize(cells[0])
-          if (!cat) return
-          if (out[cat] != null) return
-          const times = extractTimes(cells.slice(1))
-          if (times != null) out[cat] = times
-        })
+      // Read header row (first <tr> with <th> cells, or first <tr>).
+      const $tbl = $(tbl)
+      let headers: string[] = []
+      const $headerRow = $tbl.find("tr").first()
+      $headerRow.find("th, td").each((_i, el) => {
+        headers.push($(el).text().replace(/\s+/g, " ").trim())
+      })
+
+      if (!isSubscriptionTable(headers)) return // skip unrelated tables
+
+      $tbl.find("tr").each((idx, tr) => {
+        if (idx === 0) return // skip header
+        const cells: string[] = []
+        $(tr)
+          .find("td, th")
+          .each((_j, el) => {
+            cells.push($(el).text().replace(/\s+/g, " ").trim())
+          })
+        if (cells.length < 2) return
+
+        const cat = categorize(cells[0])
+        if (!cat) return
+        if (out[cat] != null) return // keep the first match per category
+
+        const times = pickTimes(cells.slice(1), headers.slice(1))
+        if (times != null) out[cat] = times
+      })
     })
 
     const anyFound =
