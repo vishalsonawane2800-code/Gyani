@@ -8,6 +8,7 @@ import { ListedIPOs } from '@/components/home/listed-ipos';
 import { GMPTracker } from '@/components/home/gmp-tracker';
 import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
+import { CommunityReviews } from '@/components/home/community-reviews';
 import { getCurrentIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
 import { getMergedAvailableYears, getMergedListedIposByYear } from '@/lib/listed-ipos/loader';
 import type { ListedIPO } from '@/lib/data';
@@ -123,6 +124,9 @@ export default async function HomePage() {
           {/* Sidebar */}
           <Sidebar />
         </div>
+
+        {/* Community reviews — bottom of home, full width below the two-column grid */}
+        <CommunityReviews />
       </main>
       
       {/* Quick Links to All Pages */}
