@@ -343,6 +343,7 @@ export async function runSubscriptionScraper(): Promise<{
   inserted: number
   skipped: number
   failed: number
+  no_data?: number
   duration_ms: number
   by_source: Record<string, number>
   error?: string
@@ -416,7 +417,10 @@ export async function runSubscriptionScraper(): Promise<{
   let inserted = 0
   let skipped = 0
   let failed = 0
+  let noData = 0
   const sourceCounts: Record<string, number> = { nse: 0, bse: 0, chittorgarh: 0 }
+  const failureDetails: string[] = []
+  const noDataSlugs: string[] = []
 
   for (const ipo of rows) {
     try {
@@ -424,9 +428,26 @@ export async function runSubscriptionScraper(): Promise<{
       if (r.source) sourceCounts[r.source] = (sourceCounts[r.source] ?? 0) + 1
       if (r.inserted) inserted++
       else if (r.skipped) skipped++
-      if (!r.snapshot) failed++
+
+      if (!r.snapshot) {
+        // Clean "no data" — every source we could try returned nothing
+        // without throwing. Expected for IPOs that haven't opened yet or
+        // whose configured identifiers (nse_symbol/bse_scrip_code/
+        // chittorgarh_url) are missing. Not a scraper failure.
+        if (r.error === "All sources returned no data") {
+          noData++
+          if (noDataSlugs.length < 5) noDataSlugs.push(ipo.slug)
+        } else {
+          failed++
+          if (failureDetails.length < 5) {
+            failureDetails.push(`${ipo.slug}: ${r.error ?? "no_snapshot"}`)
+          }
+        }
+      }
     } catch (err) {
       failed++
+      const msg = err instanceof Error ? err.message : String(err)
+      if (failureDetails.length < 5) failureDetails.push(`${ipo.slug}: threw ${msg}`)
       console.error(`[v0] subscription scrape crashed for ${ipo.slug}:`, err)
     }
 
@@ -437,15 +458,23 @@ export async function runSubscriptionScraper(): Promise<{
   const duration = Date.now() - started
   const status: "success" | "failed" = failed > 0 ? "failed" : "success"
 
+  let errorMessage: string | null = null
+  if (failed > 0) {
+    errorMessage =
+      `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped}` +
+      (noData > 0 ? `, no_data ${noData}` : "") +
+      `). ` +
+      failureDetails.join(" | ")
+  } else if (noData > 0 && inserted === 0) {
+    errorMessage = `No subscription data yet for ${noData}/${rows.length} IPOs: ${noDataSlugs.join(", ")}`
+  }
+
   await logScraperRun({
     scraperName: SCRAPER_NAME,
     status,
     itemsProcessed: rows.length,
     durationMs: duration,
-    errorMessage:
-      failed > 0
-        ? `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped})`
-        : null,
+    errorMessage,
   })
 
   return {
@@ -453,6 +482,7 @@ export async function runSubscriptionScraper(): Promise<{
     inserted,
     skipped,
     failed,
+    no_data: noData,
     duration_ms: duration,
     by_source: sourceCounts,
   }
