@@ -50,9 +50,9 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-ink4 mb-1">Total Issue Size</p>
             <p className="font-[family-name:var(--font-sora)] text-2xl font-extrabold text-primary">
-              Rs {totalIssueSizeCr >= 1000 
-                ? `${(totalIssueSizeCr / 100).toFixed(0)} Cr` 
-                : `${totalIssueSizeCr} Cr`}
+              Rs {totalIssueSizeCr.toLocaleString('en-IN', {
+                maximumFractionDigits: totalIssueSizeCr >= 100 ? 0 : 2,
+              })} Cr
             </p>
             {totalShares > 0 && (
               <p className="text-[10px] text-ink4 mt-0.5">{formattedShares} shares</p>
@@ -107,7 +107,7 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
                   <span className="text-[12px]">Fresh Issue</span>
                 </div>
                 <span className="text-[12px] font-semibold">
-                  Rs {freshIssueCr || totalIssueSizeCr} Cr ({freshIssuePercent.toFixed(0)}%)
+                  Rs {(freshIssueCr || totalIssueSizeCr).toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr ({freshIssuePercent.toFixed(0)}%)
                 </span>
               </div>
               {ofsCr > 0 && (
@@ -117,7 +117,7 @@ export function IssueDetails({ ipo }: IssueDetailsProps) {
                     <span className="text-[12px]">OFS</span>
                   </div>
                   <span className="text-[12px] font-semibold">
-                    Rs {ofsCr} Cr ({ofsPercent.toFixed(0)}%)
+                    Rs {ofsCr.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Cr ({ofsPercent.toFixed(0)}%)
                   </span>
                 </div>
               )}
