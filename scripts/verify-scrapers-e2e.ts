@@ -21,6 +21,7 @@
 import { scrapeIPOWatchGMP } from "@/lib/scraper/sources/gmp-ipowatch"
 import { scrapeIpojiGMP } from "@/lib/scraper/sources/gmp-ipoji"
 import { scrapeChittorgarhSubscription } from "@/lib/scraper/sources/subscription-chittorgarh"
+import { parseGMP } from "@/lib/scraper/parsers"
 
 type GmpCase = {
   label: string
@@ -129,6 +130,56 @@ async function runSub(c: SubCase): Promise<Result> {
   }
 }
 
+type ParserCase = {
+  label: string
+  fn: () => unknown
+  expected: unknown
+}
+
+const PARSER_CASES: ParserCase[] = [
+  // Default behavior: dash / N/A / "—" → null (preserves backward compat).
+  { label: "parseGMP('-') (no opts)            → null", fn: () => parseGMP("-"), expected: null },
+  { label: "parseGMP('—') (no opts)            → null", fn: () => parseGMP("—"), expected: null },
+  { label: "parseGMP('N/A') (no opts)          → null", fn: () => parseGMP("N/A"), expected: null },
+  { label: "parseGMP('') (no opts)             → null", fn: () => parseGMP(""), expected: null },
+  // Numeric values still parse correctly with or without options.
+  { label: "parseGMP('₹0')                      → 0",    fn: () => parseGMP("₹0"), expected: 0 },
+  { label: "parseGMP('₹ 5')                     → 5",    fn: () => parseGMP("₹ 5"), expected: 5 },
+  { label: "parseGMP('150/-')                   → 150",  fn: () => parseGMP("150/-"), expected: 150 },
+  // dashAsZero: true → dash placeholders become 0; truly empty stays null.
+  { label: "parseGMP('-',  {dashAsZero})        → 0",    fn: () => parseGMP("-",  { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('—',  {dashAsZero})        → 0",    fn: () => parseGMP("—",  { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('–',  {dashAsZero})        → 0",    fn: () => parseGMP("–",  { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('--', {dashAsZero})        → 0",    fn: () => parseGMP("--", { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('₹-', {dashAsZero})        → 0",    fn: () => parseGMP("₹-", { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('N/A',{dashAsZero})        → 0",    fn: () => parseGMP("N/A",{ dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('NA', {dashAsZero})        → 0",    fn: () => parseGMP("NA", { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('',   {dashAsZero})        → null", fn: () => parseGMP("",   { dashAsZero: true }), expected: null },
+  { label: "parseGMP(null, {dashAsZero})        → null", fn: () => parseGMP(null, { dashAsZero: true }), expected: null },
+  // dashAsZero must NOT affect real numbers.
+  { label: "parseGMP('₹ 5', {dashAsZero})       → 5",    fn: () => parseGMP("₹ 5", { dashAsZero: true }), expected: 5 },
+  { label: "parseGMP('₹0',  {dashAsZero})       → 0",    fn: () => parseGMP("₹0",  { dashAsZero: true }), expected: 0 },
+]
+
+function runParserCases(): Result[] {
+  const out: Result[] = []
+  for (const c of PARSER_CASES) {
+    try {
+      const got = c.fn()
+      const ok = got === c.expected
+      out.push({
+        label: c.label,
+        ok,
+        detail: `got=${fmt(got)} expected=${fmt(c.expected)}`,
+      })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      out.push({ label: c.label, ok: false, detail: `threw: ${msg}` })
+    }
+  }
+  return out
+}
+
 async function main(): Promise<void> {
   console.log("=".repeat(72))
   console.log("IPOGyani scraper e2e verification")
@@ -136,6 +187,13 @@ async function main(): Promise<void> {
   console.log("=".repeat(72))
 
   const results: Result[] = []
+
+  console.log("\n--- parseGMP unit cases (dashAsZero contract) ---")
+  for (const r of runParserCases()) {
+    results.push(r)
+    console.log(`${r.ok ? "PASS" : "FAIL"} | ${r.label}`)
+    if (!r.ok) console.log(`       ${r.detail}`)
+  }
 
   console.log("\n--- GMP sources (IPOWatch, ipoji) ---")
   for (const c of GMP_CASES) {
