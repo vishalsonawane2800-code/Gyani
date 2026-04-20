@@ -87,6 +87,17 @@ export interface SubscriptionEntry {
   is_final: boolean
 }
 
+export interface FAQEntry {
+  question: string
+  answer: string
+}
+
+export interface CompanyProfileData {
+  about_company: string | null
+  company_details: string | null
+  ipo_details_long: string | null
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -1188,5 +1199,230 @@ IS_FINAL: [true/false - true only for final day closing data]
 [repeat for each entry]
 === END ===
 
-Create one entry per day or per time snapshot. Mark the last entry as IS_FINAL: true if it's the final subscription data.`
+Create one entry per day or per time snapshot. Mark the last entry as IS_FINAL: true if it's the final subscription data.`,
+
+  faqs: `Convert the following FAQs into this exact format:
+=== FAQS ===
+--- FAQ ---
+Q: [Question text]
+A: [Answer text, can be multiple sentences]
+--- FAQ ---
+Q: [Question text]
+A: [Answer text]
+=== END ===
+
+Write 10-15 FAQs covering: open/close date, price band, lot size, minimum investment, GMP meaning, allotment status, listing date, subscription status, company business, IPO objectives, financial performance, valuation (P/E), strengths & risks, how to apply, whether to subscribe. Mirror the style used on chittorgarh.com / ipoji.com.`,
+
+  companyProfile: `Convert company and IPO information into this exact format:
+=== COMPANY_PROFILE ===
+ABOUT: [Short 1-2 sentence summary of the company. Shown as the intro on the IPO page.]
+COMPANY_DETAILS: [Long-form company description: business model, products/services, promoters, manufacturing or delivery footprint, clients, competitive moat. 4-8 sentences. Plain text; use \\n\\n for paragraph breaks.]
+IPO_DETAILS: [Long-form IPO commentary: issue structure, use of proceeds, valuation view, key strengths, key risks, comparable listings, fair-value take. 4-8 sentences. Plain text; use \\n\\n for paragraph breaks.]
+=== END ===
+
+Keep tone factual, SEO-friendly, and similar to ipoji.com / chittorgarh.com. Avoid bullet-point formatting inside values — use full sentences.`
 }
+
+// ============================================
+// FAQS PARSER
+// ============================================
+
+/**
+ * Parse FAQ data (question/answer pairs) from block-based text.
+ *
+ * Example input:
+ * === FAQS ===
+ * --- FAQ ---
+ * Q: When does XYZ IPO open for subscription?
+ * A: The IPO opens on 27 March 2026 and closes on 8 April 2026.
+ * --- FAQ ---
+ * Q: What is the price band?
+ * A: Rs 93 to Rs 98 per share.
+ * === END ===
+ *
+ * Also accepts QUESTION: / ANSWER: as aliases for Q: / A:.
+ * Answers may span multiple lines until the next Q:/A:/--- FAQ --- / === marker.
+ */
+export function parseFAQs(text: string): ParseResult<FAQEntry> {
+  const result: ParseResult<FAQEntry> = { success: false, data: [], errors: [] }
+
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  // Split into FAQ blocks. Accept `--- FAQ ---` / `--- FAQ 1 ---` style markers.
+  const blocks = text.split(/---\s*FAQ\s*\d*\s*---/i)
+
+  for (const rawBlock of blocks) {
+    const block = rawBlock.replace(/===[^=]*===/g, '').trim()
+    if (!block) continue
+
+    // Walk lines and accumulate Q/A. Answers can be multi-line.
+    const lines = block.split('\n')
+    let question = ''
+    let answer = ''
+    let mode: 'none' | 'q' | 'a' = 'none'
+
+    const flush = () => {
+      const q = question.trim()
+      const a = answer.trim()
+      if (q && a) {
+        result.data.push({ question: q, answer: a })
+      }
+      question = ''
+      answer = ''
+      mode = 'none'
+    }
+
+    for (const line of lines) {
+      const qMatch = line.match(/^\s*(?:Q|QUESTION)\s*[:.)-]\s*(.*)$/i)
+      const aMatch = line.match(/^\s*(?:A|ANSWER)\s*[:.)-]\s*(.*)$/i)
+
+      if (qMatch) {
+        // Starting a new question — if we were mid-A, push previous pair.
+        if (mode === 'a' && (question || answer)) flush()
+        question = qMatch[1].trim()
+        mode = 'q'
+      } else if (aMatch) {
+        answer = aMatch[1].trim()
+        mode = 'a'
+      } else if (mode === 'q' && line.trim()) {
+        // Multi-line question continuation
+        question += ' ' + line.trim()
+      } else if (mode === 'a' && line.trim()) {
+        // Multi-line answer continuation — preserve paragraph breaks lightly
+        answer += (answer ? ' ' : '') + line.trim()
+      }
+    }
+    flush()
+  }
+
+  if (result.data.length === 0) {
+    result.errors.push('No valid FAQs found. Use format: --- FAQ --- followed by Q: and A:')
+  } else {
+    result.success = true
+  }
+
+  return result
+}
+
+// ============================================
+// COMPANY PROFILE PARSER (about + long-form blocks)
+// ============================================
+
+/**
+ * Parse company + IPO long-form copy for the public IPO page.
+ *
+ * Example input:
+ * === COMPANY_PROFILE ===
+ * ABOUT: Acme Ltd makes widgets for industrial use across India.
+ * COMPANY_DETAILS: Acme Ltd was incorporated in 2001 ... \n\n The promoters have over 20 years of experience ...
+ * IPO_DETAILS: The issue comprises a fresh issue of Rs 100 Cr ... \n\n Valuation at the upper band implies a P/E of 24x ...
+ * === END ===
+ *
+ * Values are single keys — content after the colon runs until the next
+ * ALL-CAPS key line (ABOUT / COMPANY_DETAILS / IPO_DETAILS) or === END ===.
+ * This lets admins paste multi-paragraph text without escaping newlines.
+ */
+export function parseCompanyProfile(text: string): ParseResult<CompanyProfileData> {
+  const result: ParseResult<CompanyProfileData> = { success: false, data: [], errors: [] }
+
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  const VALID_KEYS = new Set(['ABOUT', 'COMPANY_DETAILS', 'IPO_DETAILS'])
+  const lines = text.split('\n')
+
+  const values: Record<string, string[]> = {
+    ABOUT: [],
+    COMPANY_DETAILS: [],
+    IPO_DETAILS: [],
+  }
+
+  let currentKey: string | null = null
+
+  for (const rawLine of lines) {
+    const line = rawLine.replace(/\r$/, '')
+    const trimmed = line.trim()
+
+    // Skip section wrappers
+    if (/^===/.test(trimmed)) continue
+
+    // Detect a new key: e.g. "COMPANY_DETAILS: ..." or "ABOUT: ..."
+    const keyMatch = trimmed.match(/^([A-Z_]+)\s*:\s*(.*)$/)
+    if (keyMatch && VALID_KEYS.has(keyMatch[1])) {
+      currentKey = keyMatch[1]
+      if (keyMatch[2]) values[currentKey].push(keyMatch[2])
+      continue
+    }
+
+    // Continuation of current value (preserves paragraph breaks)
+    if (currentKey) {
+      values[currentKey].push(line)
+    }
+  }
+
+  const normalise = (parts: string[]): string | null => {
+    const joined = parts.join('\n').trim()
+    // Support literal "\n\n" escapes in pasted text.
+    const withBreaks = joined.replace(/\\n\\n/g, '\n\n').replace(/\\n/g, '\n')
+    return withBreaks || null
+  }
+
+  const profile: CompanyProfileData = {
+    about_company: normalise(values.ABOUT),
+    company_details: normalise(values.COMPANY_DETAILS),
+    ipo_details_long: normalise(values.IPO_DETAILS),
+  }
+
+  if (!profile.about_company && !profile.company_details && !profile.ipo_details_long) {
+    result.errors.push(
+      'No valid fields found. Use keys: ABOUT, COMPANY_DETAILS, IPO_DETAILS (each followed by a colon).'
+    )
+    return result
+  }
+
+  result.data.push(profile)
+  result.success = true
+  return result
+}
+
+// ============================================
+// TEMPLATES for FAQs + Company Profile
+// ============================================
+
+export const FAQS_TEMPLATE = `=== FAQS ===
+--- FAQ ---
+Q: When does the IPO open for subscription?
+A: The IPO opens on 27 March 2026 and closes on 8 April 2026.
+--- FAQ ---
+Q: What is the price band of the IPO?
+A: The price band is set at Rs 93 to Rs 98 per equity share.
+--- FAQ ---
+Q: What is the lot size and minimum investment?
+A: Lot size is 1,200 shares. Minimum retail investment at the upper band is Rs 1,17,600.
+--- FAQ ---
+Q: When is the allotment date and listing date?
+A: Allotment is expected on 9 April 2026 and listing on 13 April 2026 on BSE SME.
+--- FAQ ---
+Q: What is the GMP (Grey Market Premium) and what does it indicate?
+A: GMP reflects the unofficial premium at which IPO shares trade before listing; it signals demand but is not a guaranteed listing price.
+--- FAQ ---
+Q: How do I apply for this IPO?
+A: You can apply via UPI through your broker app (Zerodha, Groww, Angel One, Upstox) using ASBA.
+--- FAQ ---
+Q: How can I check the allotment status?
+A: Once allotment is finalised, check status on the registrar's portal or BSE / NSE allotment page using your PAN or application number.
+--- FAQ ---
+Q: Should I subscribe to this IPO?
+A: Review the company fundamentals, valuation, subscription levels, GMP trend and expert reviews on this page before deciding.
+=== END ===`
+
+export const COMPANY_PROFILE_TEMPLATE = `=== COMPANY_PROFILE ===
+ABOUT: Acme Technologies Ltd provides enterprise software and cloud services to Indian SMBs.
+COMPANY_DETAILS: Acme Technologies Ltd was incorporated in 2001 and operates in the IT services sector with a focus on enterprise software, cloud hosting and managed services for Indian SMBs.\\n\\nThe promoters have over 20 years of collective experience. The company serves 450+ clients across BFSI, retail and manufacturing and has delivery centres in Bengaluru and Pune.
+IPO_DETAILS: The issue comprises a fresh issue of Rs 100 Cr at a price band of Rs 93-98 per share, implying a post-issue market cap of around Rs 600 Cr.\\n\\nProceeds will fund working capital, cloud infra expansion and branding. At the upper band, the IPO is valued at a P/E of about 22x FY25 earnings, broadly in line with listed IT SME peers. Key strengths include debt-free balance sheet and 35%+ RoE; key risks include client concentration and SME liquidity.
+=== END ===`

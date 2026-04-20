@@ -276,7 +276,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   }
 
   // Fetch related data in parallel
-  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult, subscriptionLiveResult, subscriptionHistoryResult] = await Promise.all([
+  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult, subscriptionLiveResult, subscriptionHistoryResult, faqsResult] = await Promise.all([
     // Get GMP history
     supabase
       .from('gmp_history')
@@ -331,7 +331,14 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .select('*')
       .eq('ipo_id', ipo.id)
       .order('date', { ascending: true })
-      .order('day_number', { ascending: true })
+      .order('day_number', { ascending: true }),
+
+    // Get FAQs (migration 021)
+    supabase
+      .from('ipo_faqs')
+      .select('question, answer, display_order')
+      .eq('ipo_id', ipo.id)
+      .order('display_order', { ascending: true })
   ])
 
   const gmpHistory = gmpHistoryResult.data ?? []
@@ -342,6 +349,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const issueDetailsData = issueDetailsResult.data
   const subscriptionLiveData = subscriptionLiveResult.data ?? []
   const subscriptionHistoryData = subscriptionHistoryResult.data ?? []
+  const faqsData = faqsResult.data ?? []
 
   // Get latest GMP from history if available
   const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
@@ -455,6 +463,12 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       gmpPercent: priceMax > 0 ? Math.round((g.gmp / priceMax) * 100 * 10) / 10 : 0,
       source: g.source || 'investorgain',
     })),
+    // Long-form copy + FAQs (migration 021)
+    companyDetails: ipo.company_details || undefined,
+    ipoDetailsLong: ipo.ipo_details_long || undefined,
+    faqs: faqsData.length > 0
+      ? faqsData.map(f => ({ question: f.question, answer: f.answer }))
+      : undefined,
   }
 }
 
