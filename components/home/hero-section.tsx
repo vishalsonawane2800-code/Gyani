@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import type { IPO } from '@/lib/data';
@@ -15,6 +17,26 @@ function generateAbbr(name: string | undefined | null): string {
     .join('')
     .slice(0, 2)
     .toUpperCase() || 'IP';
+}
+
+// Hash links (`href="#current"`) only trigger a scroll the FIRST time
+// they're clicked — on the second click the URL is already `#current`
+// so neither the browser nor the Next.js router fires a scroll. We
+// handle it manually here so every click scrolls, regardless of the
+// current URL hash. Still rendered as an anchor with a real `href` so
+// deep-links, middle-click, and SSR markup all stay correct.
+function scrollToCurrent(e: React.MouseEvent<HTMLAnchorElement>) {
+  // Let the user open in a new tab with cmd/ctrl/middle-click.
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+  const el = document.getElementById('current');
+  if (!el) return;
+  e.preventDefault();
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Keep the URL in sync so sharing / back-button behaviour matches
+  // what a normal hash-link would produce on its first click.
+  if (typeof window !== 'undefined' && window.location.hash !== '#current') {
+    window.history.replaceState(null, '', '#current');
+  }
 }
 
 const stats = [
@@ -100,6 +122,7 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <Link 
                 href="#current" 
+                onClick={scrollToCurrent}
                 className="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-sm sm:text-base px-6 sm:px-7 py-3 sm:py-3 rounded-lg transition-all hover:-translate-y-0.5 shadow-lg hover:shadow-xl"
               >
                 <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -201,6 +224,7 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             <div className="mt-4 pt-4 border-t border-white/[0.06]">
               <Link 
                 href="#current" 
+                onClick={scrollToCurrent}
                 className={`flex items-center justify-center gap-2 text-xs sm:text-sm font-semibold transition-colors ${
                   hasLive
                     ? 'text-sky-400 hover:text-sky-300'
