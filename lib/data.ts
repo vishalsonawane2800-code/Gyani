@@ -186,6 +186,17 @@ export interface IPO {
   news?: NewsArticle[];
   youtubeSummaries?: YouTubeSummary[];
   predictions?: IPOPrediction[];
+
+  // Long-form content (migration 021) — shown in "Read more" blocks
+  // on the public IPO page + powers SEO / FAQPage JSON-LD.
+  companyDetails?: string;
+  ipoDetailsLong?: string;
+  faqs?: IPOFAQ[];
+}
+
+export interface IPOFAQ {
+  question: string;
+  answer: string;
 }
 
 // -----------------------------------------------------------------------------

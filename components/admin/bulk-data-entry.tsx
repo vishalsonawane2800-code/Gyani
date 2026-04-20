@@ -17,7 +17,9 @@ import {
   Copy,
   Check,
   AlertCircle,
-  Info
+  Info,
+  HelpCircle,
+  BookOpen
 } from 'lucide-react'
 import {
   Collapsible,
@@ -31,6 +33,8 @@ import {
   KPI_TEMPLATE,
   ISSUE_DETAILS_TEMPLATE,
   SUBSCRIPTION_HISTORY_TEMPLATE,
+  FAQS_TEMPLATE,
+  COMPANY_PROFILE_TEMPLATE,
   AI_PROMPTS,
   parseFinancials,
   parsePeerComparison,
@@ -38,6 +42,8 @@ import {
   parseKPI,
   parseIssueDetails,
   parseSubscriptionHistory,
+  parseFAQs,
+  parseCompanyProfile,
 } from '@/lib/bulk-data-parsers'
 import { useAuth } from '@/lib/auth-context'
 
@@ -46,7 +52,15 @@ interface BulkDataEntryProps {
   onSuccess?: () => void
 }
 
-type DataType = 'financials' | 'peers' | 'gmp' | 'kpi' | 'issueDetails' | 'subscriptions'
+type DataType =
+  | 'financials'
+  | 'peers'
+  | 'gmp'
+  | 'kpi'
+  | 'issueDetails'
+  | 'subscriptions'
+  | 'faqs'
+  | 'companyProfile'
 
 interface SectionConfig {
   type: DataType
@@ -68,6 +82,8 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     kpi: false,
     issueDetails: false,
     subscriptions: false,
+    faqs: false,
+    companyProfile: false,
   })
   
   const [texts, setTexts] = useState<Record<DataType, string>>({
@@ -77,6 +93,8 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     kpi: '',
     issueDetails: '',
     subscriptions: '',
+    faqs: '',
+    companyProfile: '',
   })
   
   const [loading, setLoading] = useState<Record<DataType, boolean>>({
@@ -86,6 +104,8 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     kpi: false,
     issueDetails: false,
     subscriptions: false,
+    faqs: false,
+    companyProfile: false,
   })
   
   const [clearExisting, setClearExisting] = useState<Record<DataType, boolean>>({
@@ -95,6 +115,8 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
     kpi: true,
     issueDetails: true,
     subscriptions: false,
+    faqs: true,
+    companyProfile: true,
   })
 
   const [copiedTemplate, setCopiedTemplate] = useState<DataType | null>(null)
@@ -225,6 +247,62 @@ export function BulkDataEntry({ ipoId, onSuccess }: BulkDataEntryProps) {
           success: true,
           count: result.data.length,
           preview: `${result.data.length} entries from Day ${firstEntry.day_number} to Day ${lastEntry.day_number}. Latest: ${lastEntry.total}x total`,
+        }
+      },
+    },
+    {
+      type: 'faqs',
+      title: 'FAQs (SEO)',
+      icon: <HelpCircle className="h-4 w-4" />,
+      description:
+        'Bulk import 10-15 FAQs (chittorgarh / ipoji style). Renders as a public accordion + FAQPage JSON-LD schema for Google rich results.',
+      template: FAQS_TEMPLATE,
+      aiPrompt: AI_PROMPTS.faqs,
+      endpoint: `/api/admin/ipos/${ipoId}/faqs`,
+      parsePreview: (text) => {
+        const result = parseFAQs(text)
+        if (!result.success || result.data.length === 0) {
+          return {
+            success: false,
+            count: 0,
+            preview: result.errors.join(', '),
+          }
+        }
+        return {
+          success: true,
+          count: result.data.length,
+          preview: `${result.data.length} FAQs parsed. First: "${result.data[0].question.slice(0, 60)}..."`,
+        }
+      },
+    },
+    {
+      type: 'companyProfile',
+      title: 'Company & IPO Details',
+      icon: <BookOpen className="h-4 w-4" />,
+      description:
+        'Long-form company description + IPO commentary. Shown as two "Read more" cards on the public IPO page (keeps the page clean while feeding SEO).',
+      template: COMPANY_PROFILE_TEMPLATE,
+      aiPrompt: AI_PROMPTS.companyProfile,
+      endpoint: `/api/admin/ipos/${ipoId}/company-profile`,
+      parsePreview: (text) => {
+        const result = parseCompanyProfile(text)
+        if (!result.success || result.data.length === 0) {
+          return {
+            success: false,
+            count: 0,
+            preview: result.errors.join(', '),
+          }
+        }
+        const p = result.data[0]
+        const filled = [
+          p.about_company && 'About',
+          p.company_details && 'Company Details',
+          p.ipo_details_long && 'IPO Details',
+        ].filter(Boolean) as string[]
+        return {
+          success: true,
+          count: filled.length,
+          preview: `Will update: ${filled.join(', ')}`,
         }
       },
     },
