@@ -1,38 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Calendar, IndianRupee, BarChart3, Layers, Building2, Users, TrendingUp, Sparkles, RefreshCw, Clock } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
+import { useRefreshCountdown, formatRefreshCountdown } from '@/lib/use-refresh-countdown';
 
 interface DetailSidebarProps {
   ipo: IPO;
 }
 
 export function DetailSidebar({ ipo }: DetailSidebarProps) {
-  // Countdown timer state (5 minutes = 300 seconds)
-  const [countdown, setCountdown] = useState(300);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          // Reset to 5 minutes when timer reaches 0
-          return 300;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Format countdown as M:SS
-  const formatCountdown = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Shared 15-min wall-clock countdown — synced with the worker's `*/15 * * * *`
+  // schedule and with every other refresh timer across the app.
+  const refreshSeconds = useRefreshCountdown(15);
+  const countdownLabel = formatRefreshCountdown(refreshSeconds);
 
   // AI-based calculations - using AI prediction percentage
   const aiPredictedListingPrice = Math.round(ipo.priceMax * (1 + ipo.aiPrediction / 100)); // Est. Listing Price = Issue Price × (1 + AI Prediction %)
@@ -55,7 +36,7 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
           </div>
           <div className="flex items-center gap-1 text-[10px] text-ink4">
             <RefreshCw className="w-3 h-3" />
-            <span>{formatCountdown(countdown)}</span>
+            <span className="tabular-nums">{countdownLabel}</span>
           </div>
         </div>
         
@@ -106,7 +87,7 @@ export function DetailSidebar({ ipo }: DetailSidebarProps) {
         <div className="flex items-center justify-center gap-1.5 mt-3 pt-3 border-t border-border/50">
           <Clock className="w-3 h-3 text-emerald" />
           <span className="text-[10px] text-ink3">Refresh in</span>
-          <span className="text-[11px] font-bold text-emerald">{formatCountdown(countdown)}</span>
+          <span className="text-[11px] font-bold text-emerald tabular-nums">{countdownLabel}</span>
         </div>
       </div>
 

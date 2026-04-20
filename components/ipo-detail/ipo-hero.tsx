@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Clock, TrendingUp, BarChart3, RefreshCw } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDateRange, formatPrice, formatDate } from '@/lib/data';
+import { useRefreshCountdown, formatRefreshCountdown } from '@/lib/use-refresh-countdown';
 
 function scrollToSection(sectionId: string) {
   // Map section IDs to tab IDs
@@ -58,20 +58,9 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export function IPOHero({ ipo }: IPOHeroProps) {
-  const [refreshTimer, setRefreshTimer] = useState(300); // 5 minutes in seconds
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshTimer((prev) => (prev > 0 ? prev - 1 : 300));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Shared 15-min wall-clock countdown — synced with the worker's `*/15 * * * *`
+  // schedule and with every other refresh timer across the app.
+  const refreshSeconds = useRefreshCountdown(15);
 
   const getStatusBadge = () => {
     switch (ipo.status) {
@@ -182,7 +171,7 @@ export function IPOHero({ ipo }: IPOHeroProps) {
           {/* Refresh Timer */}
           <div className="flex items-center gap-1 mt-2 text-[9px] text-ink4">
             <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
-            <span>Refresh in {formatTimer(refreshTimer)}</span>
+            <span className="tabular-nums">Refresh in {formatRefreshCountdown(refreshSeconds)}</span>
           </div>
           {/* GMP Graph Button */}
           <div className="mt-2">
