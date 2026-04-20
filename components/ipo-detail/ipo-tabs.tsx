@@ -299,10 +299,6 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
           </tbody>
         </table>
       </div>
-
-      <p className="text-xs text-ink4 mt-4">
-        * GMP (Grey Market Premium) is scraped from multiple sources for accuracy. Data is updated multiple times daily.
-      </p>
     </div>
   );
 }
