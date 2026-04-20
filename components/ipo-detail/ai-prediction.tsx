@@ -3,31 +3,26 @@
 import { useState, useEffect } from 'react';
 import { Check, RefreshCw } from 'lucide-react';
 import type { IPO } from '@/lib/data';
+import { useRefreshCountdown, formatRefreshCountdown } from '@/lib/use-refresh-countdown';
 
 interface AIPredictionProps {
   ipo: IPO;
 }
 
 export function AIPrediction({ ipo }: AIPredictionProps) {
-  const [refreshTimer, setRefreshTimer] = useState(858); // 14:18
+  // Shared 15-min wall-clock countdown — synced with the worker's `*/15 * * * *`
+  // schedule and with every other refresh timer across the app.
+  const refreshSeconds = useRefreshCountdown(15);
   const [currentTime, setCurrentTime] = useState<string | null>(null);
 
   useEffect(() => {
     // Set initial time on client only to avoid hydration mismatch
-    setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
-    
-    const interval = setInterval(() => {
-      setRefreshTimer((prev) => (prev > 0 ? prev - 1 : 900));
+    const update = () =>
       setCurrentTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }));
-    }, 1000);
+    update();
+    const interval = setInterval(update, 30_000);
     return () => clearInterval(interval);
   }, []);
-
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
-  };
 
   const aiPrediction = ipo.aiPrediction ?? 0;
   const aiConfidence = ipo.aiConfidence ?? 0;
@@ -102,7 +97,7 @@ export function AIPrediction({ ipo }: AIPredictionProps) {
       {/* Footer */}
       <div className="flex items-center gap-2 mt-6 text-[11px] text-white/40 relative">
         <RefreshCw className="w-3 h-3 animate-spin" style={{ animationDuration: '3s' }} />
-        Next refresh: <strong className="text-white/70">{formatTimer(refreshTimer)}</strong>
+        Next refresh: <strong className="text-white/70 tabular-nums">{formatRefreshCountdown(refreshSeconds)}</strong>
         <span className="mx-2">-</span>
         Updated: {currentTime ?? '--:--'} IST
         <span className="mx-2">-</span>
