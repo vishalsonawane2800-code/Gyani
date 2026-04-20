@@ -98,6 +98,22 @@ export interface CompanyProfileData {
   ipo_details_long: string | null
 }
 
+export interface MarketNewsEntry {
+  title: string
+  url: string
+  source: string | null
+  tag: string
+  impact: string | null
+  sentiment: 'positive' | 'neutral' | 'negative' | null
+  summary: string | null
+  // ISO date at midnight UTC (YYYY-MM-DDT00:00:00.000Z). Only the date
+  // portion is meaningful for news items — we intentionally drop the
+  // time component so display stays consistent.
+  published_at: string | null
+  image_url: string | null
+  display_order: number
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -1213,6 +1229,23 @@ A: [Answer text]
 
 Write 10-15 FAQs covering: open/close date, price band, lot size, minimum investment, GMP meaning, allotment status, listing date, subscription status, company business, IPO objectives, financial performance, valuation (P/E), strengths & risks, how to apply, whether to subscribe. Mirror the style used on chittorgarh.com / ipoji.com.`,
 
+  marketNews: `Convert the following IPO / market news items into this exact format:
+=== MARKET_NEWS ===
+--- ITEM ---
+TITLE: [Headline, one line]
+URL: [Full article URL starting with https://]
+SOURCE: [Publication name, e.g. Moneycontrol]
+TAG: [One of: ALERT / MARKET / IPO / REG / SME / LISTING]
+IMPACT: [Optional, one of: Bullish / Bearish / Caution / Watch / Neutral]
+SENTIMENT: [Optional, one of: positive / neutral / negative]
+DATE: [YYYY-MM-DD — date only, no time]
+SUMMARY: [Optional one-line context]
+--- ITEM ---
+[repeat for each news item]
+=== END ===
+
+Only use the DATE (no time). If a field is unknown, leave it out — do not invent values. TITLE and URL are required for every item.`,
+
   companyProfile: `Convert company and IPO information into this exact format:
 === COMPANY_PROFILE ===
 ABOUT: [Short 1-2 sentence summary of the company. Shown as the intro on the IPO page.]
@@ -1426,3 +1459,192 @@ ABOUT: Acme Technologies Ltd provides enterprise software and cloud services to 
 COMPANY_DETAILS: Acme Technologies Ltd was incorporated in 2001 and operates in the IT services sector with a focus on enterprise software, cloud hosting and managed services for Indian SMBs.\\n\\nThe promoters have over 20 years of collective experience. The company serves 450+ clients across BFSI, retail and manufacturing and has delivery centres in Bengaluru and Pune.
 IPO_DETAILS: The issue comprises a fresh issue of Rs 100 Cr at a price band of Rs 93-98 per share, implying a post-issue market cap of around Rs 600 Cr.\\n\\nProceeds will fund working capital, cloud infra expansion and branding. At the upper band, the IPO is valued at a P/E of about 22x FY25 earnings, broadly in line with listed IT SME peers. Key strengths include debt-free balance sheet and 35%+ RoE; key risks include client concentration and SME liquidity.
 === END ===`
+
+// ============================================
+// MARKET NEWS PARSER (homepage "IPO Market News")
+// ============================================
+
+export const MARKET_NEWS_TEMPLATE = `=== MARKET_NEWS ===
+--- ITEM ---
+TITLE: SEBI tightens SME IPO listing norms
+URL: https://www.moneycontrol.com/news/business/markets/sebi-tightens-sme-ipo-listing-norms.html
+SOURCE: Moneycontrol
+TAG: REG
+IMPACT: Caution
+SENTIMENT: neutral
+DATE: 2026-04-18
+SUMMARY: SEBI proposes stricter disclosure + lock-in for SME IPOs.
+--- ITEM ---
+TITLE: Nifty hits fresh all-time high ahead of Q4 results
+URL: https://economictimes.indiatimes.com/markets/stocks/news/example.cms
+SOURCE: ET Markets
+TAG: MARKET
+IMPACT: Bullish
+SENTIMENT: positive
+DATE: 17 Apr 2026
+--- ITEM ---
+TITLE: Om Power Transmission lists with 38% premium
+URL: https://www.bseindia.com/corporates/ann.html?scrip=xxxxxx
+SOURCE: BSE
+TAG: LISTING
+IMPACT: Bullish
+SENTIMENT: positive
+DATE: 16/04/2026
+=== END ===`
+
+const VALID_SENTIMENTS = new Set(['positive', 'neutral', 'negative'])
+
+/**
+ * Parse a DATE: value into an ISO timestamp at midnight UTC.
+ * Supports:
+ *   - YYYY-MM-DD
+ *   - DD-MM-YYYY
+ *   - DD/MM/YYYY
+ *   - D MMM YYYY / DD MMM YYYY  (e.g. "17 Apr 2026")
+ *   - MMM D, YYYY                (e.g. "Apr 17, 2026")
+ * Returns null if the value cannot be parsed.
+ */
+function parseNewsDate(raw: string): string | null {
+  const value = raw.trim()
+  if (!value) return null
+
+  const toIso = (y: number, m: number, d: number): string | null => {
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return null
+    if (m < 1 || m > 12 || d < 1 || d > 31) return null
+    const iso = new Date(Date.UTC(y, m - 1, d))
+    return Number.isNaN(iso.getTime()) ? null : iso.toISOString()
+  }
+
+  // YYYY-MM-DD
+  let m = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (m) return toIso(Number(m[1]), Number(m[2]), Number(m[3]))
+
+  // DD-MM-YYYY or DD/MM/YYYY
+  m = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/)
+  if (m) return toIso(Number(m[3]), Number(m[2]), Number(m[1]))
+
+  // D MMM YYYY  (17 Apr 2026)
+  const MONTHS: Record<string, number> = {
+    jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+    jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+  }
+  m = value.match(/^(\d{1,2})\s+([A-Za-z]{3,})\s+(\d{4})$/)
+  if (m) {
+    const mm = MONTHS[m[2].slice(0, 3).toLowerCase()]
+    if (mm) return toIso(Number(m[3]), mm, Number(m[1]))
+  }
+
+  // MMM D, YYYY  (Apr 17, 2026)
+  m = value.match(/^([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})$/)
+  if (m) {
+    const mm = MONTHS[m[1].slice(0, 3).toLowerCase()]
+    if (mm) return toIso(Number(m[3]), mm, Number(m[2]))
+  }
+
+  // Last-ditch: native Date parse, then strip to date-only UTC
+  const parsed = new Date(value)
+  if (!Number.isNaN(parsed.getTime())) {
+    return new Date(Date.UTC(
+      parsed.getUTCFullYear(),
+      parsed.getUTCMonth(),
+      parsed.getUTCDate(),
+    )).toISOString()
+  }
+
+  return null
+}
+
+/**
+ * Parse market-news bulk text into a list of news items.
+ *
+ * Required per item: TITLE, URL (must be http/https).
+ * Optional: SOURCE, TAG (defaults to "IPO"), IMPACT, SENTIMENT, DATE,
+ *           SUMMARY, IMAGE_URL, DISPLAY_ORDER.
+ *
+ * Items separated by `--- ITEM ---`. Outer `=== MARKET_NEWS ===` / `=== END ===`
+ * wrappers are tolerated but not required.
+ */
+export function parseMarketNews(text: string): ParseResult<MarketNewsEntry> {
+  const result: ParseResult<MarketNewsEntry> = { success: false, data: [], errors: [] }
+
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  const blocks = text.split(/---\s*(?:ITEM|NEWS)\s*\d*\s*---/i)
+  let index = 0
+
+  for (const rawBlock of blocks) {
+    const block = rawBlock.replace(/===[^=]*===/g, '').trim()
+    if (!block) continue
+    index += 1
+
+    const values: Record<string, string> = {}
+    let currentKey: string | null = null
+
+    // Walk lines. If a line matches KEY: value, start a new key. Otherwise,
+    // continuation lines are appended to the current key's value so admins
+    // can paste multi-line summaries without escaping newlines.
+    for (const rawLine of block.split('\n')) {
+      const line = rawLine.replace(/\r$/, '')
+      const m = line.match(/^\s*([A-Z_]+)\s*:\s*(.*)$/)
+      if (m && /^[A-Z_]+$/.test(m[1])) {
+        currentKey = m[1].toUpperCase()
+        values[currentKey] = m[2].trim()
+      } else if (currentKey && line.trim()) {
+        values[currentKey] = (values[currentKey] + ' ' + line.trim()).trim()
+      }
+    }
+
+    const title = values.TITLE?.trim()
+    const url = values.URL?.trim()
+    if (!title || !url) {
+      result.errors.push(`Item ${index}: missing TITLE or URL`)
+      continue
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      result.errors.push(`Item ${index}: URL must start with http:// or https://`)
+      continue
+    }
+
+    const tag = (values.TAG?.trim() || 'IPO').toUpperCase()
+    const impact = values.IMPACT?.trim() || null
+    const sentimentRaw = values.SENTIMENT?.trim().toLowerCase()
+    const sentiment = sentimentRaw && VALID_SENTIMENTS.has(sentimentRaw)
+      ? (sentimentRaw as 'positive' | 'neutral' | 'negative')
+      : null
+    const summary = values.SUMMARY?.trim() || null
+    const image = (values.IMAGE_URL || values.IMAGE)?.trim() || null
+
+    const dateRaw = (values.DATE || values.PUBLISHED_AT || values.PUBLISHED)?.trim()
+    const published_at = dateRaw ? parseNewsDate(dateRaw) : null
+    if (dateRaw && !published_at) {
+      result.errors.push(`Item ${index}: could not parse DATE "${dateRaw}"`)
+    }
+
+    const orderRaw = values.DISPLAY_ORDER?.trim()
+    const display_order = orderRaw && !isNaN(Number(orderRaw)) ? Number(orderRaw) : 0
+
+    result.data.push({
+      title,
+      url,
+      source: values.SOURCE?.trim() || null,
+      tag,
+      impact,
+      sentiment,
+      summary,
+      published_at,
+      image_url: image,
+      display_order,
+    })
+  }
+
+  if (result.data.length === 0 && result.errors.length === 0) {
+    result.errors.push('No valid news items found. Use format: --- ITEM --- followed by TITLE: and URL:')
+  } else if (result.data.length > 0) {
+    result.success = true
+  }
+
+  return result
+}
