@@ -124,7 +124,6 @@ export async function scrapeIpojiGMP(
     if (!targetNorm) return null
 
     let gmp: number | null = null
-    let cardMatched = false
 
     cards.each((_, card) => {
       if (gmp !== null) return
@@ -140,7 +139,6 @@ export async function scrapeIpojiGMP(
       const cleaned = cleanCardTitle(titleRaw)
       const titleNorm = normalizeName(cleaned)
       if (!namesMatch(targetNorm, titleNorm)) return
-      cardMatched = true
 
       $card.find(".ipo-card-body-stat").each((_, s) => {
         if (gmp !== null) return
@@ -158,18 +156,18 @@ export async function scrapeIpojiGMP(
       })
     })
 
-    if (gmp !== null) return { gmp }
-
-    // Card was found but had no "Exp. Premium" stat block at all
-    // (observed Apr-2026 on InvIT/REIT cards like Citius Transnet, which
-    // ship only Offer Price / Lot Size / Subscription / Issue Size). The
-    // source listing the IPO without a premium row is the same implicit
-    // "no GMP today" signal as a present-but-dashed cell, so apply the
-    // same dashAsZero policy and report 0 — keeping us consistent with
-    // IPOWatch, which already returns 0 in this scenario.
-    if (cardMatched) return { gmp: 0 }
-
-    return null
+    // NOTE: if the card was matched but has no "Exp. Premium" stat block
+    // at all, we intentionally return null (not 0). Observed Apr-2026 on
+    // InvIT / REIT cards like Citius Transnet, which render only
+    // Offer Price / Lot Size / Subscription / Issue Size. Returning 0
+    // here would collide with the post-close case (PropShare Celestia
+    // still appears on the list with the same stripped-down layout)
+    // and we can't distinguish the two from card markup alone. Let
+    // IPOWatch (which DOES publish the explicit dash → 0 for these
+    // listings) carry the signal, and let the averaging pipeline treat
+    // ipoji's null as no-data for this IPO — the handover explicitly
+    // only requires numeric data back from *at least one* source.
+    return gmp !== null ? { gmp } : null
   } catch (err) {
     console.error("[v0] scrapeIpojiGMP error:", err)
     return null

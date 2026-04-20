@@ -75,11 +75,21 @@ const GMP_CASES: GmpCase[] = [
     shouldFind: true,
   },
   {
-    // Paired with the IPOWatch case above — both sources must find
-    // Citius Transnet under the long-form DB name after normalization.
-    label: "ipoji cards - long-form InvIT name (Citius Transnet)",
+    // Paired with the IPOWatch case above, but the assertion differs.
+    // The point of THIS case: the shared name-match helper must still
+    // LOCATE the ipoji card for the long-form DB name (otherwise the
+    // scraper would throw or silently walk every card). But ipoji
+    // renders its InvIT / REIT cards without an "Exp. Premium" stat
+    // block at all (only Offer Price / Lot Size / Subscription /
+    // Issue Size), so returning null here is the correct scraper
+    // output. Treating it as 0 would collide with the
+    // PropShare-Celestia post-close guard below — the two cards are
+    // structurally identical on the list page, and the averaging
+    // pipeline in app/api/cron/scrape-gmp/route.ts only requires
+    // numeric data from AT LEAST ONE source (IPOWatch covers Citius).
+    label: "ipoji cards - long-form InvIT name (Citius Transnet, no GMP expected)",
     ipo: { company_name: "Citius Transnet Investment Trust InvIT" },
-    shouldFind: true,
+    shouldFind: false,
   },
   {
     // PropShare Celestia is a mainboard REIT currently in "Allotment Awaited"
