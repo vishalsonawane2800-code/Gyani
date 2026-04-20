@@ -209,6 +209,29 @@ function parseFromHtml(html: string): ChittorgarhSubscription | null {
       qib: null,
     }
 
+    /**
+     * Chittorgarh's live-subscription page sometimes renders the category
+     * table without the word "Subscription" in its header row (e.g. header is
+     * just `Category | Times | Shares Offered | Shares bid for`). Treat a
+     * table as subscription-related if either its header row matches OR its
+     * caption/preceding heading mentions subscription.
+     */
+    function tableContextMentionsSubscription(tbl: any): boolean {
+      const $tbl = $(tbl)
+      const caption = $tbl.find("caption").first().text()
+      const prevHeading = $tbl
+        .prevAll("h1, h2, h3, h4, h5, h6, strong, p")
+        .first()
+        .text()
+      const containerHeading = $tbl
+        .parent()
+        .prevAll("h1, h2, h3, h4, h5, h6, strong, p")
+        .first()
+        .text()
+      const joined = `${caption} ${prevHeading} ${containerHeading}`.toLowerCase()
+      return /subscri|oversubscribed|live\s+ipo|ipo\s+live/.test(joined)
+    }
+
     $("table").each((_, tbl) => {
       // Read header row (first <tr> with <th> cells, or first <tr>).
       const $tbl = $(tbl)
@@ -218,7 +241,9 @@ function parseFromHtml(html: string): ChittorgarhSubscription | null {
         headers.push($(el).text().replace(/\s+/g, " ").trim())
       })
 
-      if (!isSubscriptionTable(headers)) return // skip unrelated tables
+      const isSub =
+        isSubscriptionTable(headers) || tableContextMentionsSubscription(tbl)
+      if (!isSub) return // skip unrelated tables
 
       $tbl.find("tr").each((idx, tr) => {
         if (idx === 0) return // skip header
