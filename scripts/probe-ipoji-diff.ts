@@ -6,7 +6,7 @@
 import * as cheerio from "cheerio"
 import { fetchWithRetry } from "../lib/scraper/base"
 
-const URL = "https://www.ipoji.com/"
+const URL = "https://ipoji.com/grey-market-premium-ipo-gmp-today.html"
 
 async function main() {
   const html = await fetchWithRetry(URL)
