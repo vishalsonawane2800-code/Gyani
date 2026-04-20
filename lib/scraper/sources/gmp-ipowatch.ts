@@ -151,7 +151,10 @@ function parseListingTable(
     const rowName = normalizeName(cells[nameIdx])
     if (!namesMatch(normalizedTarget, rowName)) return
 
-    const gmp = parseGMP(cells[gmpIdx])
+    // Row was matched by name — IPOWatch IS reporting on this IPO. A `-`
+    // (or `₹-`) in the GMP column on a present row means "explicitly zero
+    // today", per user directive. Coerce via dashAsZero.
+    const gmp = parseGMP(cells[gmpIdx], { dashAsZero: true })
     if (gmp !== null) foundGMP = gmp
   })
 
@@ -190,7 +193,9 @@ function parseArticlePage($: cheerio.CheerioAPI): number | null {
           cells.push($(el).text().replace(/\s+/g, " ").trim())
         })
       if (cells.length <= gmpIdx) return
-      const parsed = parseGMP(cells[gmpIdx])
+      // Per-IPO article page → every row IS this IPO. Treat dash/N/A as
+      // explicit zero per user directive.
+      const parsed = parseGMP(cells[gmpIdx], { dashAsZero: true })
       // On article pages the first data row is usually the latest entry.
       if (parsed !== null) gmp = parsed
     })

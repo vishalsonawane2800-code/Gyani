@@ -79,12 +79,23 @@ function namesMatch(a: string, b: string): boolean {
  *   "3-4 (3%)"   → 3.5
  *   "10 (5%)"    → 10
  *   "₹ 5"        → 5
- *   "-"          → null
+ *   "-"          → null   (default) | 0 if `dashAsZero` is true
+ *
+ * `dashAsZero` should be set ONLY when the ipoji card for this IPO has
+ * already been located. A present card with "Exp. Premium: -" means the
+ * source is explicitly reporting zero GMP today (per user directive),
+ * not "data missing".
  */
-function parseIpojiPremium(raw: string): number | null {
-  if (!raw) return null
+function parseIpojiPremium(
+  raw: string,
+  options: { dashAsZero?: boolean } = {},
+): number | null {
+  if (raw === null || raw === undefined) return null
   const s = String(raw).replace(/₹|rs\.?|inr/gi, "").trim()
-  if (!s || /^(-|n\/?a|nil)$/i.test(s)) return null
+  if (!s) return null
+  if (/^(?:--|[-–—]|n\/?a|nil|none|not\s*available)$/i.test(s)) {
+    return options.dashAsZero ? 0 : null
+  }
 
   // Range first: "3-4 (3%)" → average 3.5. Keep the parenthetical
   // percentage OUT of the range match.
@@ -165,7 +176,9 @@ export async function scrapeIpojiGMP(
           .toLowerCase()
         if (!/gmp|exp\.?\s*premium|grey\s*market/.test(label)) return
         const value = $(s).find(".ipo-card-body-value").text().trim()
-        const parsed = parseIpojiPremium(value)
+        // Card was matched by name and the GMP stat block exists — a `-`
+        // here means "explicitly zero today", not missing data.
+        const parsed = parseIpojiPremium(value, { dashAsZero: true })
         if (parsed !== null) gmp = parsed
       })
     })
