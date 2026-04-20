@@ -1,6 +1,3 @@
-scripts/debug-gmp-cron.ts
-
-+60
 // Reproduces exactly what /api/cron/scrape-gmp does:
 //  1. Load the same IPO window from the DB.
 //  2. Run ipowatch + ipoji for each IPO (no caching, no DB writes).
