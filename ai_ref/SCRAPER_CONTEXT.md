@@ -1,326 +1,322 @@
-# Scraper Context & Handoff Notes
+# Scraper Context
 
-> Handoff doc for the next agent. Contains everything I verified by running live
-> HTTP requests against the real sources from the Vercel sandbox, plus the
-> concrete bugs I found in our current scraper code and the fix plan.
+> Current-state reference for the GMP + subscription scrapers.
+> Keep this doc in sync whenever you touch anything under
+> `lib/scraper/` or the `/api/cron/scrape-*` / `/api/admin/scrape-*` routes.
 >
-> Branch: `scraper-bug-fixes` (off `main`)
-> Date of investigation: 2026-04-20
+> Branch at time of last update: `scraper-diagnosis-and-fixes`
+> Last verified live: 2026-04-20 — 7/7 E2E checks passing
+> (see section 8, `scripts/verify-scrapers-e2e.ts`)
 
 ---
 
-## 1. How the scraping system is wired
+## 1. System wiring
 
 ```
 Vercel Cron (hourly)
-  └─> /api/cron/scrape-gmp           ─┐
-  └─> /api/cron/scrape-subscription  ─┤── Node runtime, runs on Vercel
-                                      │
-                                      │  fetch() to each source
-                                      ▼
-                       lib/scraper/sources/*.ts
-                       ├── gmp-investorgain.ts     (listing page)
-                       ├── gmp-ipowatch.ts         (listing page)
-                       ├── gmp-ipocentral.ts       (listing page)
-                       ├── subscription-chittorgarh.ts (per-IPO page)
-                       ├── subscription-nse.ts     (NSE JSON API + cookies)
-                       ├── subscription-bse.ts     (BSE JSON API)
-                       └── nse-session.ts          (cookie warm-up)
+  ├─> /api/cron/scrape-gmp           ── Node runtime
+  └─> /api/cron/scrape-subscription  ── Node runtime
+                                         │
+                                         ▼
+                          lib/scraper/sources/*.ts
+                          ├── gmp-ipowatch.ts                (ACTIVE)
+                          ├── gmp-ipoji.ts                   (ACTIVE)
+                          ├── gmp-investorgain.ts            (DISABLED — kept for history)
+                          ├── gmp-ipocentral.ts              (DISABLED — kept for history)
+                          ├── subscription-chittorgarh.ts    (ACTIVE, fallback)
+                          ├── subscription-nse.ts            (ACTIVE, primary)
+                          ├── subscription-bse.ts            (ACTIVE, primary)
+                          └── nse-session.ts                 (cookie warm-up for NSE)
 
 Admin manual trigger (per IPO):
-  /api/admin/scrape-gmp/[ipoId]
-  /api/admin/scrape-subscription/[ipoId]
+  /api/admin/scrape-gmp/[ipoId]           ─┐ both call into the exported
+  /api/admin/scrape-subscription/[ipoId]  ─┘ processIpoGMP / processIpoSubscription
+                                             from the cron route directly (no HTTP hop)
 
 Cloudflare Worker (cloudflare-worker/):
-  Separate deployment. Used as a proxy / fallback for some sources that block
-  Vercel egress IPs. Keep in mind any code here has to either work on Vercel
-  OR be called via the worker.
+  Separate deployment, used as a proxy for sources that block Vercel egress.
+  Any code shared with the worker must avoid Node-only imports.
 ```
 
 ### Source URL overrides (admin-provided)
-IPO rows in Supabase have per-source URL columns that an admin can fill in from
-the admin dashboard. When present, the scraper MUST use the admin URL instead
-of guessing one from the slug:
+Each IPO row in Supabase can carry a per-source URL filled in by an admin on
+the IPO form. Scrapers MUST prefer these over any slug-derived URL:
 
-- `chittorgarh_url`          — Chittorgarh IPO detail page
-- `ipowatch_url`             — IPOWatch GMP article
-- `investorgain_url`         — InvestorGain IPO detail page
-- `ipocentral_url`           — IPOCentral IPO detail page
-- `nse_symbol` / `bse_code`  — for NSE/BSE subscription APIs
+- `chittorgarh_url`        — Chittorgarh IPO detail page
+- `ipowatch_gmp_url`       — IPOWatch GMP page (listing OR per-IPO article)
+- `investorgain_gmp_url`   — stored but currently UNUSED (source disabled)
+- `ipocentral_gmp_url`     — stored but currently UNUSED (source disabled)
+- `nse_symbol`, `bse_code` — for NSE / BSE subscription APIs
 
-SQL that added these lives in `scripts/003_*.sql`, `scripts/012_*.sql`.
-**Rule:** Always prefer the admin-provided URL. Only fall back to
-slug-built URL if the override is empty.
-
-### Supabase connection
-Supabase is on a different account from ~`scripts/006_*.sql` onward. Those SQL
-scripts have already been executed by the user against that project. Do not
-re-run them. Only add NEW numbered scripts.
+SQL for these columns lives in `scripts/003_*.sql` and `scripts/012_*.sql`;
+those are already applied in Supabase. Do NOT re-run them — add new numbered
+scripts only.
 
 ---
 
 ## 2. Database shape (relevant columns)
 
 Table `ipos`:
-- `id`, `name`, `slug`
-- `status` — 'upcoming' | 'open' | 'closed' | 'listed'
+- `id`, `slug`, `company_name`
+- `status` — `upcoming | open | lastday | closed | allot | listing | listed`
 - `open_date`, `close_date`, `listing_date`
-- `chittorgarh_url`, `ipowatch_url`, `investorgain_url`, `ipocentral_url`
+- `chittorgarh_url`, `ipowatch_gmp_url`, `investorgain_gmp_url`, `ipocentral_gmp_url`
 - `nse_symbol`, `bse_code`
-- `current_gmp`, `gmp_updated_at`
+- `gmp`, `gmp_last_updated`, `gmp_sources_used` (text[])
 - `subscription_retail`, `subscription_nii`, `subscription_qib`, `subscription_total`
 - `subscription_updated_at`
 
-Table `gmp_history`: time-series of `{ipo_id, source, gmp, recorded_at}`
-Table `subscription_history`: time-series of `{ipo_id, source, retail, nii, qib, total, recorded_at}`
+Time-series:
+- `gmp_history(ipo_id, gmp, gmp_percent, date, source, recorded_at)` — UNIQUE(ipo_id, date)
+- `subscription_history(ipo_id, source, retail, nii, qib, total, recorded_at)`
 
-For full details see `DATABASE_SCHEMA.md`.
-
----
-
-## 3. Per-source findings (verified 2026-04-20)
-
-I ran real fetches with a desktop Chrome UA to each source. Summary:
-
-| Source          | Status from Vercel | Issues found                                         |
-|-----------------|--------------------|------------------------------------------------------|
-| IPOWatch        | WORKING, BUGGY     | Picks wrong column; parses historical table too      |
-| InvestorGain    | **DEAD** (SPA)     | Client-side only, raw HTML has no data rows          |
-| IPOCentral      | **DEAD** (403)     | Cloudflare WAF blocks Vercel egress IPs              |
-| Chittorgarh     | WORKING            | Parser OK but URL fallback is wrong when no ID       |
-| NSE subscription| Likely working     | Relies on cookie warm-up in `nse-session.ts`         |
-| BSE subscription| Working            | Clean JSON API                                       |
-
-### 3a. IPOWatch — `https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/`
-
-**Structure of the page:**
-- Table 0 = **"Current Live GMP"**, ~6 rows.
-  Headers: `[IPO Name, Open Date, Close Date, Price, Lot, GMP, Listing]`
-- Table 1 = **"Historical Listed IPOs"**, ~272 rows.
-  Headers: `[Company, IPO Price, GMP on Listing, Listing Price, ...]`
-
-**Bug in `lib/scraper/sources/gmp-ipowatch.ts`:**
-1. Code iterates `$("table tr")` — walks EVERY row of BOTH tables. So a match
-   against a listed/historical IPO returns listing-day GMP, not today's GMP.
-2. For each row it picks the **first `₹` value** it finds. In the historical
-   table that cell is the IPO issue price (e.g. `₹175`), not GMP.
-   Example broken row:
-   ```
-   ["Om Power Transmission", "₹175", "₹2", "₹186"]
-                                ^^^^^ returned as GMP, actually IPO price
-                                        ^^^ real GMP
-   ```
-3. Name matching uses raw `.includes()` / equality. IPO row text says
-   "Sai Parenterals" but DB has "Sai Parenterals Limited" — miss.
-
-**Fix plan:**
-- Only walk the FIRST table (the live one). Detect it by header containing
-  "Open" + "Close" + "GMP" and NOT "Listing Price".
-- Use header row to find the column whose label matches `/\bGMP\b/i` (and NOT
-  `issue price`/`ipo price`/`listing`).
-- Normalize names: lowercase, strip punctuation, strip suffixes
-  (`limited|ltd|pvt|private|the|ipo|sme`), collapse whitespace. Match if
-  `norm(rowName).startsWith(norm(dbName))` OR vice versa.
-- When an admin provides `ipowatch_url` pointing to a per-IPO article instead
-  of the listing, parse the article body for the first "GMP ₹<num>" phrase
-  after the most recent date, as a per-IPO path.
-
-### 3b. InvestorGain — `https://www.investorgain.com/report/live-ipo-gmp/331/`
-
-**Verified live:**
-- Response is ~350KB of HTML but the body has essentially no data. There's
-  exactly ONE empty `<table>`, no `<tr>` children, zero `₹` signs in actual
-  content (only in sidebar broker ads).
-- `__next_f.push([...])` RSC payloads concat to ~0 chars of meaningful IPO data
-  — this page is now a client-only Next.js SPA with data fetched post-hydration.
-- Tried direct detail URLs like `/ipo/sai-parenterals-ipo/7842/` — same story,
-  client-rendered.
-- Tried `webnodejs.investorgain.com/cloud/report/data-read/331/…` patterns
-  — all 404.
-
-**Decision:** InvestorGain is DEAD from server-side fetch. Options:
-1. Remove it from `SOURCES` in `lib/scraper/sources/gmp-investorgain.ts` so
-   `scrape-gmp` stops averaging in `null` for it.
-2. OR delegate to the Cloudflare Worker with a headless-browser fetch (adds
-   cost + complexity; not done yet).
-
-The user asked us to **drop dead sources from the averaged GMP entirely** — so
-implement option 1. Keep the file but make the scraper function return `null`
-fast with a clear log, AND remove it from the average source array used by
-`app/api/cron/scrape-gmp/route.ts`.
-
-### 3c. IPOCentral — `https://ipocentral.in/ipo-grey-market-premium-today/`
-
-**Verified live:** Returns **HTTP 403** with any desktop UA, full browser-style
-headers, or referer. It's Cloudflare WAF blocking Vercel/sandbox IPs. Browser
-in user's laptop works but our server does not.
-
-**Decision:** Same as InvestorGain — drop from average. Return `null` fast so
-we don't spam logs with fetch errors.
-
-### 3d. Chittorgarh — subscription scraper
-
-**Two URL shapes work:**
-1. `https://www.chittorgarh.com/ipo/<slug>-ipo/<id>/`
-   — has subscription table among MANY other tables
-2. `https://www.chittorgarh.com/ipo_subscription/<slug>-ipo/<id>/`  ← cleaner
-   — dedicated subscription page, fewer tables to filter through
-
-Both need the numeric ID. If `chittorgarh_url` is null and we only have a slug,
-building `/ipo/<slug>-ipo/` (no ID) 404s. Current code does exactly this and
-silently fails.
-
-**Table we want:**
-Headers look like:
-`["Category", "Subscription (times)", "Shares Offered", "Shares bid for", "Total Amount (Rs Cr)"]`
-Rows (label column, cell 0):
-`QIB`, `NII`, `bNII (bids above ₹10L)`, `sNII (bids below ₹10L)`, `Retail`,
-`Employee`, `Total`.
-
-**Existing parser in `lib/scraper/sources/subscription-chittorgarh.ts` is
-CORRECT** — it categorizes labels and picks the "times" column. Bug is purely
-at the URL/fetch level.
-
-**Fix plan:**
-1. If admin-supplied `chittorgarh_url` exists, use it as-is.
-2. Else if we have `<slug>` + a numeric ID stored somewhere (we don't, today),
-   use `/ipo_subscription/<slug>-ipo/<id>/`.
-3. Else attempt to resolve the ID once by scraping the main dashboard
-   (`/ipo/ipo_dashboard.asp`) or `/ipo/` listing, and cache it into
-   `chittorgarh_url` so subsequent runs don't re-resolve.
-
-### 3e. NSE / BSE subscription
-
-- **NSE**: `lib/scraper/sources/subscription-nse.ts` uses `nse-session.ts` to
-  warm up cookies from `https://www.nseindia.com`. Without the warm-up the NSE
-  API returns 401/empty. The logic is correct; watch for cookie expiry in logs.
-- **BSE**: `lib/scraper/sources/subscription-bse.ts` just hits
-  `api.bseindia.com/BseIndiaAPI/api/GetIPODetails/...` (or equivalent). Clean
-  JSON. No known bugs.
+Full schema: `ai_ref/DATABASE_SCHEMA.md`.
 
 ---
 
-## 4. Other live discoveries
+## 3. Active GMP sources
 
-- Chittorgarh **does** work from Vercel. Full desktop UA is enough. No WAF.
-- `cheerio.load(html)` is fine. The problem was always table / column
-  selection, not HTML fetching.
-- All sources respond under 2s from the sandbox except IPOCentral (instant 403)
-  and InvestorGain (~1.5s but no useful payload).
-- InvestorGain's fallback endpoint format is
-  `webnodejs.investorgain.com/cloud/report/data-read/<reportId>/...` but
-  reportId 331 with every tried path combination returns 404. Don't sink more
-  time into this unless their API is publicly documented.
+### 3a. IPOWatch — `lib/scraper/sources/gmp-ipowatch.ts`
+
+- Listing URL: `https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/`
+- Response from Vercel: 200 OK with desktop Chrome UA. Returns bot-style
+  content for the default IPOGyaniBot UA — we override headers per fetch.
+- Page has TWO tables. We parse **only the first** ("Current Live GMP").
+  Headers: `[IPO Name, Open Date, Close Date, Price, Lot, GMP, Listing]`.
+  Table 2 (historical, ~270 rows) is skipped entirely.
+- Column picking: header-based. We locate the column whose label matches
+  `\bGMP\b` and does NOT contain `listing / issue price / ipo price / lot /
+  subscri / %`. This was the biggest historical bug — the scraper used to
+  return IPO issue price (e.g. ₹175) instead of GMP (e.g. ₹2).
+- Name matching: both sides normalized via lowercase + strip
+  `limited|ltd|pvt|private|the|ipo|sme` + strip punctuation. Match if either
+  normalized name starts with the other AND overlap ≥ 6 chars. Handles
+  "Sai Parenterals" vs "Sai Parenterals Limited".
+- Zero-GMP rows (e.g. Adisoft Technologies with `GMP = ₹0`) are intentionally
+  parsed as `0`, not dropped. `parseGMP` distinguishes zero from null/empty.
+- Admin override: if `ipo.ipowatch_gmp_url` points at a per-IPO article, we
+  fall into `parseArticlePage()` which scans every table on the article for
+  a GMP-labelled column and returns the first non-null value.
+- Contract: never throws. Returns `{ gmp: number } | null`.
+
+### 3b. ipoji — `lib/scraper/sources/gmp-ipoji.ts`
+
+- Listing URL: `https://ipoji.com/grey-market-premium-ipo-gmp-today.html`
+- Response from Vercel: 200 OK with desktop UA. Server-rendered grid of
+  ~46 live/current IPO cards. This is our **replacement** for the dead
+  InvestorGain / IPOCentral sources.
+- DOM layout per card:
+  ```
+  <div class="ipo-card">
+    <... title: "Mehul Telecom Apr 17, 2026 – Apr 21, 2026 BSE SME Live">
+    <div class="ipo-card-body-stat">
+      <span class="ipo-card-secondary-label">Exp. Premium</span>
+      <span class="ipo-card-body-value">3-4 (3%)</span>
+    </div>
+    ...
+  </div>
+  ```
+- Title cleaning: we cut the card title at the first month-name token
+  (`Jan|Feb|…|Dec`) before normalizing, because ipoji appends dates and
+  status badges (`BSE SME Live`) to the company name.
+- Value formats handled:
+  `"3-4 (3%)"` → midpoint 3.5; `"10 (5%)"` → 10; `"₹ 5"` → 5; `"-" / "" / "NA"` → null.
+- Name matching: same normalization + `namesMatch` helper as IPOWatch, but
+  additionally strips `reit` and `invit` tokens.
+- Post-close cards (e.g. "Allotment Awaited") legitimately have no
+  "Exp. Premium" field — scraper correctly returns `null` in that case.
+- Contract: never throws. Returns `{ gmp: number } | null`.
+
+### 3c. Averaging pipeline — `app/api/cron/scrape-gmp/route.ts`
+
+- `SOURCES` array is exactly `[ipowatch, ipoji]`. That's what
+  `processIpoGMP` iterates.
+- Per source: Redis cache (15 min) → circuit breaker check → scrape → cache
+  result. Circuit breaker keys are `gmp-ipowatch` and `gmp-ipoji`.
+- Average = mean of non-null sources. If all sources return null, the IPO
+  is recorded as `failed` and nothing is written to `gmp_history`.
+- `gmp_history` insert uses `upsert(..., { onConflict: "ipo_id,date" })`
+  to respect the unique constraint while still updating `recorded_at`.
+- `ipos` row is always updated with `gmp_last_updated` even on a no-change
+  dedup, so the dashboard's "Last updated" timestamp stays accurate.
+- Admin manual trigger
+  (`app/api/admin/scrape-gmp/[ipoId]/route.ts`) imports `processIpoGMP`
+  directly. No HTTP hop, no re-auth double-up. Returns per-source outcomes
+  so the admin UI can show "IPOWatch: 4.5, ipoji: 3.5, averaged: 4.0".
 
 ---
 
-## 5. Concrete changes the next agent should make
+## 4. Disabled GMP sources (kept as documentation only)
 
-The user has approved the following scope:
+### 4a. InvestorGain — `gmp-investorgain.ts`
 
-1. **Fix IPOWatch GMP scraper** (biggest win)
-   - File: `lib/scraper/sources/gmp-ipowatch.ts`
-   - Only parse the FIRST table ("Current Live GMP"). Detect by header.
-   - Use header row to pick the GMP column by label, not row index.
-   - Normalize both sides for name matching as described in §3a.
-   - Respect admin-provided `ipowatch_url` (may point at a per-IPO article).
+- URL was: `https://www.investorgain.com/report/live-ipo-gmp/331/`
+- Verified 2026-04-20: page is now a client-rendered Next.js SPA. Server
+  HTML contains zero data rows. `__next_f.push([...])` RSC payloads concat
+  to nothing useful. The `webnodejs.investorgain.com/cloud/report/data-read/`
+  endpoints return 404 for every path tried.
+- Module is left in place for git history and the stored `investorgain_gmp_url`
+  column; it is NOT imported from the cron or admin trigger routes.
 
-2. **Drop InvestorGain and IPOCentral from the averaged GMP**
-   - File: `app/api/cron/scrape-gmp/route.ts`
-   - Remove them from the SOURCES array (or gate behind a feature flag).
-   - Leave the source files in place but make their `scrape*()` functions
-     return `null` quickly with a single warn-level log and no error.
-   - Same in `app/api/admin/scrape-gmp/[ipoId]/route.ts`.
+### 4b. IPOCentral — `gmp-ipocentral.ts`
 
-3. **Improve Chittorgarh subscription scraper**
-   - File: `lib/scraper/sources/subscription-chittorgarh.ts`
-   - Always prefer admin `chittorgarh_url`.
-   - When falling back, prefer `/ipo_subscription/<slug>/<id>/` shape.
-   - Do NOT attempt URLs without the numeric id (they 404).
-   - Keep the existing correct parser logic.
+- URL was: `https://ipocentral.in/ipo-grey-market-premium-today/`
+- Verified 2026-04-20: returns HTTP 403 for Vercel egress IPs regardless of
+  UA / headers / referer. Cloudflare WAF. Works from consumer browsers.
+- Same disposition as InvestorGain: file kept, not imported anywhere live.
 
-4. **Write SCRAPER_CONTEXT.md** (this file) — done.
-
-5. **Optional (stretch):** Add 1–2 new GMP sources that work from Vercel. Any
-   of these is worth prototyping:
-   - `https://www.moneycontrol.com/ipo/` — Moneycontrol renders server-side.
-   - `https://www.topsharebrokers.com/report/ipo-grey-market-premium/` — static
-     HTML tables.
-   - `https://ipoji.com/grey-market-premium-ipo-gmp-today.html` — static table.
-   Verify from Vercel with a `curl -A "Mozilla/5.0…"` equivalent before
-   committing to any.
+If either source comes back to life, add back to the `SOURCES` array in
+`app/api/cron/scrape-gmp/route.ts` and re-run the E2E verifier.
 
 ---
 
-## 6. How to validate a fix locally
+## 5. Subscription sources
 
-Use this quick script pattern:
+### 5a. NSE — `lib/scraper/sources/subscription-nse.ts`
 
-```js
-// scripts/test-one-source.mjs
-import * as cheerio from "cheerio"
-const UA =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+- Primary source when `nse_symbol` is set on the IPO.
+- Relies on `nse-session.ts` warming cookies against `https://www.nseindia.com`
+  before each call. Without the warm-up the API returns 401 / empty. Expect
+  occasional cookie expiry — surface as failures in scraper_health logs.
 
-const r = await fetch("<URL_UNDER_TEST>", { headers: { "User-Agent": UA } })
-const html = await r.text()
-console.log("status", r.status, "size", html.length)
-const $ = cheerio.load(html)
-// inspect $("table"), $("tr"), headers, etc.
+### 5b. BSE — `lib/scraper/sources/subscription-bse.ts`
+
+- Primary source when `bse_code` is set. Uses BSE's JSON API
+  (`api.bseindia.com/BseIndiaAPI/api/...`). Clean; no known issues.
+
+### 5c. Chittorgarh — `lib/scraper/sources/subscription-chittorgarh.ts`
+
+- Fallback when NSE/BSE aren't configured or return empty.
+- URL handling:
+  1. If `ipo.chittorgarh_url` matches `/ipo/<slug>/<id>/`, we build the
+     sibling `/ipo_subscription/<slug>/<id>/` URL and try that FIRST
+     (fewer unrelated tables, cleaner parse).
+  2. Then we try the admin-provided URL as-is.
+  3. We deliberately do NOT build fallback URLs from slug alone — the
+     canonical Chittorgarh URL requires the numeric ID. Returning `null`
+     here is correct behavior; the orchestrator falls through.
+- Parser strategy:
+  - Scan every `<table>`. Include a table only if (a) its header row
+    contains `subscri | \btimes\b | oversubscribed | no\. of times`
+    OR (b) its caption / preceding heading mentions subscription.
+  - Categorize the first-column label into `retail | nii | qib | total`
+    via `categorize()`. Supports mainboard/SME labels (`Retail`, `RII`,
+    `NII`, `HNI`, `QIB`, `QIB (Ex Anchor)`, `bNII`, `sNII`) AND
+    InvIT/REIT labels (`Institutional Investors` → qib,
+    `Other Investors` / `Non-Institutional Investors` → nii).
+  - Reject noise: `Total Issue Size`, `Shares Offered`, `Shares bid for`,
+    `Employee`, `Amount`, `Market Cap`, `Anchor` (unless `Ex-Anchor`).
+  - Pick the "times" column preferentially by header; fall back to the
+    last plausible numeric cell (skip share counts via `/,\d{3}/` heuristic
+    and currency symbols).
+- Contract: never throws. Returns
+  `{ total, retail, nii, qib } | null` with individual fields nullable.
+
+---
+
+## 6. Shared helpers
+
+- `lib/scraper/base.ts` — `fetchWithRetry`, `logScraperRun`,
+  `circuitBreakerCheck`, `circuitBreakerRecordFailure`.
+- `lib/scraper/parsers.ts` — `parseGMP`, `parseSubscriptionTimes`, etc.
+  `parseGMP("₹0")` → `0`, `parseGMP("-")` → `null`, `parseGMP("")` → `null`.
+- `lib/redis.ts` — `cacheGet`, `cacheSet`. TTL of 900s (15 min) used for
+  per-source GMP caches.
+
+---
+
+## 7. Admin dashboard URL-override flow
+
+Admin UI: `components/admin/ipo-form.tsx`. Pastes a URL into one of the
+`*_url` columns per IPO. The manual-trigger endpoints
+(`/api/admin/scrape-{gmp,subscription}/[ipoId]`) always honor these first
+before any slug-derived URL.
+
+For currently-disabled sources (InvestorGain, IPOCentral) the stored URL
+is ignored at runtime because the source module isn't imported. If we
+decide to support manual-URL revival for a dead source, wire it through
+a feature-flag check inside the source module — don't add it back to
+`SOURCES` unconditionally.
+
+---
+
+## 8. End-to-end verification
+
+Automated in `scripts/verify-scrapers-e2e.ts`. Imports the REAL scraper
+modules from `lib/scraper/sources/*` and runs them against live production
+websites.
+
+Run it:
+
+```bash
+cd /vercel/share/v0-project
+set -a && source /vercel/share/.env.project && set +a
+pnpm exec tsx scripts/verify-scrapers-e2e.ts
 ```
 
-Run with `node scripts/test-one-source.mjs`. Already existing test harness
-scripts live in `scripts/test-live-scrapers.mjs`, `scripts/test-ch-sub.mjs`,
-`scripts/test-ig-rsc.mjs`, etc. — reuse or delete as appropriate.
+Latest passing result (2026-04-20):
+
+```
+--- GMP sources (IPOWatch, ipoji) ---
+PASS | IPOWatch listing - active SME IPO (Mehul Telecom)           gmp=4.5
+PASS | IPOWatch listing - zero-GMP IPO (Adisoft Technologies)      gmp=0
+PASS | IPOWatch listing - non-existent IPO (must return null)      gmp=null
+PASS | ipoji cards - active SME IPO (Mehul Telecom)                gmp=3.5
+PASS | ipoji cards - post-close IPO (PropShare Celestia)           gmp=null
+
+--- Subscription sources (Chittorgarh) ---
+PASS | Chittorgarh - no URL configured                             snapshot=null
+PASS | Chittorgarh - live mainboard IPO (Citius Transnet InvIT)    total=0.95x
+
+Summary: 7/7 passed
+```
+
+Re-run after any change to `gmp-ipowatch.ts`, `gmp-ipoji.ts`, or
+`subscription-chittorgarh.ts`. **If a test fails because the underlying
+IPO has closed or been withdrawn, update the test fixture, don't "fix" the
+scraper.** The live websites are the source of truth; the fixtures are
+just convenient shoulders.
 
 ---
 
-## 7. Admin dashboard URL override flow (important)
+## 9. Gotchas
 
-The admin UI lets users paste a URL for each source per IPO in the IPO form
-(`components/admin/ipo-form.tsx`). These URLs are stored as the `*_url` columns
-on `ipos`. The manual-trigger admin endpoints
-(`/api/admin/scrape-{gmp,subscription}/[ipoId]`) should always honor these
-overrides first before any auto-URL derivation.
-
-If a source is declared DEAD (InvestorGain, IPOCentral) the admin UI should
-either:
-- hide the field, or
-- still accept it but skip that source in cron unless the admin URL is non-null
-  (so a clever admin can unblock per IPO).
-
-For the initial fix, hiding/skipping is fine. Keep the column in the schema.
-
----
-
-## 8. Gotchas for the next agent
-
-- **Always use absolute paths** in the tool calls (`/vercel/share/v0-project/...`).
-- **Don't re-run SQL scripts** `006_*.sql` and later — user's Supabase already
-  has those applied.
-- **Cloudflare Worker** (`cloudflare-worker/`) is a separate deployment. Any
-  shared logic you want usable from both needs to live in a plain `.ts` file
-  with no Node-only imports (the worker runs in Cloudflare's V8 isolate).
-- The current working branch is `scraper-bug-fixes`. Don't push to `main`.
-- After changes, run `pnpm build` locally if possible to catch type errors
-  before committing.
-- `cheerio` is already a dep. No new packages needed for any of the fixes.
+- **Absolute paths only** in tool calls: `/vercel/share/v0-project/…`.
+- **Never re-run** SQL scripts `006_*.sql` and later — already applied.
+- **Cloudflare Worker** runs in V8 isolate — no Node-only imports in any
+  file it may ingest.
+- **Don't push to `main`.** Always branch off and PR.
+- **Zero is a valid GMP.** Don't treat `parseGMP("₹0") === 0` as "no data".
+  Check for `null` explicitly.
+- **Name normalization threshold is 6 chars.** Below that, false positives
+  explode ("ABC" matching "ABC Corp Holdings"). Don't lower it.
+- **Chittorgarh ID is non-negotiable.** No ID → no URL → return `null`.
+  Don't try to guess `/ipo/<slug>-ipo/` — it 404s.
+- **`fetchWithRetry` uses IPOGyaniBot UA by default.** Every live source we
+  still use overrides with a desktop Chrome UA. If you add a new source,
+  do the same unless you've verified the target accepts bot UAs.
 
 ---
 
-## 9. Test matrix (what the next agent should verify before declaring done)
+## 10. Diagnostic history (archive)
 
-- [ ] IPOWatch: for a known live IPO, scraper returns the correct GMP from the
-      first table, not the IPO issue price from the historical table.
-- [ ] IPOWatch: an IPO with name mismatch (e.g. "Sai Parenterals" vs
-      "Sai Parenterals Limited") is correctly matched.
-- [ ] InvestorGain cron call returns `null` in <200ms with a warn log, no
-      unhandled exception, and does NOT drag down the averaged GMP.
-- [ ] IPOCentral cron call returns `null` fast on 403 with a single warn log.
-- [ ] Chittorgarh subscription scraper works when only `chittorgarh_url` is
-      provided, and also when slug+id are provided.
-- [ ] `/api/cron/scrape-gmp` completes end-to-end without error for a small
-      sample (use `curl` with the CRON_SECRET header once deployed, or run the
-      function locally).
-- [ ] `/api/cron/scrape-subscription` completes for the same sample.
+Kept for future agents who want to see what was tried. See also
+`diagnosis-SAS4u.md` in the chat attachments for the original
+pre-fix audit.
+
+- **2026-04-20 IPOWatch bug:** scraper walked both tables and returned the
+  first `₹` value per row. For `["Om Power Transmission", "₹175", "₹2", "₹186"]`
+  it returned 175 (IPO price) instead of 2 (GMP). Fixed by parsing only
+  the first table and picking the GMP column by header label.
+- **2026-04-20 Chittorgarh fallback URL:** old code built
+  `/ipo/<slug>-ipo/` without a numeric ID and silently 404'd. Now we prefer
+  the admin-provided URL, derive `/ipo_subscription/<slug>/<id>/` from it,
+  and return `null` cleanly when neither is available.
+- **2026-04-20 InvestorGain / IPOCentral removal:** dropped from `SOURCES`
+  array. Module files retained for historical reference. Added ipoji as
+  the replacement "third source" to keep the averaging meaningful.
+- **2026-04-20 ipoji title parsing:** card titles include trailing dates
+  and status badges ("Mehul Telecom Apr 17, 2026 – Apr 21, 2026 BSE SME Live").
+  `cleanCardTitle()` cuts at the first month-name token before matching.
+- **2026-04-20 E2E harness:** `scripts/verify-scrapers-e2e.ts` added to
+  exercise the real scraper code against live sites. 7/7 passing.
