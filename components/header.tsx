@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
-import { Menu, X, Search } from 'lucide-react';
+import { Menu, X, Search, LogOut, User as UserIcon } from 'lucide-react';
 import useSWR from 'swr';
+import { useUserAuth } from '@/lib/user-auth-context';
 
 type NavLink = {
   href: string;
@@ -34,6 +35,10 @@ export function Header() {
   const [isMarketOpen, setIsMarketOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const { user, isAuthenticated, logout } = useUserAuth();
+
+  // First name only, to keep the pill compact in the header.
+  const firstName = user?.name?.split(' ')[0] ?? '';
 
   // Live IPOs count — refreshes every 2 minutes so the badge stays current
   // without hammering the API. Returns 0 if the endpoint is unreachable,
@@ -147,10 +152,32 @@ export function Header() {
             />
           </div>
 
-          {/* Log in button */}
-          <button className="hidden sm:block text-sm font-medium text-ink2 hover:text-foreground px-3 py-2 rounded border border-border hover:border-border-secondary transition-colors">
-            Log in
-          </button>
+          {/* Log in / account button */}
+          {isAuthenticated ? (
+            <div className="hidden sm:flex items-center gap-1">
+              <span
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 px-3 py-2 rounded border border-border"
+                title={user?.email}
+              >
+                <UserIcon className="w-4 h-4 text-ink3" />
+                Hi, {firstName}
+              </span>
+              <button
+                onClick={logout}
+                className="inline-flex items-center gap-1 text-sm font-medium text-ink2 hover:text-foreground px-2.5 py-2 rounded border border-border hover:border-border-secondary transition-colors"
+                aria-label="Log out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden sm:block text-sm font-medium text-ink2 hover:text-foreground px-3 py-2 rounded border border-border hover:border-border-secondary transition-colors"
+            >
+              Log in
+            </Link>
+          )}
 
           {/* Mobile Menu Button */}
           <button
@@ -193,9 +220,29 @@ export function Header() {
 
           {/* Mobile buttons */}
           <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-            <button className="flex-1 text-sm font-medium text-ink2 py-2 rounded border border-border">
-              Log in
-            </button>
+            {isAuthenticated ? (
+              <>
+                <span className="flex-1 inline-flex items-center justify-center gap-1.5 text-sm font-medium text-ink2 py-2 rounded border border-border">
+                  <UserIcon className="w-4 h-4 text-ink3" />
+                  Hi, {firstName}
+                </span>
+                <button
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  className="inline-flex items-center justify-center gap-1 text-sm font-medium text-ink2 px-3 py-2 rounded border border-border"
+                  aria-label="Log out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex-1 text-center text-sm font-medium text-ink2 py-2 rounded border border-border"
+              >
+                Log in
+              </Link>
+            )}
           </div>
         </div>
       )}
