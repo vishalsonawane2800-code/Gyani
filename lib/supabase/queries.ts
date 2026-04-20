@@ -54,6 +54,10 @@ export interface IPOSimple {
   allotment_url: string | null
   list_day_close: number | null
   list_day_change_pct: number | null
+  // Document URLs (migration 020)
+  drhp_url?: string | null
+  rhp_url?: string | null
+  anchor_investors_url?: string | null
   created_at: string
   updated_at: string
   last_gmp_update: string | null
@@ -197,6 +201,11 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
     allotmentUrl: ipo.allotment_url ?? undefined,
     listDayClose: ipo.list_day_close ?? undefined,
     listDayChangePct: ipo.list_day_change_pct ?? undefined,
+
+    // Document URLs (migration 020)
+    drhpUrl: ipo.drhp_url ?? undefined,
+    rhpUrl: ipo.rhp_url ?? undefined,
+    anchorInvestorsUrl: ipo.anchor_investors_url ?? undefined,
   }
 }
 
