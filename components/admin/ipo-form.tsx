@@ -912,7 +912,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               placeholder="https://ipowatch.in/ipo-name-gmp-today/"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Direct article URL on ipowatch.in. Leave blank to let the scraper derive one from the slug.
+              Optional direct article URL. Scraper always checks IPOWatch constant listing URL; when this is set it also checks this page.
             </p>
           </div>
 

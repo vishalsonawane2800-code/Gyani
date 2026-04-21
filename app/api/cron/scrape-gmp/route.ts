@@ -46,7 +46,12 @@ type IpoRow = {
   ipocentral_gmp_url: string | null
 }
 
-type SourceKey = "investorgain" | "ipowatch" | "ipocentral" | "ipoji"
+type SourceKey =
+  | "investorgain"
+  | "ipowatch_listing"
+  | "ipowatch_article"
+  | "ipocentral"
+  | "ipoji"
 
 type SourceOutcome = {
   source: SourceKey
@@ -64,9 +69,6 @@ const SOURCES: {
   scrape: (ipo: ScrapeIpoInput) => Promise<{ gmp: number } | null>
   getUrl: (ipo: ScrapeIpoInput) => string
   availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
-  availability: (
-    ipo: ScrapeIpoInput
-  ) => { run: boolean; reason?: "no_url_configured" | "source_disabled" }
 }[] = [
   {
     key: "investorgain",
@@ -78,12 +80,20 @@ const SOURCES: {
     },
   },
   {
-    key: "ipowatch",
-    scrape: (ipo) => scrapeIPOWatchGMP(ipo),
+    key: "ipowatch_listing",
+    scrape: (ipo) => scrapeIPOWatchGMP({ ...ipo, ipowatch_gmp_url: null }),
     getUrl: (ipo) =>
-      ipo.ipowatch_gmp_url ||
       "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/",
     availability: () => ({ run: true }),
+  },
+  {
+    key: "ipowatch_article",
+    scrape: (ipo) => scrapeIPOWatchGMP(ipo),
+    getUrl: (ipo) => ipo.ipowatch_gmp_url || "",
+    availability: (ipo) => {
+      if (!ipo.ipowatch_gmp_url) return { run: false, reason: "no_url_configured" }
+      return { run: true }
+    },
   },
   {
     key: "ipocentral",
@@ -198,11 +208,24 @@ function averageGMP(outcomes: SourceOutcome[]): {
     (o) => o.gmp !== null && typeof o.gmp === "number"
   ) as (SourceOutcome & { gmp: number })[]
 
-  if (valid.length === 0) return { gmp: null, used: [] }
+  // IPOWatch can now contribute via both:
+  // - listing constant URL
+  // - per-IPO article URL
+  // Avoid double-weighting the same website by preferring article over listing.
+  const nonIpoWatch = valid.filter(
+    (v) => v.source !== "ipowatch_listing" && v.source !== "ipowatch_article"
+  )
+  const ipowatchArticle = valid.find((v) => v.source === "ipowatch_article")
+  const ipowatchListing = valid.find((v) => v.source === "ipowatch_listing")
+  const ipowatchChosen = ipowatchArticle ?? ipowatchListing
 
-  const sum = valid.reduce((acc, o) => acc + o.gmp, 0)
-  const avg = Math.round((sum / valid.length) * 100) / 100
-  return { gmp: avg, used: valid.map((v) => v.source) }
+  const deduped = ipowatchChosen ? [...nonIpoWatch, ipowatchChosen] : nonIpoWatch
+
+  if (deduped.length === 0) return { gmp: null, used: [] }
+
+  const sum = deduped.reduce((acc, o) => acc + o.gmp, 0)
+  const avg = Math.round((sum / deduped.length) * 100) / 100
+  return { gmp: avg, used: deduped.map((v) => v.source) }
 }
 
 /**
@@ -449,7 +472,15 @@ export async function runGmpScraper(): Promise<{
       circuit_open: 0,
       no_url: 0,
     },
-    ipowatch: {
+    ipowatch_listing: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+    ipowatch_article: {
       values: 0,
       no_data: 0,
       errors: 0,
