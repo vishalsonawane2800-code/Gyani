@@ -24,6 +24,8 @@ import {
 } from "@/lib/scraper/base"
 import { scrapeIPOWatchGMP } from "@/lib/scraper/sources/gmp-ipowatch"
 import { scrapeIpojiGMP } from "@/lib/scraper/sources/gmp-ipoji"
+import { scrapeInvestorGainGMP } from "@/lib/scraper/sources/gmp-investorgain"
+import { scrapeIPOCentralGMP } from "@/lib/scraper/sources/gmp-ipocentral"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -34,7 +36,8 @@ const SCRAPER_NAME = "scrape-gmp"
 type IpoRow = {
   id: number
   slug: string
-  company_name: string
+  company_name: string | null
+  name: string | null
   price_max: number | null
   status: string
   listing_date: string | null
@@ -43,22 +46,70 @@ type IpoRow = {
   ipocentral_gmp_url: string | null
 }
 
-type SourceKey = "ipowatch" | "ipoji"
+type SourceKey =
+  | "investorgain"
+  | "ipowatch_listing"
+  | "ipowatch_article"
+  | "ipocentral"
+  | "ipoji"
 
 type SourceOutcome = {
   source: SourceKey
   gmp: number | null
   cached: boolean
   skipped: boolean
+  url: string
   error?: string
 }
 
+type ScrapeIpoInput = Omit<IpoRow, "company_name"> & { company_name: string }
+
 const SOURCES: {
   key: SourceKey
-  scrape: (ipo: IpoRow) => Promise<{ gmp: number } | null>
+  scrape: (ipo: ScrapeIpoInput) => Promise<{ gmp: number } | null>
+  getUrl: (ipo: ScrapeIpoInput) => string
+  availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
 }[] = [
-  { key: "ipowatch", scrape: (ipo) => scrapeIPOWatchGMP(ipo) },
-  { key: "ipoji", scrape: (ipo) => scrapeIpojiGMP(ipo) },
+  {
+    key: "investorgain",
+    scrape: (ipo) => scrapeInvestorGainGMP(ipo),
+    getUrl: (ipo) => ipo.investorgain_gmp_url || "",
+    availability: (ipo) => {
+      if (!ipo.investorgain_gmp_url) return { run: false, reason: "no_url_configured" }
+      return { run: true }
+    },
+  },
+  {
+    key: "ipowatch_listing",
+    scrape: (ipo) => scrapeIPOWatchGMP({ ...ipo, ipowatch_gmp_url: null }),
+    getUrl: (ipo) =>
+      "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/",
+    availability: () => ({ run: true }),
+  },
+  {
+    key: "ipowatch_article",
+    scrape: (ipo) => scrapeIPOWatchGMP(ipo),
+    getUrl: (ipo) => ipo.ipowatch_gmp_url || "",
+    availability: (ipo) => {
+      if (!ipo.ipowatch_gmp_url) return { run: false, reason: "no_url_configured" }
+      return { run: true }
+    },
+  },
+  {
+    key: "ipocentral",
+    scrape: (ipo) => scrapeIPOCentralGMP(ipo),
+    getUrl: (ipo) => ipo.ipocentral_gmp_url || "",
+    availability: (ipo) => {
+      if (!ipo.ipocentral_gmp_url) return { run: false, reason: "no_url_configured" }
+      return { run: true }
+    },
+  },
+  {
+    key: "ipoji",
+    scrape: (ipo) => scrapeIpojiGMP(ipo),
+    getUrl: () => "https://ipoji.com/grey-market-premium-ipo-gmp-today.html",
+    availability: () => ({ run: true }),
+  },
 ]
 
 function sleep(ms: number) {
@@ -73,36 +124,76 @@ function randomStagger(): number {
  * Scrape a single source with Redis caching and circuit-breaker checks.
  */
 async function scrapeOneSource(
-  ipo: IpoRow,
+  ipo: ScrapeIpoInput,
   src: (typeof SOURCES)[number]
 ): Promise<SourceOutcome> {
   const cacheKey = `gmp:${src.key}:${ipo.slug}`
+  const sourceUrl = src.getUrl(ipo)
+  const availability = src.availability(ipo)
+
+  if (!availability.run) {
+    return {
+      source: src.key,
+      gmp: null,
+      cached: false,
+      skipped: true,
+      url: sourceUrl || "-",
+      error: availability.reason,
+    }
+  }
 
   try {
     // Circuit breaker
     const ok = await circuitBreakerCheck(`gmp-${src.key}`)
     if (!ok) {
-      return { source: src.key, gmp: null, cached: false, skipped: true, error: "circuit_open" }
+      return {
+        source: src.key,
+        gmp: null,
+        cached: false,
+        skipped: true,
+        url: sourceUrl,
+        error: "circuit_open",
+      }
     }
 
     // Cache
     const cached = await cacheGet<number>(cacheKey)
     if (cached !== null && typeof cached === "number") {
-      return { source: src.key, gmp: cached, cached: true, skipped: false }
+      return { source: src.key, gmp: cached, cached: true, skipped: false, url: sourceUrl }
     }
 
     const result = await src.scrape(ipo)
     if (result && typeof result.gmp === "number") {
       await cacheSet(cacheKey, result.gmp, GMP_CACHE_TTL_SECONDS)
-      return { source: src.key, gmp: result.gmp, cached: false, skipped: false }
+      return {
+        source: src.key,
+        gmp: result.gmp,
+        cached: false,
+        skipped: false,
+        url: sourceUrl,
+      }
     }
 
     // No data (not a failure per se, but count as one for circuit breaker)
-    return { source: src.key, gmp: null, cached: false, skipped: false, error: "no_data" }
+    return {
+      source: src.key,
+      gmp: null,
+      cached: false,
+      skipped: false,
+      url: sourceUrl,
+      error: "no_data",
+    }
   } catch (err) {
     await circuitBreakerRecordFailure(`gmp-${src.key}`)
     const msg = err instanceof Error ? err.message : String(err)
-    return { source: src.key, gmp: null, cached: false, skipped: false, error: msg }
+    return {
+      source: src.key,
+      gmp: null,
+      cached: false,
+      skipped: false,
+      url: sourceUrl,
+      error: msg,
+    }
   }
 }
 
@@ -117,11 +208,24 @@ function averageGMP(outcomes: SourceOutcome[]): {
     (o) => o.gmp !== null && typeof o.gmp === "number"
   ) as (SourceOutcome & { gmp: number })[]
 
-  if (valid.length === 0) return { gmp: null, used: [] }
+  // IPOWatch can now contribute via both:
+  // - listing constant URL
+  // - per-IPO article URL
+  // Avoid double-weighting the same website by preferring article over listing.
+  const nonIpoWatch = valid.filter(
+    (v) => v.source !== "ipowatch_listing" && v.source !== "ipowatch_article"
+  )
+  const ipowatchArticle = valid.find((v) => v.source === "ipowatch_article")
+  const ipowatchListing = valid.find((v) => v.source === "ipowatch_listing")
+  const ipowatchChosen = ipowatchArticle ?? ipowatchListing
 
-  const sum = valid.reduce((acc, o) => acc + o.gmp, 0)
-  const avg = Math.round((sum / valid.length) * 100) / 100
-  return { gmp: avg, used: valid.map((v) => v.source) }
+  const deduped = ipowatchChosen ? [...nonIpoWatch, ipowatchChosen] : nonIpoWatch
+
+  if (deduped.length === 0) return { gmp: null, used: [] }
+
+  const sum = deduped.reduce((acc, o) => acc + o.gmp, 0)
+  const avg = Math.round((sum / deduped.length) * 100) / 100
+  return { gmp: avg, used: deduped.map((v) => v.source) }
 }
 
 /**
@@ -139,8 +243,29 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
 }> {
   const supabase = createAdminClient()
 
+  // Legacy rows can have `company_name` unset while `name` is populated.
+  // Resolve once here so downstream source scrapers always receive a stable
+  // display name for matching.
+  const companyName = (ipo.company_name || ipo.name || "").trim()
+  if (!companyName) {
+    return {
+      inserted: false,
+      skipped: false,
+      failed: true,
+      outcomes: [],
+      averagedGMP: null,
+      sourcesUsed: [],
+      error: "missing_company_name",
+    }
+  }
+
+  const ipoForScrape: ScrapeIpoInput = {
+    ...ipo,
+    company_name: companyName,
+  }
+
   const outcomes = await Promise.all(
-    SOURCES.map((src) => scrapeOneSource(ipo, src))
+    SOURCES.map((src) => scrapeOneSource(ipoForScrape, src))
   )
 
   const { gmp: averagedGMP, used: sourcesUsed } = averageGMP(outcomes)
@@ -150,7 +275,11 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
     // (expected for brand-new / already-listed IPOs) from a real failure.
     // "no_data" and "circuit_open" are non-error outcomes; anything else
     // (HTTP errors, timeouts, parse exceptions) is a real failure.
-    const NON_ERROR_REASONS = new Set(["no_data", "circuit_open"])
+    const NON_ERROR_REASONS = new Set([
+      "no_data",
+      "circuit_open",
+      "no_url_configured",
+    ])
     const realErrors = outcomes.filter(
       (o) => o.error && !NON_ERROR_REASONS.has(o.error),
     )
@@ -296,7 +425,7 @@ export async function runGmpScraper(): Promise<{
   const { data: ipos, error } = await supabase
     .from("ipos")
     .select(
-      "id, slug, company_name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
+      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
     )
     .in("status", ["upcoming", "open", "lastday", "closed", "allot", "listing"])
     .or(`listing_date.is.null,listing_date.gte.${todayIso}`)
@@ -324,6 +453,59 @@ export async function runGmpScraper(): Promise<{
   let skipped = 0
   let failed = 0
   let noData = 0
+  const sourceStats: Record<
+    SourceKey,
+    {
+      values: number
+      no_data: number
+      errors: number
+      cached: number
+      circuit_open: number
+      no_url: number
+    }
+  > = {
+    investorgain: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+    ipowatch_listing: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+    ipowatch_article: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+    ipocentral: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+    ipoji: {
+      values: 0,
+      no_data: 0,
+      errors: 0,
+      cached: 0,
+      circuit_open: 0,
+      no_url: 0,
+    },
+  }
+  const sourceDebugSamples: string[] = []
   // Track first few failure + no-data details so the admin dashboard can
   // show WHICH IPO (and WHICH source) actually broke, instead of just a bare
   // "Failed 1/1" count.
@@ -333,6 +515,25 @@ export async function runGmpScraper(): Promise<{
   for (const ipo of rows) {
     try {
       const res = await processIpoGMP(ipo)
+      if (sourceDebugSamples.length < 8) {
+        const sample = res.outcomes
+          .map((o) => {
+            const status = o.gmp !== null
+              ? `${o.gmp}${o.cached ? " (cached)" : ""}`
+              : o.error || "no_data"
+            return `${o.source}=${status} @ ${o.url}`
+          })
+          .join(" | ")
+        sourceDebugSamples.push(`${ipo.slug}: ${sample || "no_sources"}`)
+      }
+      for (const o of res.outcomes) {
+        if (o.gmp !== null) sourceStats[o.source].values++
+        if (o.cached) sourceStats[o.source].cached++
+        if (o.error === "no_data") sourceStats[o.source].no_data++
+        else if (o.error === "circuit_open") sourceStats[o.source].circuit_open++
+        else if (o.error === "no_url_configured") sourceStats[o.source].no_url++
+        else if (o.error) sourceStats[o.source].errors++
+      }
       if (res.inserted) inserted++
       if (res.skipped) {
         skipped++
@@ -362,17 +563,38 @@ export async function runGmpScraper(): Promise<{
   const status: "success" | "failed" = failed === 0 ? "success" : "failed"
 
   let errorMessage: string | null = null
+  const sourceStatsText = Object.entries(sourceStats)
+    .map(([k, s]) =>
+      `${k}[values:${s.values}, no_data:${s.no_data}, errors:${s.errors}, cached:${s.cached}, circuit_open:${s.circuit_open}, no_url:${s.no_url}]`
+    )
+    .join(" | ")
   if (failed > 0) {
     errorMessage =
       `Failed ${failed}/${rows.length} (inserted ${inserted}, skipped ${skipped}` +
       (noData > 0 ? `, no_data ${noData}` : "") +
       `). ` +
-      failureDetails.join(" | ")
+      failureDetails.join(" | ") +
+      ` || source_stats: ${sourceStatsText}` +
+      (sourceDebugSamples.length > 0
+        ? ` || source_samples: ${sourceDebugSamples.join(" || ")}`
+        : "")
   } else if (noData > 0 && inserted === 0) {
     // Run succeeded but recorded nothing because every IPO in the window
     // was absent from all GMP sources. Surface this in the message so
     // "0 inserted" is explained — not treated as a failure.
-    errorMessage = `No GMP data yet on sources for ${noData}/${rows.length} IPOs: ${noDataSlugs.join(", ")}`
+    errorMessage =
+      `No GMP data yet on sources for ${noData}/${rows.length} IPOs: ${noDataSlugs.join(", ")}` +
+      ` || source_stats: ${sourceStatsText}` +
+      (sourceDebugSamples.length > 0
+        ? ` || source_samples: ${sourceDebugSamples.join(" || ")}`
+        : "")
+  } else {
+    // Keep successful runs debuggable from /admin/automation -> Recent Runs.
+    errorMessage =
+      `source_stats: ${sourceStatsText}` +
+      (sourceDebugSamples.length > 0
+        ? ` || source_samples: ${sourceDebugSamples.join(" || ")}`
+        : "")
   }
 
   await logScraperRun({
