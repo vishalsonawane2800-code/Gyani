@@ -66,7 +66,7 @@ function parseIpojiPremium(
   if (raw === null || raw === undefined) return null
   const s = String(raw).replace(/₹|rs\.?|inr/gi, "").trim()
   if (!s) return null
-  if (/^(?:--|[-–—]|n\/?a|nil|none|not\s*available)$/i.test(s)) {
+  if (/^(?:--|[-–—−]|n\/?a|nil|none|not\s*available)$/i.test(s)) {
     return options.dashAsZero ? 0 : null
   }
 
