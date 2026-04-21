@@ -323,18 +323,19 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
 
   const sourceLabel = `averaged(${sourcesUsed.join(",")})`
 
-  // gmp_history has UNIQUE(ipo_id, date); upsert to respect that constraint
-  // while still tracking changes via recorded_at.
+  // gmp_history now keys rows by UNIQUE(ipo_id, date, time_slot).
+  // We persist into a stable slot so upserts remain idempotent per run window.
   const { error: insertErr } = await supabase.from("gmp_history").upsert(
     {
       ipo_id: ipo.id,
       gmp: averagedGMP,
       gmp_percent: gmpPercent,
       date: today,
+      time_slot: "morning",
       source: sourceLabel,
       recorded_at: now,
     },
-    { onConflict: "ipo_id,date", ignoreDuplicates: false }
+    { onConflict: "ipo_id,date,time_slot", ignoreDuplicates: false }
   )
 
   if (insertErr) {
