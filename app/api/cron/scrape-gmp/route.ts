@@ -63,6 +63,7 @@ const SOURCES: {
   key: SourceKey
   scrape: (ipo: ScrapeIpoInput) => Promise<{ gmp: number } | null>
   getUrl: (ipo: ScrapeIpoInput) => string
+  availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
   availability: (
     ipo: ScrapeIpoInput
   ) => { run: boolean; reason?: "no_url_configured" | "source_disabled" }
@@ -73,7 +74,7 @@ const SOURCES: {
     getUrl: (ipo) => ipo.investorgain_gmp_url || "",
     availability: (ipo) => {
       if (!ipo.investorgain_gmp_url) return { run: false, reason: "no_url_configured" }
-      return { run: false, reason: "source_disabled" }
+      return { run: true }
     },
   },
   {
@@ -90,7 +91,7 @@ const SOURCES: {
     getUrl: (ipo) => ipo.ipocentral_gmp_url || "",
     availability: (ipo) => {
       if (!ipo.ipocentral_gmp_url) return { run: false, reason: "no_url_configured" }
-      return { run: false, reason: "source_disabled" }
+      return { run: true }
     },
   },
   {
@@ -254,7 +255,6 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
     const NON_ERROR_REASONS = new Set([
       "no_data",
       "circuit_open",
-      "source_disabled",
       "no_url_configured",
     ])
     const realErrors = outcomes.filter(
@@ -438,7 +438,6 @@ export async function runGmpScraper(): Promise<{
       errors: number
       cached: number
       circuit_open: number
-      disabled: number
       no_url: number
     }
   > = {
@@ -448,7 +447,6 @@ export async function runGmpScraper(): Promise<{
       errors: 0,
       cached: 0,
       circuit_open: 0,
-      disabled: 0,
       no_url: 0,
     },
     ipowatch: {
@@ -457,7 +455,6 @@ export async function runGmpScraper(): Promise<{
       errors: 0,
       cached: 0,
       circuit_open: 0,
-      disabled: 0,
       no_url: 0,
     },
     ipocentral: {
@@ -466,7 +463,6 @@ export async function runGmpScraper(): Promise<{
       errors: 0,
       cached: 0,
       circuit_open: 0,
-      disabled: 0,
       no_url: 0,
     },
     ipoji: {
@@ -475,7 +471,6 @@ export async function runGmpScraper(): Promise<{
       errors: 0,
       cached: 0,
       circuit_open: 0,
-      disabled: 0,
       no_url: 0,
     },
   }
@@ -505,7 +500,6 @@ export async function runGmpScraper(): Promise<{
         if (o.cached) sourceStats[o.source].cached++
         if (o.error === "no_data") sourceStats[o.source].no_data++
         else if (o.error === "circuit_open") sourceStats[o.source].circuit_open++
-        else if (o.error === "source_disabled") sourceStats[o.source].disabled++
         else if (o.error === "no_url_configured") sourceStats[o.source].no_url++
         else if (o.error) sourceStats[o.source].errors++
       }
@@ -540,7 +534,7 @@ export async function runGmpScraper(): Promise<{
   let errorMessage: string | null = null
   const sourceStatsText = Object.entries(sourceStats)
     .map(([k, s]) =>
-      `${k}[values:${s.values}, no_data:${s.no_data}, errors:${s.errors}, cached:${s.cached}, circuit_open:${s.circuit_open}, disabled:${s.disabled}, no_url:${s.no_url}]`
+      `${k}[values:${s.values}, no_data:${s.no_data}, errors:${s.errors}, cached:${s.cached}, circuit_open:${s.circuit_open}, no_url:${s.no_url}]`
     )
     .join(" | ")
   if (failed > 0) {

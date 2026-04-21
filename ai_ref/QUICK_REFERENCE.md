@@ -155,6 +155,7 @@ re-login to get a fresh token.
 Single entry: `/api/cron/dispatch` (Vercel cron `*/15 * * * *`).
 Fans out to three jobs in parallel:
 
+1. `runGmpScraper()` — multi-source GMP refresh (active: IPOWatch + ipoji; optional direct URL sources: InvestorGain + IPOCentral when configured).
 1. `runGmpScraper()` — multi-source GMP refresh (active: IPOWatch + ipoji; stored/disabled: InvestorGain + IPOCentral).
 2. `runSubscriptionScraper()` — NSE / BSE / Chittorgarh.
 3. `runAutoStatusJob()` — IST-aware status transitions + day-after listing migration.
