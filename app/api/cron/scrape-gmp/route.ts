@@ -11,8 +11,9 @@
 //   - InvestorGain: client-rendered SPA, no data in server HTML
 //   - IPOCentral:   Cloudflare WAF returns 403 for all cloud IPs
 //
-// These URL columns are still SELECTed from `ipos` so the admin form doesn't
-// break, but they are not used as inputs to any live scraper.
+// We still SELECT `investorgain_gmp_url` and `ipocentral_gmp_url` from `ipos`
+// so admin debug logs/forms remain intact, but those URLs are intentionally
+// ignored by the live cloud scraper pipeline.
 
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -24,8 +25,6 @@ import {
 } from "@/lib/scraper/base"
 import { scrapeIPOWatchGMP } from "@/lib/scraper/sources/gmp-ipowatch"
 import { scrapeIpojiGMP } from "@/lib/scraper/sources/gmp-ipoji"
-import { scrapeInvestorGainGMP } from "@/lib/scraper/sources/gmp-investorgain"
-import { scrapeIPOCentralGMP } from "@/lib/scraper/sources/gmp-ipocentral"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -46,12 +45,7 @@ type IpoRow = {
   ipocentral_gmp_url: string | null
 }
 
-type SourceKey =
-  | "investorgain"
-  | "ipowatch_listing"
-  | "ipowatch_article"
-  | "ipocentral"
-  | "ipoji"
+type SourceKey = "ipowatch_listing" | "ipowatch_article" | "ipoji"
 
 type SourceOutcome = {
   source: SourceKey
@@ -71,15 +65,6 @@ const SOURCES: {
   availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
 }[] = [
   {
-    key: "investorgain",
-    scrape: (ipo) => scrapeInvestorGainGMP(ipo),
-    getUrl: (ipo) => ipo.investorgain_gmp_url || "",
-    availability: (ipo) => {
-      if (!ipo.investorgain_gmp_url) return { run: false, reason: "no_url_configured" }
-      return { run: true }
-    },
-  },
-  {
     key: "ipowatch_listing",
     scrape: (ipo) => scrapeIPOWatchGMP({ ...ipo, ipowatch_gmp_url: null }),
     getUrl: (ipo) =>
@@ -92,15 +77,6 @@ const SOURCES: {
     getUrl: (ipo) => ipo.ipowatch_gmp_url || "",
     availability: (ipo) => {
       if (!ipo.ipowatch_gmp_url) return { run: false, reason: "no_url_configured" }
-      return { run: true }
-    },
-  },
-  {
-    key: "ipocentral",
-    scrape: (ipo) => scrapeIPOCentralGMP(ipo),
-    getUrl: (ipo) => ipo.ipocentral_gmp_url || "",
-    availability: (ipo) => {
-      if (!ipo.ipocentral_gmp_url) return { run: false, reason: "no_url_configured" }
       return { run: true }
     },
   },
@@ -347,18 +323,19 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
 
   const sourceLabel = `averaged(${sourcesUsed.join(",")})`
 
-  // gmp_history has UNIQUE(ipo_id, date); upsert to respect that constraint
-  // while still tracking changes via recorded_at.
+  // gmp_history now keys rows by UNIQUE(ipo_id, date, time_slot).
+  // We persist into a stable slot so upserts remain idempotent per run window.
   const { error: insertErr } = await supabase.from("gmp_history").upsert(
     {
       ipo_id: ipo.id,
       gmp: averagedGMP,
       gmp_percent: gmpPercent,
       date: today,
+      time_slot: "morning",
       source: sourceLabel,
       recorded_at: now,
     },
-    { onConflict: "ipo_id,date", ignoreDuplicates: false }
+    { onConflict: "ipo_id,date,time_slot", ignoreDuplicates: false }
   )
 
   if (insertErr) {
@@ -464,14 +441,6 @@ export async function runGmpScraper(): Promise<{
       no_url: number
     }
   > = {
-    investorgain: {
-      values: 0,
-      no_data: 0,
-      errors: 0,
-      cached: 0,
-      circuit_open: 0,
-      no_url: 0,
-    },
     ipowatch_listing: {
       values: 0,
       no_data: 0,
@@ -481,14 +450,6 @@ export async function runGmpScraper(): Promise<{
       no_url: 0,
     },
     ipowatch_article: {
-      values: 0,
-      no_data: 0,
-      errors: 0,
-      cached: 0,
-      circuit_open: 0,
-      no_url: 0,
-    },
-    ipocentral: {
       values: 0,
       no_data: 0,
       errors: 0,
