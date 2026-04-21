@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Params) {
   const { data: ipo, error } = await supabase
     .from("ipos")
     .select(
-      "id, slug, company_name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
+      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
     )
     .eq("id", idNum)
     .maybeSingle()
@@ -47,7 +47,7 @@ export async function POST(request: Request, { params }: Params) {
 
   return NextResponse.json({
     ipo_id: ipo.id,
-    company_name: ipo.company_name,
+    company_name: ipo.company_name || ipo.name || null,
     averaged_gmp: result.averagedGMP,
     sources_used: result.sourcesUsed,
     inserted: result.inserted,
