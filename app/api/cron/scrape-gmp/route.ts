@@ -62,14 +62,24 @@ const SOURCES: {
   key: SourceKey
   scrape: (ipo: ScrapeIpoInput) => Promise<{ gmp: number } | null>
   getUrl: (ipo: ScrapeIpoInput) => string
-  availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
+  availability: (ipo: ScrapeIpoInput) => {
+    run: boolean
+    reason?: "no_url_configured" | "overridden_by_article"
+  }
 }[] = [
   {
     key: "ipowatch_listing",
     scrape: (ipo) => scrapeIPOWatchGMP({ ...ipo, ipowatch_gmp_url: null }),
     getUrl: (ipo) =>
       "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/",
-    availability: () => ({ run: true }),
+    availability: (ipo) => {
+      // If a per-IPO IPOWatch article URL is configured, prefer it and
+      // skip the constant listing source to avoid redundant same-site votes.
+      if (ipo.ipowatch_gmp_url) {
+        return { run: false, reason: "overridden_by_article" }
+      }
+      return { run: true }
+    },
   },
   {
     key: "ipowatch_article",
@@ -255,6 +265,7 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
       "no_data",
       "circuit_open",
       "no_url_configured",
+      "overridden_by_article",
     ])
     const realErrors = outcomes.filter(
       (o) => o.error && !NON_ERROR_REASONS.has(o.error),
@@ -492,7 +503,9 @@ export async function runGmpScraper(): Promise<{
         if (o.cached) sourceStats[o.source].cached++
         if (o.error === "no_data") sourceStats[o.source].no_data++
         else if (o.error === "circuit_open") sourceStats[o.source].circuit_open++
-        else if (o.error === "no_url_configured") sourceStats[o.source].no_url++
+        else if (o.error === "no_url_configured" || o.error === "overridden_by_article") {
+          sourceStats[o.source].no_url++
+        }
         else if (o.error) sourceStats[o.source].errors++
       }
       if (res.inserted) inserted++
