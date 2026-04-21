@@ -866,7 +866,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           <div className="md:col-span-3">
             <Label htmlFor="investorgain_gmp_url" className="text-slate-300">
               InvestorGain GMP URL
-              <span className="text-xs text-cyan-400 ml-2">Primary source for live GMP</span>
+              <span className="text-xs text-emerald-400 ml-2">Optional direct GMP source (used when URL is set)</span>
             </Label>
             <Input
               id="investorgain_gmp_url"
@@ -877,7 +877,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               placeholder="https://www.investorgain.com/gmp/ipo-name-gmp/1234/"
             />
             <p className="text-xs text-slate-500 mt-1">
-              e.g., https://www.investorgain.com/gmp/propshare-celestia-ipo-gmp/2226/
+              Add a direct InvestorGain GMP URL to include this source in scraping + averaging.
             </p>
           </div>
           <div className="md:col-span-3">
@@ -901,7 +901,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           <div className="md:col-span-3">
             <Label htmlFor="ipowatch_gmp_url" className="text-slate-300">
               IPOWatch GMP URL
-              <span className="text-xs text-emerald-400 ml-2">Optional second GMP source (averaged)</span>
+              <span className="text-xs text-emerald-400 ml-2">Primary configurable GMP source (used in averaging)</span>
             </Label>
             <Input
               id="ipowatch_gmp_url"
@@ -919,7 +919,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           <div className="md:col-span-3">
             <Label htmlFor="ipocentral_gmp_url" className="text-slate-300">
               IPOCentral GMP URL
-              <span className="text-xs text-emerald-400 ml-2">Optional third GMP source (averaged)</span>
+              <span className="text-xs text-emerald-400 ml-2">Optional direct GMP source (used when URL is set)</span>
             </Label>
             <Input
               id="ipocentral_gmp_url"
@@ -930,7 +930,7 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
               placeholder="https://ipocentral.in/ipo-name-gmp/"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Direct article URL on ipocentral.in. Leave blank to let the scraper derive one from the slug.
+              Add a direct IPOCentral GMP URL to include this source in scraping + averaging.
             </p>
           </div>
         </div>
@@ -938,7 +938,8 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-lg">
           <p className="text-sm text-cyan-300 font-medium mb-2">How Auto-Refresh Works:</p>
           <ul className="text-xs text-slate-400 space-y-1 list-disc list-inside">
-            <li>GMP data is fetched from IPO GMP sources every 15 minutes</li>
+            <li>GMP data is fetched every 15 minutes and averaged only across sources that return numeric values</li>
+            <li>Automation logs show per-source URL + outcome (value/no_data/no_url/error) for easier debugging</li>
             <li>Subscription data is scraped from Chittorgarh during IPO open period</li>
             <li>Status is auto-updated based on IPO dates</li>
             <li>You can manually edit values anytime to override auto-fetched data</li>
