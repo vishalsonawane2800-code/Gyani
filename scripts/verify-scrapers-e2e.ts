@@ -174,6 +174,7 @@ const PARSER_CASES: ParserCase[] = [
   // Default behavior: dash / N/A / "—" → null (preserves backward compat).
   { label: "parseGMP('-') (no opts)            → null", fn: () => parseGMP("-"), expected: null },
   { label: "parseGMP('—') (no opts)            → null", fn: () => parseGMP("—"), expected: null },
+  { label: "parseGMP('−') (no opts)            → null", fn: () => parseGMP("−"), expected: null },
   { label: "parseGMP('N/A') (no opts)          → null", fn: () => parseGMP("N/A"), expected: null },
   { label: "parseGMP('') (no opts)             → null", fn: () => parseGMP(""), expected: null },
   // Numeric values still parse correctly with or without options.
@@ -183,6 +184,7 @@ const PARSER_CASES: ParserCase[] = [
   // dashAsZero: true → dash placeholders become 0; truly empty stays null.
   { label: "parseGMP('-',  {dashAsZero})        → 0",    fn: () => parseGMP("-",  { dashAsZero: true }), expected: 0 },
   { label: "parseGMP('—',  {dashAsZero})        → 0",    fn: () => parseGMP("—",  { dashAsZero: true }), expected: 0 },
+  { label: "parseGMP('−',  {dashAsZero})        → 0",    fn: () => parseGMP("−",  { dashAsZero: true }), expected: 0 },
   { label: "parseGMP('–',  {dashAsZero})        → 0",    fn: () => parseGMP("–",  { dashAsZero: true }), expected: 0 },
   { label: "parseGMP('--', {dashAsZero})        → 0",    fn: () => parseGMP("--", { dashAsZero: true }), expected: 0 },
   { label: "parseGMP('₹-', {dashAsZero})        → 0",    fn: () => parseGMP("₹-", { dashAsZero: true }), expected: 0 },
