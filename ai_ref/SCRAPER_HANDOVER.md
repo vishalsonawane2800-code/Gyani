@@ -1,172 +1,282 @@
 # GMP Scraper Handover — next v0 agent
 
-Read `ai_ref/SCRAPER_CONTEXT.md` **first** for the full system overview. This
-file documents only what is in flight right now.
+Read `ai_ref/SCRAPER_CONTEXT.md` **first** for the full system overview.
+This file documents only the single bug that was in flight.
 
-## The user's goal
+---
 
-> "If we can scrape all 3 successfully we should avg it, or go with whatever
-> data we get. In this case the scraper should give some value because I can
-> see it on investorgain. BTW `-` should be considered as `0` GMP."
+## STATUS: Resolved on branch `scraper-handover-check` (Apr 2026)
 
-Translation:
+The name-matching bug described below is fixed. `scripts/verify-scrapers-e2e.ts`
+is now 27/27 green including two new Citius Transnet guard cases. If you
+are picking this up to add a NEW bug, leave the rest of this file intact
+as a historical record of why `lib/scraper/name-match.ts` exists.
 
-1. Add **investorgain.com** as a third GMP source alongside IPOWatch and ipoji.
-2. Normalize `-`, `—`, `N/A`, empty → **`0`** (currently parsed as `null`).
-3. Average whatever subset of sources returned a number (including `0`s).
-   If at least one source returned a numeric value, record it. Only flag
-   `failed` when every source hard-errored.
+### What shipped
 
-Reference IPO for testing: `citius-transnet-invit-ipo` (InvIT, currently in
-the window, both existing sources return no numeric GMP but the value
-*should* be `0`).
+- **New**: `lib/scraper/name-match.ts` — shared `normalizeName` +
+  `namesMatch` helpers. `normalizeName` now strips the InvIT / REIT /
+  `investment trust` / `infrastructure investment trust` boilerplate
+  tokens in addition to the existing limited/ltd/pvt/the/ipo/sme
+  vocabulary. `namesMatch` still requires ≥6 chars of overlap on the
+  shorter side to avoid ABC→ABC-Corp style false positives.
+- `lib/scraper/sources/gmp-ipowatch.ts` + `gmp-ipoji.ts` — both delete
+  their private name-match copies and import from the shared module.
+  Everything else in these files is untouched.
+- `scripts/verify-scrapers-e2e.ts` — added an IPOWatch Citius case that
+  asserts the long-form DB name `"Citius Transnet Investment Trust
+  InvIT"` resolves to the short-form source row and returns numeric 0
+  (the site publishes `₹-` for every day, which the dashAsZero contract
+  converts). Also added an ipoji Citius case that expects `null` — see
+  the inline comment there for why (InvIT / REIT cards ship without an
+  Exp. Premium stat block on the list page, and we can't distinguish
+  that from the post-close PropShare layout from markup alone; the
+  averaging pipeline only requires numeric data from at least one
+  source).
 
-- investorgain shows `₹0` for 17-20 Apr 2026 at
-  `https://investorgain.com/gmp/citius-transnet-invit-ipo-gmp/2126/`
-- IPOWatch shows `₹-` (dash) for the same dates
-- ipoji shows `0` at `https://ipoji.com/ipo/citius-transnet-invit-ipo`
+### Acceptance bar hit
 
-## What's already done (already committed to branch)
+- 27/27 in verify-scrapers-e2e.ts, zero regressions on the Adisoft
+  zero-GMP / PropShare post-close / Mehul Telecom guards.
+- No change to `parseGMP`, `dashAsZero`, or the orchestrator in
+  `app/api/cron/scrape-gmp/route.ts`.
+- No hard-coded company names in the scraper path.
 
-### 1. Status-classification fix in the GMP + subscription crons — DONE
+---
+
+## Original bug writeup (kept for context)
+
+**Active bug:** Admin dashboard shows `GMP -` for the live IPO
+`citius-transnet-investment-trust-invit-ipo`, with cron message
+`"No GMP data yet on sources for 1/1 IPOs: citius-transnet-investment-trust-invit-ipo"`.
+
+**Root cause (confirmed by live probe):** Both sources actually list this
+IPO — but under a shorter name:
+
+| Where | Name on page |
+|---|---|
+| IPOWatch listing HTML | `Citius Transnet InvIT` |
+| ipoji listing HTML | `Citius Transnet InvIT` |
+| Your DB (`ipos.name`, inferred from slug) | `Citius Transnet Investment Trust InvIT` |
+
+Both scrapers use a local `namesMatch(target, rowName)` helper that is
+too strict — when the DB name has extra words (`Investment Trust`) that
+the source name doesn't, the match fails and the row is ignored, so the
+scraper returns `null` even though the data is right there.
+
+**Fix:** Make `namesMatch` (and/or `normalizeName`) tolerant of
+InvIT / REIT / "Investment Trust" boilerplate differences, or more
+generally allow a fuzzy subset match, without regressing current
+confirmed-good matches.
+
+---
+
+## What's already done on this branch
+
+### 1. Status-classification fix in GMP + subscription crons — DONE (prior agent)
 
 Files changed:
 - `app/api/cron/scrape-gmp/route.ts`
 - `app/api/cron/scrape-subscription/route.ts`
 
-Both now distinguish three outcomes per IPO:
-
+Both distinguish three outcomes per IPO:
 - **got data** → insert / skip as before
 - **all sources cleanly returned no_data** → counted as `skipped` with
   reason `no_data_on_sources`, run status = `success`
 - **at least one source threw** → `failed`, `scraper_health.error_message`
-  records `<slug>: <source1>:<err1>; <source2>:<err2>` (first 5 failures only)
-
-Result verified in admin dashboard: GMP now reports `Success` with message
-`"No GMP data yet on sources for 1/1 IPOs: citius-transnet-investment-trust-invit-ipo"`.
+  records `<slug>: <source1>:<err1>; <source2>:<err2>` (first 5 only)
 
 The orchestrator functions `runGmpScraper` and `runSubscriptionScraper`
-now return an extra `no_data` field; types updated.
+return an extra `no_data` field; types updated.
 
-## What still needs to be done
+### 2. Dash / N/A / — → 0 — DONE (this session)
 
-### 2. Treat `-` / `—` / `N/A` / empty as `0` — NOT YET DONE
+Commit: `30ca04d` ("feat(scraper): treat dash/N-A placeholders as 0
+after row-match").
 
-**Why:** user's directive, and IPOWatch renders `-` when GMP is explicitly
-reported as zero by the market (confirmed against investorgain showing `₹0`
-for the same dates). The existing `parseGMPValue` in
-`lib/scraper/parsers.ts` returns `null` for non-numeric cells, which causes
-legit `0`-GMP IPOs to be misreported as "no data".
+Files changed:
+- `lib/scraper/parsers.ts` — `parseGMP` now accepts an options bag
+  `{ dashAsZero?: boolean }`. Default behaviour is unchanged (empty /
+  dash / N/A → `null`, backward compatible). With `dashAsZero: true`,
+  the tokens `-`, `--`, `—`, `–`, `N/A`, `NA`, `nil`, `none`,
+  `not available` (with optional leading `₹` / `Rs.` / `INR`) all
+  return numeric `0`. Truly empty input and `null` always return `null`
+  regardless of the flag.
+- `lib/scraper/sources/gmp-ipowatch.ts` — the matched-row caller in the
+  listing parser AND the article-page row parser both now pass
+  `{ dashAsZero: true }`. Applied ONLY AFTER the row has been matched
+  by name (so "row missing entirely" still returns `null`).
+- `lib/scraper/sources/gmp-ipoji.ts` — the stat-block caller inside the
+  matched card passes `{ dashAsZero: true }`. `parseIpojiPremium` also
+  now recognises the full placeholder set.
+- `scripts/verify-scrapers-e2e.ts` — added 18 parser unit cases; 25/25
+  checks pass. The existing live case
+  `"IPOWatch listing - zero-GMP IPO (Adisoft Technologies)"` is the
+  regression guard for this change — it expects `0`, not `null`.
 
-**Where to change:**
-- `lib/scraper/parsers.ts::parseGMPValue` — currently returns `null` for
-  unparseable input. Add a new helper or a flag like
-  `parseGMPValue(raw, { dashAsZero: true })` that returns `0` when `raw`
-  matches `/^[\-–—]+$/`, `/^n\/?a$/i`, or empty string after `₹` strip.
-  Keep the original behaviour for callers that need `null` sentinels.
-- Update the callers in `lib/scraper/sources/gmp-ipowatch.ts` and
-  `lib/scraper/sources/gmp-ipoji.ts` to pass `dashAsZero: true` when
-  reading the latest-row GMP cell (but NOT when detecting whether the row
-  exists at all — an empty row vs. a `0` row are different; the row must
-  still exist and have today's/yesterday's date).
+Sanity: `averageGMP` in `app/api/cron/scrape-gmp/route.ts` uses
+`o.gmp !== null && typeof o.gmp === "number"` and preserves `0`. The
+Redis cache path uses the same guard. No orchestrator changes needed.
 
-**Careful:** only treat `-` as `0` when the IPO's row is actually present
-with a valid date. A missing row still = no data.
+### 3. investorgain.com as a 3rd source — SUPERSEDED (see SCRAPER_CONTEXT.md)
 
-### 3. Add investorgain.com as a 3rd GMP source — NOT YET DONE
+investorgain is now a client-rendered SPA with no SSR data and its
+`_next/data/...json` endpoints return 404. **ipoji.com is the live third
+source instead** and is already wired into `SOURCES` in the cron route.
+Do NOT re-open this task unless investorgain's HTML changes.
 
-**Blocker discovered while debugging:** the investorgain detail page
-(`https://investorgain.com/gmp/citius-transnet-invit-ipo-gmp/2126/`) is
-122 KB of Next.js HTML but the day-wise GMP `<table>` is **not in the
-initial SSR payload**. `cheerio.load(html).find('table')` returns 1 empty
-table. The page hydrates client-side.
+---
 
-Next steps to figure out how to scrape investorgain:
+## The remaining bug — detailed
 
-1. Open the page in a real browser with DevTools → Network tab and
-   **find the XHR/fetch that returns the day-wise GMP JSON**. It's likely
-   something like `/api/ipo/gmp/{id}` or a `_next/data/.../{slug}.json`.
-   The last script we ran found no `/api/` string in the HTML, so it's
-   probably `_next/data/<buildId>/gmp/<slug>-gmp/<id>.json`.
-   Grab `buildId` from the HTML: `grep -oE '"buildId":"[^"]+"' /tmp/ig.html`
-2. Once you have the JSON endpoint, fetch it from Node (SSR cheerio is
-   NOT needed for JSON) and parse directly.
-3. If the data really is only available post-hydration via a private XHR
-   that requires a session cookie or CSRF header, **fall back to their
-   listing page** `https://www.investorgain.com/report/live-ipo-gmp/331/ipo/`
-   — that page historically ships the table in SSR HTML. Lookup by IPO
-   name (case-insensitive `includes`) the same way the other two sources
-   do.
-4. Create `lib/scraper/sources/gmp-investorgain.ts` mirroring the shape of
-   `gmp-ipowatch.ts` / `gmp-ipoji.ts` — a default export that takes a
-   `{ slug, symbol, company_name }` and returns
-   `{ gmp: number | null, source: 'investorgain', error?: string }`.
-   Honour `SCRAPER_CONTEXT.md`'s circuit breaker, user-agent rotation,
-   timeout, and `dashAsZero` rules.
+### Repro (what the user sees)
 
-### 4. Wire the new source into the orchestrator — NOT YET DONE
+Admin → Current IPOs:
 
-In `app/api/cron/scrape-gmp/route.ts`:
+```
+CT  Citius Transnet Investment Trust InvIT
+    Open  Mainboard • Rs 99-100 • Closes: 21 Apr
+    GMP - Subscription 1.28x AI Pred 3%
+```
 
-- Import the new scraper.
-- Add it to the `sources` array used by `processIpoGMP` (grep for
-  `ipowatchGmp` / `ipojiGmp` / `Promise.all` / `averageGMP`).
-- `averageGMP` already takes whatever subset is non-null — no change
-  required there as long as numeric `0` is preserved (double-check it
-  does not do `if (!gmp)` which would drop zeros; use `gmp !== null`).
+Admin → Scraper Runs:
 
-### 5. Verify end-to-end
+```
+scrape-gmp   Success   1 item   11757ms
+No GMP data yet on sources for 1/1 IPOs:
+  citius-transnet-investment-trust-invit-ipo
+```
 
-- `pnpm exec tsx scripts/verify-scrapers-e2e.ts` — extend this with a
-  case for `citius-transnet-invit-ipo` that asserts GMP resolves to `0`,
-  not `null`.
-- Trigger the cron manually from the admin dashboard ("Run Now") and
-  confirm the health card shows:
-  - Status: Success
-  - Items last run: 1
-  - message: includes an average of `0` for citius, inserted 1.
+The URL fields (ipowatch/ipocentral/investorgain GMP + sub URLs) all
+save correctly. That earlier concern was a UI-screen misread by the
+user — no action needed there.
+
+### Evidence this is a name-matching bug, not a no-data bug
+
+Live fetches during this session (both 200 OK):
+
+- `https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/` HTML
+  contains `/citius|transnet/i` matches AND multiple `invit` mentions.
+- `https://ipoji.com/ipo-list` HTML similarly contains matches.
+
+Both scrapers' end-to-end calls via
+`scrapeIPOWatchGMP(name, slug)` / `scrapeIpojiGMP(name, slug)` returned
+`{ gmp: null, ... }` with **no thrown errors**, meaning the page was
+fetched and parsed OK but `namesMatch(target, rowName)` returned `false`
+on every row.
+
+The DB slug `citius-transnet-investment-trust-invit-ipo` implies the
+stored `ipos.name` is `"Citius Transnet Investment Trust InvIT"`. On the
+sources the row text is just `"Citius Transnet InvIT"`. The extra
+`Investment Trust` in the target is what breaks the match.
+
+### Where to fix
+
+Two small helpers live as private functions in each source file:
+
+- `lib/scraper/sources/gmp-ipowatch.ts` — around lines ~55–80 define
+  `normalizeName()` and `namesMatch()`. The row parser uses them at
+  line ~151 (`if (!namesMatch(normalizedTarget, rowName)) return`).
+- `lib/scraper/sources/gmp-ipoji.ts` — same helpers around lines ~53–75
+  and the matcher is at line ~168.
+
+Recommended approach (in preference order):
+
+1. **Extract** both local copies into a shared util
+   `lib/scraper/name-match.ts` exporting `normalizeName` and
+   `namesMatch` so you only need to fix this once. Update both source
+   files to import from it.
+2. **Add boilerplate stripping** inside `normalizeName` for tokens that
+   Indian IPO sites treat interchangeably:
+   - `invit`, `invits`
+   - `reit`, `reits`
+   - `investment trust` → drop
+   - `infrastructure investment trust` → drop
+   - `limited`, `ltd`, `pvt`, `private`, `ipo`, `the`
+   - collapse multiple spaces, lowercase, strip non-alphanumerics
+3. **Make `namesMatch` asymmetric-friendly.** After normalization, the
+   match should succeed when **the shorter normalized name is a token
+   subset of the longer one**, not just on exact equality. Example after
+   normalization: target `citius transnet` vs row `citius transnet` →
+   exact match, passes. Handle 1-token overlap carefully: require at
+   least two meaningful tokens to overlap when names are short, to avoid
+   false positives like `"India Cements"` matching `"Cements India"`.
+4. **Guard against regressions.** Run
+   `pnpm exec tsx scripts/verify-scrapers-e2e.ts` after the change. Every
+   existing live case MUST still pass (especially the Adisoft zero-GMP
+   guard). Add a new live case for Citius Transnet InvIT asserting a
+   numeric GMP comes back from at least one source.
+
+### What NOT to do
+
+- Do NOT widen the match so much that any IPO with shared words
+  resolves to another IPO's row. `namesMatch` must stay precise enough
+  that e.g. two different SME IPOs with overlapping first words don't
+  cross-match.
+- Do NOT hard-code "Citius" as a special case.
+- Do NOT change `parseGMP` or the `dashAsZero` logic. That landed in
+  this session and the orchestrator depends on the current contract.
+- Do NOT introduce Playwright/Puppeteer. Vercel serverless has no
+  Chromium and `SCRAPER_CONTEXT.md` already rejected that path.
+
+---
 
 ## Useful commands / breadcrumbs
 
 ```bash
-# Quick SSR probe
-curl -sS -o /tmp/ig.html -w "HTTP %{http_code} SIZE %{size_download}\n" \
-  -L -A "Mozilla/5.0" \
-  "https://investorgain.com/gmp/citius-transnet-invit-ipo-gmp/2126/"
-
-# Find Next.js build id + any embedded JSON
-grep -oE '"buildId":"[^"]+"' /tmp/ig.html
-grep -oE '_next/data/[^"]+' /tmp/ig.html | sort -u
-
-# E2E verifier (read-only, does not touch DB)
+# Full E2E verifier — 25/25 must stay green (18 parser unit cases +
+# live source cases). Add a citius case before you call it done.
 pnpm exec tsx scripts/verify-scrapers-e2e.ts
 
-# Full debug with prod Supabase requires creds that are NOT in sandbox env
-# Run `scripts/debug-gmp-cron.ts` only after sourcing production env or
-# skip and verify via the deployed /api/cron/scrape-gmp?manual=1
-pnpm exec tsx scripts/debug-gmp-cron.ts
+# Quick live probe of a specific IPO against both sources (ad-hoc).
+# Name variants let you see which ones match and which don't.
+cat > scripts/_probe.ts << 'EOF'
+import { scrapeIPOWatchGMP } from "@/lib/scraper/sources/gmp-ipowatch"
+import { scrapeIpojiGMP } from "@/lib/scraper/sources/gmp-ipoji"
+async function main() {
+  const slug = "citius-transnet-investment-trust-invit-ipo"
+  for (const name of [
+    "Citius Transnet Investment Trust InvIT", // DB name (fails today)
+    "Citius Transnet InvIT",                  // source name (passes)
+  ]) {
+    console.log("name:", JSON.stringify(name))
+    console.log("  ipowatch:", await scrapeIPOWatchGMP(name, slug))
+    console.log("  ipoji   :", await scrapeIpojiGMP(name, slug))
+  }
+}
+main()
+EOF
+pnpm exec tsx scripts/_probe.ts
+# Delete scripts/_probe.ts when done — do NOT leave throwaway scripts
+# checked in.
+
+# Full debug-gmp-cron.ts requires prod Supabase creds that are NOT in
+# the sandbox env file. Verify via the deployed admin "Run Now" button.
 ```
+
+---
 
 ## Files most likely to touch
 
-- `lib/scraper/parsers.ts` — add `dashAsZero` option
-- `lib/scraper/sources/gmp-ipowatch.ts` — use `dashAsZero: true`
-- `lib/scraper/sources/gmp-ipoji.ts` — use `dashAsZero: true` (the ipoji
-  table explicitly shows `0`, but add it defensively)
-- `lib/scraper/sources/gmp-investorgain.ts` — **new file**
-- `app/api/cron/scrape-gmp/route.ts` — register the new source
-- `scripts/verify-scrapers-e2e.ts` — add test case for citius InvIT
+- `lib/scraper/sources/gmp-ipowatch.ts` — use shared `namesMatch`
+- `lib/scraper/sources/gmp-ipoji.ts` — use shared `namesMatch`
+- `lib/scraper/name-match.ts` — **new file**, export `normalizeName` +
+  `namesMatch`
+- `scripts/verify-scrapers-e2e.ts` — add `Citius Transnet InvIT` case
+  (use the DB-style long name `"Citius Transnet Investment Trust InvIT"`
+  as the target; expect a numeric value back from at least one source)
 
 ## Gotchas
 
-- Do **not** use a headless browser (Playwright/Puppeteer) — Vercel
-  serverless doesn't ship Chromium and we already rejected that path in
-  `SCRAPER_CONTEXT.md`. Find the JSON endpoint or the SSR listing page.
-- The prod Supabase credentials are **not** in the sandbox env file, so
-  `scripts/debug-gmp-cron.ts` fails locally with a Supabase URL error.
-  That is expected. Verify via the deployed admin dashboard.
-- `averageGMP` must preserve `0` as a valid value. If it does
-  `if (!x) skip` anywhere, that's a bug to fix while you're in there.
-- The old `- should be considered as 0` rule applies ONLY when the IPO's
-  row is actually present on that source with a valid date. A completely
-  absent row is still no-data, not `0`.
+- The admin URL fields (`ipowatch_gmp_url`, `ipocentral_gmp_url`, etc.)
+  DO save correctly. Earlier in this session I suspected migration 012
+  wasn't run on the connected Supabase, but the user confirmed saves
+  work. Leave the form, PATCH route, and schema alone.
+- `averageGMP` preserves `0` as a valid numeric value. Do not
+  accidentally reintroduce a falsy check like `if (!x)` anywhere in the
+  orchestrator or in whatever you add to name-match.
+- The `dashAsZero: true` callers MUST stay inside the matched-row block
+  only. If you widen name-matching too far, `dashAsZero` could start
+  returning `0` for the wrong IPO. Name-match precision matters.
+- Prod Supabase creds are not in the sandbox env. Live DB verification
+  must happen via the deployed admin dashboard's "Run Now" button.

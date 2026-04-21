@@ -20,30 +20,30 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Color coding for different categories
+  // Color coding for different categories - matching page theme
   const categoryConfig: Record<string, { bg: string; border: string; text: string; label: string }> = {
     retail: {
-      bg: 'bg-blue-500/10',
-      border: 'border-blue-500/30',
-      text: 'text-blue-400',
+      bg: 'bg-cobalt-bg',
+      border: 'border-cobalt/20',
+      text: 'text-cobalt',
       label: 'Retail'
     },
     nii: {
-      bg: 'bg-purple-500/10',
-      border: 'border-purple-500/30',
-      text: 'text-purple-400',
+      bg: 'bg-gold-bg',
+      border: 'border-gold/20',
+      text: 'text-gold',
       label: 'NII (HNI)'
     },
     qib: {
-      bg: 'bg-emerald-500/10',
-      border: 'border-emerald-500/30',
-      text: 'text-emerald-400',
+      bg: 'bg-emerald-bg',
+      border: 'border-emerald/20',
+      text: 'text-emerald',
       label: 'QIB'
     },
     total: {
-      bg: 'bg-primary-mid/10',
-      border: 'border-primary-mid/30',
-      text: 'text-primary-mid',
+      bg: 'bg-primary-bg',
+      border: 'border-primary/20',
+      text: 'text-primary',
       label: 'Total'
     }
   };
@@ -165,20 +165,20 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   // If IPO hasn't opened for subscription yet, show placeholder
   if (!isLive || !subscriptionData || subscriptionData.length === 0) {
     return (
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl border border-slate-700 p-6 mb-8">
+      <div className="bg-card rounded-xl border border-border card-shadow p-6 mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-slate-700/50 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-slate-400" />
+          <div className="p-2 bg-muted rounded-lg">
+            <TrendingUp className="w-5 h-5 text-ink3" />
           </div>
           <div>
-            <h3 className="font-bold text-white">Live Subscription Tracker</h3>
-            <p className="text-xs text-slate-400">Real-time subscription data</p>
+            <h3 className="font-bold text-ink">Live Subscription Tracker</h3>
+            <p className="text-xs text-ink3">Real-time subscription data</p>
           </div>
         </div>
-        
-        <div className="bg-slate-900/50 rounded-lg p-4 text-center">
-          <p className="text-slate-400 text-sm mb-2">Subscription data will appear when IPO opens</p>
-          <p className="text-xs text-slate-500">Current IPO Status: <span className="capitalize font-semibold">{ipo.status}</span></p>
+
+        <div className="bg-muted rounded-lg p-4 text-center border border-border">
+          <p className="text-ink2 text-sm mb-2">Subscription data will appear when IPO opens</p>
+          <p className="text-xs text-ink3">Current IPO Status: <span className="capitalize font-semibold text-ink2">{ipo.status}</span></p>
         </div>
       </div>
     );
@@ -191,23 +191,27 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   );
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-2xl border border-slate-700 p-6 mb-8">
+    <div className="bg-card rounded-xl border border-border card-shadow p-6 mb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-500/20 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-emerald-400" />
+          <div className="p-2 bg-emerald-bg rounded-lg">
+            <TrendingUp className="w-5 h-5 text-emerald" />
           </div>
           <div>
-            <h3 className="font-bold text-white">Live Subscription Tracker</h3>
-            <p className="text-xs text-slate-400">Day {ipo.subscription?.day || '1'} • Real-time updates</p>
+            <h3 className="font-bold text-ink">Live Subscription Tracker</h3>
+            <p className="text-xs text-ink3">Day {ipo.subscription?.day || '1'} • Real-time updates</p>
           </div>
         </div>
-        
+
         {lastUpdated && (
-          <div className="text-right">
-            <p className="text-xs font-mono text-emerald-400">
-              Updated {new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-mid opacity-75"></span>
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald"></span>
+            </span>
+            <p className="text-xs font-mono text-emerald">
+              {new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
             </p>
           </div>
         )}
@@ -217,46 +221,39 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {filteredData.map((item) => {
           const config = categoryConfig[item.category.toLowerCase()] || categoryConfig.retail;
-          
+
           // Calculate multiplier for display
           const multiplier = item.times?.toFixed(2) || '0.00';
-          const trend = item.times >= 1 ? '+' : '';
-          
+
           return (
-            <div 
+            <div
               key={item.category}
-              className={`${config.bg} ${config.border} border rounded-xl p-4 relative overflow-hidden group hover:border-opacity-100 transition-all duration-300`}
+              className={`${config.bg} ${config.border} border rounded-lg p-4 transition-all duration-200 hover:card-shadow-hover`}
             >
-              {/* Gradient background on hover */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-5 bg-gradient-to-br from-white via-transparent to-transparent transition-opacity duration-300" />
-              
-              {/* Content */}
-              <div className="relative z-10">
-                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">
-                  {config.label}
-                </p>
-                
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-3xl font-black ${config.text}`}>
-                    {multiplier}
-                  </span>
-                  <span className="text-lg font-bold text-slate-400">x</span>
-                </div>
-                
-                {item.applied && (
-                  <p className="text-xs text-slate-500 mt-2">
-                    Applied: {item.applied.toLocaleString('en-IN')} shares
-                  </p>
-                )}
+              <p className="text-xs font-semibold text-ink3 uppercase tracking-wider mb-2">
+                {config.label}
+              </p>
+
+              <div className="flex items-baseline gap-1">
+                <span className={`text-3xl font-bold ${config.text}`}>
+                  {multiplier}
+                </span>
+                <span className="text-lg font-semibold text-ink4">x</span>
               </div>
+
+              {item.applied ? (
+                <p className="text-xs text-ink3 mt-2">
+                  Applied: <span className="font-medium text-ink2">{item.applied.toLocaleString('en-IN')}</span> shares
+                </p>
+              ) : null}
             </div>
           );
         })}
       </div>
 
       {/* Footer Note */}
-      <div className="mt-4 pt-4 border-t border-slate-700/50">
-        <p className="text-xs text-slate-500">
+      <div className="mt-4 pt-4 border-t border-border">
+        <p className="text-xs text-ink3">
           * Subscription data updates during IPO period. Shown as &quot;Times Oversubscribed&quot; (x). Auto-refreshes every 30 seconds.
         </p>
       </div>

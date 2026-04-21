@@ -11,8 +11,11 @@
 
 **IPOGyani** is India's IPO research platform. It ships:
 
-- Live GMP (Grey Market Premium) tracking across 3 sources (InvestorGain,
-  IPOWatch, IPOCentral) with a hybrid voting strategy.
+- Live GMP (Grey Market Premium) tracking via active cloud sources
+  (IPOWatch + ipoji), with optional direct-source URLs for InvestorGain
+  and IPOCentral when configured per IPO.
+  (IPOWatch + ipoji), while InvestorGain/IPOCentral URLs are retained for
+  admin/debug and future re-enable.
 - Real-time subscription tracking from NSE, BSE, and Chittorgarh.
 - AI-predicted listing gains (ML model registry backed by Vercel Blob).
 - Historical listed-IPO archive with ~40 enrichment columns per IPO
@@ -580,4 +583,4 @@ always use the token classes.
    Do not replicate it; call `runAutoStatusJob()` if you need it inline.
 6. **For the listed archive**, CSV is authoritative for historical rows,
    DB for fresh ones. Never "sync CSV from DB" without a ticket — the
-   CSV is hand-curated....
+   CSV is hand-curated.

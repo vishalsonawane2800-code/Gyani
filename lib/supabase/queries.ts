@@ -276,7 +276,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   }
 
   // Fetch related data in parallel
-  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult, subscriptionLiveResult, subscriptionHistoryResult] = await Promise.all([
+  const [gmpHistoryResult, financialsResult, reviewsResult, peersResult, kpiResult, issueDetailsResult, subscriptionLiveResult, subscriptionHistoryResult, faqsResult] = await Promise.all([
     // Get GMP history
     supabase
       .from('gmp_history')
@@ -331,7 +331,14 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       .select('*')
       .eq('ipo_id', ipo.id)
       .order('date', { ascending: true })
-      .order('day_number', { ascending: true })
+      .order('day_number', { ascending: true }),
+
+    // Get FAQs (migration 021)
+    supabase
+      .from('ipo_faqs')
+      .select('question, answer, display_order')
+      .eq('ipo_id', ipo.id)
+      .order('display_order', { ascending: true })
   ])
 
   const gmpHistory = gmpHistoryResult.data ?? []
@@ -342,6 +349,7 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
   const issueDetailsData = issueDetailsResult.data
   const subscriptionLiveData = subscriptionLiveResult.data ?? []
   const subscriptionHistoryData = subscriptionHistoryResult.data ?? []
+  const faqsData = faqsResult.data ?? []
 
   // Get latest GMP from history if available
   const latestGmp = gmpHistory.length > 0 ? gmpHistory[0] : null
@@ -455,6 +463,12 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
       gmpPercent: priceMax > 0 ? Math.round((g.gmp / priceMax) * 100 * 10) / 10 : 0,
       source: g.source || 'investorgain',
     })),
+    // Long-form copy + FAQs (migration 021)
+    companyDetails: ipo.company_details || undefined,
+    ipoDetailsLong: ipo.ipo_details_long || undefined,
+    faqs: faqsData.length > 0
+      ? faqsData.map(f => ({ question: f.question, answer: f.answer }))
+      : undefined,
   }
 }
 
@@ -614,6 +628,7 @@ export interface IPOCategoryStats {
   currentlyInLoss: number
   totalRaisedCr: number
   avgListingGain: number
+  medianListingGain: number
   avgSubscription: number
 }
 
@@ -622,7 +637,8 @@ export async function getIPOStats(): Promise<{ mainboard: IPOCategoryStats; sme:
 
   const empty: IPOCategoryStats = {
     total: 0, upcoming: 0, inGainOnListing: 0, inLossOnListing: 0,
-    currentlyInGain: 0, currentlyInLoss: 0, totalRaisedCr: 0, avgListingGain: 0, avgSubscription: 0
+    currentlyInGain: 0, currentlyInLoss: 0, totalRaisedCr: 0,
+    avgListingGain: 0, medianListingGain: 0, avgSubscription: 0
   }
 
   if (!supabase) return { mainboard: empty, sme: empty }
@@ -651,14 +667,26 @@ export async function getIPOStats(): Promise<{ mainboard: IPOCategoryStats; sme:
       return sum + (isNaN(val) ? 0 : val)
     }, 0)
 
-    // Avg listing gain across listed IPOs
-    const validGains = listed.filter(i => i.listing_gain_percent !== null)
+    // Avg + median listing gain across listed IPOs
+    const validGains = listed
+      .map(i => i.listing_gain_percent)
+      .filter((g): g is number => g !== null && g !== undefined)
     const avgListingGain = validGains.length > 0
-      ? validGains.reduce((s, i) => s + (i.listing_gain_percent ?? 0), 0) / validGains.length
+      ? validGains.reduce((s, g) => s + g, 0) / validGains.length
       : 0
+    const medianListingGain = (() => {
+      if (validGains.length === 0) return 0
+      const sorted = [...validGains].sort((a, b) => a - b)
+      const mid = Math.floor(sorted.length / 2)
+      return sorted.length % 2 === 0
+        ? (sorted[mid - 1] + sorted[mid]) / 2
+        : sorted[mid]
+    })()
 
-    // Avg subscription
-    const validSubs = ipos.filter(i => (i.subscription_total ?? 0) > 0)
+    // Avg subscription — restricted to the same listed set so the
+    // whole panel stays consistent (listed count, gains, profit/loss,
+    // subscription all come from the same pool).
+    const validSubs = listed.filter(i => (i.subscription_total ?? 0) > 0)
     const avgSubscription = validSubs.length > 0
       ? validSubs.reduce((s, i) => s + (i.subscription_total ?? 0), 0) / validSubs.length
       : 0
@@ -672,6 +700,7 @@ export async function getIPOStats(): Promise<{ mainboard: IPOCategoryStats; sme:
       currentlyInLoss,
       totalRaisedCr: Math.round(totalRaisedCr),
       avgListingGain: Math.round(avgListingGain * 10) / 10,
+      medianListingGain: Math.round(medianListingGain * 10) / 10,
       avgSubscription: Math.round(avgSubscription * 10) / 10,
     }
   }

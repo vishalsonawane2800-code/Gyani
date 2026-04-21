@@ -4,8 +4,6 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListedHero } from '@/components/listed/listed-hero';
-import { ListedFilters } from '@/components/listed/listed-filters';
-import { ListedTable } from '@/components/listed/listed-table';
 import { getAvailableYears, getListedIposByYear } from '@/lib/listed-ipos/loader';
 
 export const metadata: Metadata = {
@@ -80,9 +78,6 @@ export default function ListedPage() {
             </section>
           )}
 
-          <ListedFilters />
-          <ListedTable />
-          
           {/* SEO Content */}
           <section className="mt-8 bg-card border border-border rounded-2xl p-6">
             <h2 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-4">

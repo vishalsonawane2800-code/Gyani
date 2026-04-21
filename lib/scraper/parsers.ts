@@ -85,28 +85,66 @@ export function parseSubscriptionTimes(input: string | null | undefined): number
   }
 }
 
+export type ParseGMPOptions = {
+  /**
+   * When true, treat strings that explicitly render as "no premium today"
+   * (e.g. "-", "—", "–", "--", "N/A", "NA", "nil", "none", "not available")
+   * as a numeric `0` instead of `null`.
+   *
+   * Use this ONLY when the IPO's row was already located on the source —
+   * i.e. the source IS reporting on this IPO and chose to render it as a
+   * dash to mean "zero GMP". Do NOT use it for "row missing entirely",
+   * which is genuine no-data and must remain `null`.
+   *
+   * Background: IPOWatch/ipoji render `-` (or `₹-`) when the market has
+   * explicitly reported the GMP as zero for that day. Without this flag
+   * those legitimately-zero IPOs were being misclassified as "no data".
+   */
+  dashAsZero?: boolean
+}
+
+/** Strings that explicitly mean "no premium today" on Indian IPO sites. */
+const ZERO_PLACEHOLDER_RE =
+  /^(?:--|[-–—]|n\/?a|nil|none|not\s*available)$/i
+
 /**
  * Parses GMP values:
  * - ₹ 150
  * - 150/-
  * - Rs. 150
  * - 150
+ *
+ * Defaults: returns `null` for empty/invalid input, including dash
+ * placeholders. Pass `{ dashAsZero: true }` to coerce dash/N/A placeholders
+ * to numeric `0` (see `ParseGMPOptions.dashAsZero`).
  */
-export function parseGMP(input: string | null | undefined): number | null {
-  if (isInvalid(input)) return null
+export function parseGMP(
+  input: string | null | undefined,
+  options: ParseGMPOptions = {},
+): number | null {
+  if (input === null || input === undefined) return null
 
   try {
-    let str = input!.toLowerCase().trim()
+    const trimmed = String(input).trim()
+    if (trimmed === "") return null
 
-    str = str
+    // Strip currency symbols / "/-" suffix / commas BEFORE the placeholder
+    // check so that "₹-", "Rs. -", "₹ N/A" etc. still classify correctly.
+    const cleaned = trimmed
+      .toLowerCase()
       .replace(/₹|rs\.?|inr/gi, "")
       .replace(/\/-/g, "")
       .replace(/,/g, "")
       .trim()
 
-    const num = parseFloat(str)
+    if (cleaned === "") return null
 
-    return isNaN(num) ? null : num
+    if (ZERO_PLACEHOLDER_RE.test(cleaned)) {
+      return options.dashAsZero ? 0 : null
+    }
+
+    const num = parseFloat(cleaned)
+    return Number.isNaN(num) ? null : num
   } catch {
     return null
   }

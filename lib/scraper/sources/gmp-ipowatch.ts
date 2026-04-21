@@ -32,6 +32,7 @@
 
 import * as cheerio from "cheerio"
 import { fetchWithRetry } from "../base"
+import { namesMatch, normalizeName } from "../name-match"
 import { parseGMP } from "../parsers"
 
 type IPO = {
@@ -51,33 +52,6 @@ const DESKTOP_HEADERS: Record<string, string> = {
   Accept:
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
   "Accept-Language": "en-US,en;q=0.9",
-}
-
-/**
- * Normalize an IPO name for fuzzy matching.
- * Strips common corporate suffixes, "IPO"/"SME" tokens, and punctuation.
- */
-function normalizeName(name: string): string {
-  if (!name) return ""
-  return name
-    .toLowerCase()
-    .replace(/\b(limited|ltd\.?|pvt\.?|private|the|ipo|sme)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/** Match if either normalized name starts with the other (handles
- *  "Sai Parenterals" vs "Sai Parenterals Limited"). Requires at least
- *  6 characters of overlap to avoid false positives like "ABC" matching
- *  "ABC Corp Holdings". */
-function namesMatch(a: string, b: string): boolean {
-  if (!a || !b) return false
-  if (a === b) return true
-  const short = a.length <= b.length ? a : b
-  const long = a.length <= b.length ? b : a
-  if (short.length < 6) return false
-  return long.startsWith(short)
 }
 
 /**
@@ -151,11 +125,66 @@ function parseListingTable(
     const rowName = normalizeName(cells[nameIdx])
     if (!namesMatch(normalizedTarget, rowName)) return
 
-    const gmp = parseGMP(cells[gmpIdx])
+    // Row was matched by name — IPOWatch IS reporting on this IPO. A `-`
+    // (or `₹-`) in the GMP column on a present row means "explicitly zero
+    // today", per user directive. Coerce via dashAsZero.
+    const gmp = parseGMP(cells[gmpIdx], { dashAsZero: true })
     if (gmp !== null) foundGMP = gmp
   })
 
   return foundGMP
+}
+
+/**
+ * IPOWatch occasionally ships the "Live IPO GMP" section as card/list blocks
+ * instead of a structured table. In that layout each row still contains:
+ *   [IPO name][₹GMP][₹price band][₹est listing ...]
+ * and GMP is the FIRST ₹ token after the matched IPO name.
+ */
+function parseListingFallback(
+  $: cheerio.CheerioAPI,
+  targetName: string
+): number | null {
+  const targetNorm = normalizeName(targetName)
+  if (!targetNorm) return null
+
+  // 1) Prefer anchor text matches (usually row title links in the listing).
+  let found: number | null = null
+  $("a").each((_, a) => {
+    if (found !== null) return
+
+    const anchorText = $(a).text().replace(/\s+/g, " ").trim()
+    if (!anchorText) return
+    if (!namesMatch(targetNorm, normalizeName(anchorText))) return
+
+    const container = $(a).closest("tr, li, article, p, div")
+    const raw = container.length
+      ? container.text().replace(/\s+/g, " ").trim()
+      : anchorText
+    if (!raw) return
+
+    // In current IPOWatch live rows GMP is the first ₹ token.
+    const firstCurrency = raw.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
+    if (!firstCurrency) return
+    const parsed = parseGMP(firstCurrency, { dashAsZero: true })
+    if (parsed !== null) found = parsed
+  })
+
+  if (found !== null) return found
+
+  // 2) Last-resort text-window parse from the whole page.
+  const body = $("body").text().replace(/\s+/g, " ").trim()
+  if (!body) return null
+  const targetTokens = targetNorm.split(" ").slice(0, 2).join("\\s+")
+  if (!targetTokens) return null
+
+  const windowRe = new RegExp(`(${targetTokens}.{0,220})`, "i")
+  const window = body.match(windowRe)?.[1]
+  if (!window) return null
+
+  const firstCurrency = window.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
+  if (!firstCurrency) return null
+  return parseGMP(firstCurrency, { dashAsZero: true })
 }
 
 /**
@@ -190,7 +219,9 @@ function parseArticlePage($: cheerio.CheerioAPI): number | null {
           cells.push($(el).text().replace(/\s+/g, " ").trim())
         })
       if (cells.length <= gmpIdx) return
-      const parsed = parseGMP(cells[gmpIdx])
+      // Per-IPO article page → every row IS this IPO. Treat dash/N/A as
+      // explicit zero per user directive.
+      const parsed = parseGMP(cells[gmpIdx], { dashAsZero: true })
       // On article pages the first data row is usually the latest entry.
       if (parsed !== null) gmp = parsed
     })
@@ -218,7 +249,8 @@ export async function scrapeIPOWatchGMP(
 
     const gmp = ipo.ipowatch_gmp_url
       ? parseArticlePage($)
-      : parseListingTable($, ipo.company_name)
+      : parseListingTable($, ipo.company_name) ??
+        parseListingFallback($, ipo.company_name)
 
     return gmp !== null ? { gmp } : null
   } catch (error) {

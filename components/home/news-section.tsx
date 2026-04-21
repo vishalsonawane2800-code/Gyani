@@ -50,19 +50,17 @@ function colorForImpact(item: NewsSectionItem) {
   return IMPACT_COLORS[item.impact] ?? FALLBACK_COLOR;
 }
 
-function formatTimeAgo(value: string | null | undefined): string | null {
+// Render news items as date-only (e.g. "17 Apr 2026"). News rows carry a
+// calendar-day meaning, not a moment-in-time — so we never show the clock.
+function formatNewsDate(value: string | null | undefined): string | null {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  const diffMs = Date.now() - d.getTime();
-  const mins = Math.round(diffMs / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.round(hrs / 24);
-  if (days < 30) return `${days}d ago`;
-  return d.toLocaleDateString();
+  return d.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
 }
 
 export function NewsSection({ items }: { items?: NewsSectionItem[] }) {
@@ -99,7 +97,11 @@ export function NewsSection({ items }: { items?: NewsSectionItem[] }) {
           {articles.map((news, index) => {
             const tagColor = colorForTag(news);
             const impactColor = colorForImpact(news);
-            const timeLabel = news.time ?? formatTimeAgo(news.publishedAt);
+            // Prefer the DB `publishedAt` date. Only fall back to the legacy
+            // demo `news.time` string (e.g. "2h ago") when no publishedAt
+            // exists, so real DB rows always render as date-only.
+            const timeLabel =
+              formatNewsDate(news.publishedAt) ?? news.time ?? null;
             const borderClass =
               index !== articles.length - 1 ? 'border-b border-border' : '';
             const commonClass = `flex gap-3 items-start p-4 transition-colors ${borderClass}`;

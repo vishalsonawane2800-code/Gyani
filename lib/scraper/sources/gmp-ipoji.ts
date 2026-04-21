@@ -27,6 +27,7 @@
 
 import * as cheerio from "cheerio"
 import { fetchWithRetry } from "../base"
+import { namesMatch, normalizeName } from "../name-match"
 
 type IPO = {
   company_name: string
@@ -47,44 +48,27 @@ const DESKTOP_HEADERS: Record<string, string> = {
 }
 
 /**
- * Normalize a name for fuzzy matching. Strips corporate suffixes, the
- * "IPO"/"SME"/"REIT"/"InvIT" tokens, and punctuation.
- */
-function normalizeName(name: string): string {
-  if (!name) return ""
-  return name
-    .toLowerCase()
-    .replace(/\b(limited|ltd\.?|pvt\.?|private|the|ipo|sme|reit|invit)\b/g, " ")
-    .replace(/[^a-z0-9]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/**
- * Match if either normalized name starts with the other AND the shorter
- * one is at least 6 chars, preventing false positives like "ABC" matching
- * "ABC Corp Holdings".
- */
-function namesMatch(a: string, b: string): boolean {
-  if (!a || !b) return false
-  if (a === b) return true
-  const short = a.length <= b.length ? a : b
-  const long = a.length <= b.length ? b : a
-  if (short.length < 6) return false
-  return long.startsWith(short)
-}
-
-/**
  * Parse ipoji's "Exp. Premium" cell. Examples:
  *   "3-4 (3%)"   → 3.5
  *   "10 (5%)"    → 10
  *   "₹ 5"        → 5
- *   "-"          → null
+ *   "-"          → null   (default) | 0 if `dashAsZero` is true
+ *
+ * `dashAsZero` should be set ONLY when the ipoji card for this IPO has
+ * already been located. A present card with "Exp. Premium: -" means the
+ * source is explicitly reporting zero GMP today (per user directive),
+ * not "data missing".
  */
-function parseIpojiPremium(raw: string): number | null {
-  if (!raw) return null
+function parseIpojiPremium(
+  raw: string,
+  options: { dashAsZero?: boolean } = {},
+): number | null {
+  if (raw === null || raw === undefined) return null
   const s = String(raw).replace(/₹|rs\.?|inr/gi, "").trim()
-  if (!s || /^(-|n\/?a|nil)$/i.test(s)) return null
+  if (!s) return null
+  if (/^(?:--|[-–—]|n\/?a|nil|none|not\s*available)$/i.test(s)) {
+    return options.dashAsZero ? 0 : null
+  }
 
   // Range first: "3-4 (3%)" → average 3.5. Keep the parenthetical
   // percentage OUT of the range match.
@@ -165,11 +149,24 @@ export async function scrapeIpojiGMP(
           .toLowerCase()
         if (!/gmp|exp\.?\s*premium|grey\s*market/.test(label)) return
         const value = $(s).find(".ipo-card-body-value").text().trim()
-        const parsed = parseIpojiPremium(value)
+        // Card was matched by name and the GMP stat block exists — a `-`
+        // here means "explicitly zero today", not missing data.
+        const parsed = parseIpojiPremium(value, { dashAsZero: true })
         if (parsed !== null) gmp = parsed
       })
     })
 
+    // NOTE: if the card was matched but has no "Exp. Premium" stat block
+    // at all, we intentionally return null (not 0). Observed Apr-2026 on
+    // InvIT / REIT cards like Citius Transnet, which render only
+    // Offer Price / Lot Size / Subscription / Issue Size. Returning 0
+    // here would collide with the post-close case (PropShare Celestia
+    // still appears on the list with the same stripped-down layout)
+    // and we can't distinguish the two from card markup alone. Let
+    // IPOWatch (which DOES publish the explicit dash → 0 for these
+    // listings) carry the signal, and let the averaging pipeline treat
+    // ipoji's null as no-data for this IPO — the handover explicitly
+    // only requires numeric data back from *at least one* source.
     return gmp !== null ? { gmp } : null
   } catch (err) {
     console.error("[v0] scrapeIpojiGMP error:", err)

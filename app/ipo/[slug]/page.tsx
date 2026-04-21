@@ -14,6 +14,8 @@ import { ExpertReviews } from '@/components/ipo-detail/expert-reviews';
 import { PeerComparison } from '@/components/ipo-detail/peer-comparison';
 import { DetailSidebar } from '@/components/ipo-detail/detail-sidebar';
 import { PageFooter } from '@/components/ipo-detail/page-footer';
+import { IPOAbout } from '@/components/ipo-detail/ipo-about';
+import { FAQSection } from '@/components/ipo-detail/faq-section';
 import { getIPOBySlug } from '@/lib/supabase/queries';
 import { getIPOBySlug as getStaticIPOBySlug, currentIPOs } from '@/lib/data';
 import type { Metadata } from 'next';
@@ -98,6 +100,9 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* Live Subscription Tracker */}
             <LiveSubscriptionTracker ipo={ipo} />
             
+            {/* About Company + About IPO (long-form, read-more) */}
+            <IPOAbout ipo={ipo} />
+
             {/* Issue Details Section */}
             <IssueDetails ipo={ipo} />
             
@@ -124,6 +129,11 @@ export default async function IPODetailPage({ params }: PageProps) {
             
             {/* Tabs - Overview, Financials, GMP History, Subscription */}
             <IPOTabs ipo={ipo} />
+
+            {/* FAQ — SEO-first accordion with FAQPage JSON-LD schema */}
+            <div className="mt-6">
+              <FAQSection ipo={ipo} />
+            </div>
           </div>
           
           {/* Sidebar */}
