@@ -76,7 +76,7 @@ interface IPOFormData {
   investorgain_gmp_url: string
   investorgain_sub_url: string
   ipowatch_gmp_url: string
-  ipocentral_gmp_url: string
+  ipoji_gmp_url: string
   nse_symbol: string
   bse_scrip_code: string
   bg_color: string
@@ -122,7 +122,7 @@ const defaultFormData: IPOFormData = {
   investorgain_gmp_url: '',
   investorgain_sub_url: '',
   ipowatch_gmp_url: '',
-  ipocentral_gmp_url: '',
+  ipoji_gmp_url: '',
   nse_symbol: '',
   bse_scrip_code: '',
   bg_color: '#f0f9ff',
@@ -917,20 +917,20 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
           </div>
 
           <div className="md:col-span-3">
-            <Label htmlFor="ipocentral_gmp_url" className="text-slate-300">
-              IPOCentral GMP URL
+            <Label htmlFor="ipoji_gmp_url" className="text-slate-300">
+              ipoji GMP URL
               <span className="text-xs text-emerald-400 ml-2">Optional direct GMP source (used when URL is set)</span>
             </Label>
             <Input
-              id="ipocentral_gmp_url"
-              name="ipocentral_gmp_url"
-              value={formData.ipocentral_gmp_url}
+              id="ipoji_gmp_url"
+              name="ipoji_gmp_url"
+              value={formData.ipoji_gmp_url}
               onChange={handleChange}
               className="bg-slate-700 border-slate-600 text-white placeholder:text-slate-400 mt-1"
-              placeholder="https://ipocentral.in/ipo-name-gmp/"
+              placeholder="https://ipoji.com/grey-market-premium-ipo-gmp-today.html"
             />
             <p className="text-xs text-slate-500 mt-1">
-              Add a direct IPOCentral GMP URL to include this source in scraping + averaging.
+              Add a direct ipoji GMP URL to include this source in scraping + averaging. ipoji is the active replacement for InvestorGain/IPOCentral.
             </p>
           </div>
         </div>
