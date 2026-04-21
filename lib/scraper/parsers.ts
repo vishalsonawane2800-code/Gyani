@@ -105,7 +105,7 @@ export type ParseGMPOptions = {
 
 /** Strings that explicitly mean "no premium today" on Indian IPO sites. */
 const ZERO_PLACEHOLDER_RE =
-  /^(?:--|[-–—]|n\/?a|nil|none|not\s*available)$/i
+  /^(?:--|[-–—−]|n\/?a|nil|none|not\s*available)$/i
 
 /**
  * Parses GMP values:
