@@ -64,6 +64,9 @@ const SOURCES: {
   scrape: (ipo: ScrapeIpoInput) => Promise<{ gmp: number } | null>
   getUrl: (ipo: ScrapeIpoInput) => string
   availability: (ipo: ScrapeIpoInput) => { run: boolean; reason?: "no_url_configured" }
+  availability: (
+    ipo: ScrapeIpoInput
+  ) => { run: boolean; reason?: "no_url_configured" | "source_disabled" }
 }[] = [
   {
     key: "investorgain",
