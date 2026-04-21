@@ -11,9 +11,9 @@
 //   - InvestorGain: client-rendered SPA, no data in server HTML
 //   - IPOCentral:   Cloudflare WAF returns 403 for all cloud IPs
 //
-// We still SELECT `investorgain_gmp_url` and `ipocentral_gmp_url` from `ipos`
-// so admin debug logs/forms remain intact, but those URLs are intentionally
-// ignored by the live cloud scraper pipeline.
+// We still SELECT `investorgain_gmp_url` for backward compatibility,
+// but those URLs are intentionally ignored by the live cloud scraper pipeline.
+// ipoji_gmp_url is now the active replacement for ipocentral_gmp_url.
 
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -42,7 +42,7 @@ type IpoRow = {
   listing_date: string | null
   investorgain_gmp_url: string | null
   ipowatch_gmp_url: string | null
-  ipocentral_gmp_url: string | null
+  ipoji_gmp_url: string | null
 }
 
 type SourceKey = "ipowatch_listing" | "ipowatch_article" | "ipoji"
@@ -413,7 +413,7 @@ export async function runGmpScraper(): Promise<{
   const { data: ipos, error } = await supabase
     .from("ipos")
     .select(
-      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
+      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipoji_gmp_url"
     )
     .in("status", ["upcoming", "open", "lastday", "closed", "allot", "listing"])
     .or(`listing_date.is.null,listing_date.gte.${todayIso}`)

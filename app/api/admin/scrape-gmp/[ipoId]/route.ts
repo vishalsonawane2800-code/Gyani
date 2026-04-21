@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Params) {
   const { data: ipo, error } = await supabase
     .from("ipos")
     .select(
-      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipocentral_gmp_url"
+      "id, slug, company_name, name, price_max, status, listing_date, investorgain_gmp_url, ipowatch_gmp_url, ipoji_gmp_url"
     )
     .eq("id", idNum)
     .maybeSingle()
