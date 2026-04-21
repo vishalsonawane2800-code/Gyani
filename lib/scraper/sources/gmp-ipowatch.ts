@@ -136,6 +136,58 @@ function parseListingTable(
 }
 
 /**
+ * IPOWatch occasionally ships the "Live IPO GMP" section as card/list blocks
+ * instead of a structured table. In that layout each row still contains:
+ *   [IPO name][₹GMP][₹price band][₹est listing ...]
+ * and GMP is the FIRST ₹ token after the matched IPO name.
+ */
+function parseListingFallback(
+  $: cheerio.CheerioAPI,
+  targetName: string
+): number | null {
+  const targetNorm = normalizeName(targetName)
+  if (!targetNorm) return null
+
+  // 1) Prefer anchor text matches (usually row title links in the listing).
+  let found: number | null = null
+  $("a").each((_, a) => {
+    if (found !== null) return
+
+    const anchorText = $(a).text().replace(/\s+/g, " ").trim()
+    if (!anchorText) return
+    if (!namesMatch(targetNorm, normalizeName(anchorText))) return
+
+    const container = $(a).closest("tr, li, article, p, div")
+    const raw = container.length
+      ? container.text().replace(/\s+/g, " ").trim()
+      : anchorText
+    if (!raw) return
+
+    // In current IPOWatch live rows GMP is the first ₹ token.
+    const firstCurrency = raw.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
+    if (!firstCurrency) return
+    const parsed = parseGMP(firstCurrency, { dashAsZero: true })
+    if (parsed !== null) found = parsed
+  })
+
+  if (found !== null) return found
+
+  // 2) Last-resort text-window parse from the whole page.
+  const body = $("body").text().replace(/\s+/g, " ").trim()
+  if (!body) return null
+  const targetTokens = targetNorm.split(" ").slice(0, 2).join("\\s+")
+  if (!targetTokens) return null
+
+  const windowRe = new RegExp(`(${targetTokens}.{0,220})`, "i")
+  const window = body.match(windowRe)?.[1]
+  if (!window) return null
+
+  const firstCurrency = window.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
+  if (!firstCurrency) return null
+  return parseGMP(firstCurrency, { dashAsZero: true })
+}
+
+/**
  * Admin-provided per-IPO article page. These articles usually contain a
  * small table with "GMP Today", "Subscription", etc. We grab the first
  * table whose header mentions GMP and take the latest non-null GMP cell.
@@ -197,7 +249,8 @@ export async function scrapeIPOWatchGMP(
 
     const gmp = ipo.ipowatch_gmp_url
       ? parseArticlePage($)
-      : parseListingTable($, ipo.company_name)
+      : parseListingTable($, ipo.company_name) ??
+        parseListingFallback($, ipo.company_name)
 
     return gmp !== null ? { gmp } : null
   } catch (error) {
