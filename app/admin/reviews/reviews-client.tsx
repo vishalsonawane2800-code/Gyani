@@ -89,6 +89,7 @@ import {
   Filter,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { BulkReviewsEntry } from '@/components/admin/bulk-reviews-entry'
 
 interface IPO {
   id: number
@@ -157,6 +158,17 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
     return true
   })
 
+  const refreshReviews = async () => {
+    try {
+      const reviewsRes = await authFetch('/api/admin/reviews')
+      const { data } = await reviewsRes.json()
+      if (Array.isArray(data)) setReviews(data)
+      router.refresh()
+    } catch (err) {
+      console.error('Failed to refresh reviews:', err)
+    }
+  }
+
   const openAddDialog = () => {
     setEditingReview(null)
     setFormData(defaultFormData)
@@ -204,12 +216,7 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
 
       toast.success(editingReview ? 'Review updated' : 'Review added')
       setDialogOpen(false)
-      router.refresh()
-      
-      // Refresh reviews list
-      const reviewsRes = await authFetch('/api/admin/reviews')
-      const { data } = await reviewsRes.json()
-      setReviews(data)
+      await refreshReviews()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save review')
     } finally {
@@ -277,6 +284,9 @@ export function ReviewsClient({ ipos, initialReviews }: ReviewsClientProps) {
           Add Review
         </Button>
       </div>
+
+      {/* Bulk import panel */}
+      <BulkReviewsEntry onSuccess={refreshReviews} />
 
       {/* Help Box */}
       <div className="bg-indigo-500/10 border border-indigo-500/30 rounded-xl p-4 mb-6">
