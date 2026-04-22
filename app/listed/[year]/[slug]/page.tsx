@@ -646,14 +646,6 @@ export default async function ListedIpoDetail({
                 value={fmtPct(ipo.niftyDuringWindowPct)}
                 valueClass={tone(ipo.niftyDuringWindowPct)}
               />
-              <DataRow
-                label="Market Sentiment Score"
-                value={
-                  ipo.sentimentScore != null
-                    ? `${ipo.sentimentScore.toFixed(0)} / 100`
-                    : '-'
-                }
-              />
             </div>
           </section>
 
