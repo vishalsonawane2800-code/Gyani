@@ -565,10 +565,25 @@ function transformToListedIPO(ipo: IPOSimple): ListedIPO {
   const listingPrice = ipo.listing_price || priceMax
   const issuePrice = priceMax
   const listingGainPercent = ipo.listing_gain_percent ?? (issuePrice > 0 ? ((listingPrice - issuePrice) / issuePrice) * 100 : 0)
-  
+
   // Generate abbreviation from company name (with null safety)
   const abbr = (ipo.company_name || 'IP').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'IP'
-  
+
+  // GMP-implied listing gain: prefer `gmp_percent` if the DB has it
+  // (stored at peak hype / close), otherwise fall back to gmp / priceMax.
+  const gmpAbs = ipo.gmp ?? 0
+  const gmpPredGain =
+    typeof (ipo as unknown as { gmp_percent?: number | null }).gmp_percent === 'number' &&
+    (ipo as unknown as { gmp_percent: number }).gmp_percent !== 0
+      ? Number((ipo as unknown as { gmp_percent: number }).gmp_percent)
+      : issuePrice > 0
+        ? Math.round((gmpAbs / issuePrice) * 1000) / 10
+        : 0
+
+  const aiPredNum = ipo.ai_prediction ?? 0
+  const aiErr = Math.abs(aiPredNum - listingGainPercent)
+  const gmpErr = Math.abs(gmpPredGain - listingGainPercent)
+
   return {
     id: typeof ipo.id === 'string' ? parseInt(ipo.id) || 0 : ipo.id as unknown as number,
     name: ipo.company_name,
@@ -584,9 +599,11 @@ function transformToListedIPO(ipo: IPOSimple): ListedIPO {
     listPrice: listingPrice,
     gainPct: Math.round(listingGainPercent * 10) / 10,
     subTimes: ipo.subscription_total || 0,
-    gmpPeak: `${ipo.gmp >= 0 ? '+' : ''}${ipo.gmp}`,
-    aiPred: `${ipo.ai_prediction >= 0 ? '+' : ''}${ipo.ai_prediction}%`,
-    aiErr: Math.abs((ipo.ai_prediction || 0) - listingGainPercent),
+    gmpPeak: `${gmpAbs >= 0 ? '+' : ''}${gmpAbs}`,
+    gmpPredGain: Math.round(gmpPredGain * 10) / 10,
+    gmpErr: Math.round(gmpErr * 10) / 10,
+    aiPred: `${aiPredNum >= 0 ? '+' : ''}${aiPredNum}%`,
+    aiErr: Math.round(aiErr * 10) / 10,
     year: ipo.listing_date ? new Date(ipo.listing_date).getFullYear().toString() : new Date().getFullYear().toString(),
   }
 }
@@ -602,6 +619,7 @@ export async function getListedIPOs(options?: { limit?: number }): Promise<Liste
     .from('ipos')
     .select('*')
     .eq('status', 'listed')
+    .order('listing_date', { ascending: false, nullsFirst: false })
     .order('close_date', { ascending: false })
 
   if (options?.limit) {
