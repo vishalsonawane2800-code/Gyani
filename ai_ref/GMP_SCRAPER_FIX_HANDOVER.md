@@ -1,68 +1,87 @@
 # GMP Scraper Fix Handover — April 21, 2026
 
-**Session Status:** ✅ COMPLETE — IPOCentral replaced with ipoji, scraper fixed and verified working.
+**Session Status:** In-progress diagnosis, credits depleted. Next agent must continue from here.
 
 **Previous Status:** Prior agent resolved name-matching issues for Citius Transnet InvIT (branch `scraper-handover-check`). All 27/27 E2E tests were passing at that time.
 
-**This Session:** Completed ipocentral → ipoji migration across database schema, admin UI, and API routes. Scraper now active and collecting GMP data from both ipowatch_article and ipoji sources.
+---
+
+## Current Issue Identified
+
+The admin dashboard shows:
+```
+scrape-gmp   Success   2 items   31738ms
+Source status:
+  ipowatch_listing[values:0, no_data:0, ...]
+  ipowatch_article[values:2, no_data:1, ...]
+  ipoji[values:1, no_data:1, ...]
+```
+
+**The Problem:** The scraper reports "Success" but is **not finding/storing any GMP data** for the IPOs. Only 2 items processed when the database likely contains many more IPOs.
+
+### Root Cause Analysis (partial)
+
+From `SCRAPER_CONTEXT.md` (section 2 — Database Shape):
+- The `ipos` table has columns: `gmp`, `gmp_last_updated`, `gmp_sources_used`
+- The `gmp_history` table should store time-series data: `ipo_id`, `gmp`, `gmp_percent`, `date`, `source`, `recorded_at`
+- These tables were created in `scripts/001_create_ipo_tables.sql`
+
+From dashboard observation:
+- The cron job runs every hour and completes successfully (green status)
+- Each source returns mixed results (some values found, some no_data)
+- Only 2 items are being processed total
+
+**Likely causes:**
+1. **Insufficient IPOs in database** — The database may only have 2-3 IPOs with proper configuration (status, dates, GMP source URLs)
+2. **Source URL configuration missing** — IPOs may not have `ipowatch_gmp_url` or similar fields populated, so scrapers can't find them
+3. **Active IPO filtering** — The scraper may only process IPOs with `status = 'upcoming' | 'open'`, and most IPOs in the DB are in other states
+4. **Name-matching still broken** — Despite the prior agent's fix, some IPOs' names still don't match the source names properly
+
+### Evidence
+
+The diagnostic script `scripts/diagnose-gmp-scraper.ts` was created but NOT executed (credits ran out). It would have shown:
+- Count of IPOs by status
+- Which IPOs have GMP source URLs configured
+- Live probe results from ipowatch and ipoji showing which IPOs they actually list
 
 ---
 
-## Root Cause & Fix — COMPLETED
+## What Needs to Be Done
 
-**Problem Diagnosed:** IPOCentral source was returning 403 (Cloudflare WAF blocks cloud IPs). Column `ipocentral_gmp_url` remained in DB but source was dead.
+### IMMEDIATE NEXT STEPS
 
-**Solution Implemented:**
-1. Created migration `013_replace_ipocentral_with_ipoji.sql` — adds `ipoji_gmp_url` column, migrates data, creates index
-2. Updated all admin routes and form to use `ipoji_gmp_url` instead of `ipocentral_gmp_url`
-3. Updated scraper route type definition and SELECT query to use `ipoji_gmp_url`
+1. **Run the diagnostic** (takes ~30s):
+   ```bash
+   cd /vercel/share/v0-project
+   set -a && source /vercel/share/.env.project && set +a
+   npx tsx scripts/diagnose-gmp-scraper.ts
+   ```
+   This will print:
+   - Total IPOs by status
+   - Count with/without GMP URLs configured
+   - Live source listings vs DB IPOs
+   - Name-match pass/fail details
 
-**Verification Status:**
-✅ Database migration successful — `idx_ipos_ipoji_gmp_url` index created
-✅ Scraper now finding data:
-   - **Mehul Telecom Limited**: ipowatch_article=5, ipoji=3.5 (averaging to GMP = Rs 4.25)
-   - **Citius Transnet InvIT**: ipowatch_article=0, ipoji=no_data (fallback handled)
-✅ GMP values displaying on UI dashboard
+2. **Check active IPO count:**
+   ```bash
+   # In Supabase SQL editor:
+   SELECT status, COUNT(*) FROM ipos GROUP BY status;
+   ```
+   If most IPOs are `closed` or `listed`, the scraper is working correctly — it only processes `upcoming | open | lastday`.
 
-### Files Changed
+3. **Verify source URLs are populated:**
+   ```bash
+   SELECT slug, ipowatch_gmp_url, COUNT(*) 
+   FROM ipos 
+   WHERE ipowatch_gmp_url IS NOT NULL 
+   GROUP BY slug, ipowatch_gmp_url;
+   ```
 
-**Database:**
-- ✅ `scripts/013_replace_ipocentral_with_ipoji.sql` — Migration script (ran successfully)
-
-**Admin Routes & UI:**
-- ✅ `components/admin/ipo-form.tsx` — Updated field from ipocentral_gmp_url to ipoji_gmp_url
-- ✅ `app/admin/ipos/[id]/edit/page.tsx` — Updated form initialization
-- ✅ `app/api/admin/ipos/route.ts` — Updated POST endpoint (create)
-- ✅ `app/api/admin/ipos/[id]/route.ts` — Updated PUT endpoint (update)
-- ✅ `app/api/admin/scrape-gmp/[ipoId]/route.ts` — Updated manual trigger endpoint
-
-**Scraper Engine:**
-- ✅ `app/api/cron/scrape-gmp/route.ts` — Updated IpoRow type, SELECT query, and comments
-
-**Documentation:**
-- ✅ `ai_ref/IPOJI_MIGRATION_SUMMARY.md` — Complete migration guide created
-- ✅ `scripts/verify_ipoji_migration.sql` — Post-migration verification queries
-
----
-
-## Scraper Status — LIVE & FUNCTIONAL
-
-The GMP scraper is now **actively collecting data**:
-
-```
-source_stats:
-  ipowatch_listing[values:0, no_data:0] — overridden by article URLs
-  ipowatch_article[values:2, no_data:0] — mehul-telecom(5), citius-transnet(0)
-  ipoji[values:1, no_data:1] — mehul-telecom(3.5), citius-transnet(no_data)
-
-source_samples:
-  mehul-telecom-limited-ipo: 
-    ipowatch_article=5, ipoji=3.5 → averaged to GMP=4.25
-  citius-transnet-investment-trust-invit-ipo:
-    ipowatch_article=0, ipoji=no_data → fallback GMP=0
-```
-
-Both IPOs are in "lastday" status and displaying GMP values on the dashboard UI.
+4. **Run the E2E verifier** to confirm prior agent's name-matching fix is still good:
+   ```bash
+   pnpm exec tsx scripts/verify-scrapers-e2e.ts
+   ```
+   Must see 27/27 green. If any fail, reread `SCRAPER_HANDOVER.md` section "Fix the name-matching bug".
 
 ---
 
@@ -99,77 +118,49 @@ Per `SCRAPER_HANDOVER.md`:
 
 ---
 
-## Migration Deployment Checklist
+## Things to Check When Implementing
 
-Before deploying to production:
+If the diagnostic shows insufficient active IPOs:
+1. **Check if IPOs need to be seeded** — Did scripts `007_initial_seed.sql` through `012` run?
+2. **Check if source URLs got populated** — Script `012_add_gmp_source_urls.sql` should have set ipowatch/ipoji/chittorgarh URLs
+3. **Check if the admin can manually add GMP URLs** — The form at `components/admin/ipo-form.tsx` has fields for each source URL
 
-1. ✅ **Database migration verified** — Run `scripts/verify_ipoji_migration.sql` to confirm:
-   - `ipoji_gmp_url` column exists
-   - `idx_ipos_ipoji_gmp_url` index exists
-   - `ipocentral_gmp_url` is still present (for backward compatibility)
-   - Any migrated data is correct
+If the diagnostic shows name-matching failures:
+1. **Run E2E verifier** to check if prior agent's fix regressed
+2. **Check normalization logic** in `lib/scraper/name-match.ts`
+3. **Reread the original bug writeup** in `SCRAPER_HANDOVER.md` if needed
 
-2. ✅ **Code deployed** — All 6 files updated (admin form, routes, scraper)
-
-3. ✅ **Scraper verified** — Confirm via admin dashboard:
-   - Click "Run Now" on an active IPO
-   - Check `gmp_history` table for new row with today's date
-   - Verify `ipos.gmp` was updated
-   - Check dashboard UI shows GMP value
-
-4. ✅ **E2E tests pass** — Verify prior agent's name-matching fix still works:
-   ```bash
-   pnpm exec tsx scripts/verify-scrapers-e2e.ts
-   ```
-   Must see 27/27 green.
-
-**IMPORTANT:** Do NOT remove `ipocentral_gmp_url` column from database yet. Keep it for backward compatibility and potential rollback.
+If sources are returning data but GMP values aren't being saved:
+1. **Check the averaging logic** — must have at least one non-null source
+2. **Check the upsert** in `gmp_history` insertion
+3. **Check if `gmp_last_updated` is being set** on `ipos` row
+4. **Check circuit breaker state** — if a source hits the breaker, subsequent requests return cached null
 
 ---
 
-## Work Completed This Session
+## Testing Strategy
 
-1. ✅ **Identified root cause** — IPOCentral source was dead (Cloudflare WAF), `ipocentral_gmp_url` column was orphaned
-2. ✅ **Created database migration** — `013_replace_ipocentral_with_ipoji.sql` adds new column + index
-3. ✅ **Updated admin UI** — Changed form field and all related pages
-4. ✅ **Updated API routes** — Updated create, update, manual scrape, and cron scraper routes
-5. ✅ **Created documentation** — Migration summary and verification queries
-6. ✅ **Verified scraper working** — Confirmed GMP data collection and display working
-
----
-
-## For Next Agent
-
-The migration is complete and scraper is LIVE. If issues arise:
-
-1. **Scraper not collecting GMP?**
-   - Run E2E verifier: `pnpm exec tsx scripts/verify-scrapers-e2e.ts` (must be 27/27)
-   - Check `scripts/diagnose-gmp-scraper.ts` output for DB/source mismatch
-
-2. **Admin form shows old ipocentral field?**
-   - Scraper is already using ipoji — admin form was updated
-   - Old column still exists for backward compatibility
-
-3. **Need to fully remove ipocentral?**
-   - Run: `ALTER TABLE ipos DROP COLUMN ipocentral_gmp_url;` 
-   - Update `gmp-ipocentral.ts` source file if keeping it for docs
-   - But keep the file for reference — it's documented as "disabled" in comments
+After any fix:
+1. Run E2E verifier — must stay 27/27 green
+2. Manually trigger scraper on an active IPO via admin dashboard (top right "Run Now" button)
+3. Check that `gmp_history` table has a new row with today's date
+4. Check that the `ipos` row's `gmp` value was updated
+5. Check `scraper_health` logs for error messages
 
 ---
 
 ## Branch Info
 
-- Current branch: `v0/immersionprojectdata-8599-ed740583`
+- Current branch: `fix-gmp-scraper`
 - Base branch: `main`
-- Ready for PR review and merge
+- Do NOT merge to main until E2E tests pass and manual verification confirms GMP values are being recorded
 
 ---
 
-## Summary
+## Credits Used
 
-**Status:** ✅ FIXED & VERIFIED
-- IPOCentral source successfully replaced with ipoji
-- Scraper actively collecting GMP data from 2 active sources (ipowatch + ipoji)
-- UI displaying GMP values correctly
-- All admin endpoints updated
-- Database migration complete with backward compatibility maintained
+- Session devoted to diagnosis + diagnostic script creation
+- Scraper context review (full SCRAPER_CONTEXT.md + SCRAPER_HANDOVER.md)
+- No fixes implemented yet — diagnostic pending
+
+**Next agent: run the diagnostic, use that output to determine the actual fix needed.**
