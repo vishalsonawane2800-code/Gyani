@@ -22,8 +22,12 @@ function generateAbbr(name: string | undefined | null): string {
     .toUpperCase() || 'IP';
 }
 
-// Only show active IPOs (not upcoming or closed)
-const activeStatuses: IPOStatus[] = ['open', 'lastday', 'allot', 'listing'];
+// Show every IPO that is still in an active lifecycle stage - bidding is live
+// ('open'/'lastday'), bidding just closed but allotment/listing hasn't happened
+// yet ('closed'/'allot'), or it is listing today ('listing'). Without 'closed'
+// here, an IPO whose bidding just ended silently disappears from the Live GMP
+// Tracker even though its GMP is still relevant until listing.
+const activeStatuses: IPOStatus[] = ['open', 'lastday', 'closed', 'allot', 'listing'];
 
 interface GMPTrackerProps {
   ipos: IPO[];
@@ -59,7 +63,8 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
     switch (status) {
       case 'open': return { label: 'Open', className: 'bg-cobalt-bg text-cobalt' };
       case 'lastday': return { label: 'Last Day', className: 'bg-gold-bg text-gold' };
-      case 'allot': return { label: 'Allotment', className: 'bg-primary-bg text-primary' };
+      case 'closed': return { label: 'Awaiting Allot', className: 'bg-primary-bg text-primary' };
+      case 'allot': return { label: 'Awaiting Listing', className: 'bg-primary-bg text-primary' };
       case 'listing': return { label: 'Listing', className: 'bg-emerald-bg text-emerald' };
       case 'upcoming': return { label: 'Upcoming', className: 'bg-secondary text-ink3' };
       default: return { label: status, className: 'bg-secondary text-ink3' };

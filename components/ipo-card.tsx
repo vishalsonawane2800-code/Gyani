@@ -12,14 +12,37 @@ interface IPOCardProps {
 
 function formatTimeAgo(dateString: string): string {
   const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  
+
+  if (diffMins < 1) return 'just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
-  return `${Math.floor(diffHours / 24)}d ago`;
+  // Older than a day: show the actual update date so "1d ago" / "5d ago"
+  // isn't ambiguous.
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function formatFullTimestamp(dateString: string): string {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatDateShort(dateString: string | undefined | null): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
 // Generate abbreviation from company name
@@ -48,13 +71,27 @@ export function IPOCard({ ipo }: IPOCardProps) {
   const isZeroGMP = ipo.gmp === 0;
 
   const getStatusBadge = () => {
+    const allotDate = formatDateShort(ipo.allotmentDate);
+    const listDate = formatDateShort(ipo.listDate);
     switch (ipo.status) {
       case 'open':
         return { label: 'Open', className: 'bg-cobalt-bg text-cobalt border-cobalt/20' };
       case 'lastday':
         return { label: 'Last Day', className: 'bg-gold-bg text-gold border-gold/20' };
+      case 'closed':
+        // Bidding done, waiting for allotment - surface the allotment date
+        // instead of a generic "closed" label.
+        return {
+          label: allotDate ? `Allotment on ${allotDate}` : 'Awaiting Allotment',
+          className: 'bg-primary-bg text-primary border-primary/30',
+        };
       case 'allot':
-        return { label: 'Allotment Day', className: 'bg-primary-bg text-primary border-primary/30' };
+        // Allotment is out / happening today, now waiting for listing - show
+        // the listing date.
+        return {
+          label: listDate ? `Listing on ${listDate}` : 'Awaiting Listing',
+          className: 'bg-primary-bg text-primary border-primary/30',
+        };
       case 'listing':
         return { label: 'Listing Day', className: 'bg-emerald-bg text-emerald border-emerald/20' };
       case 'upcoming':
@@ -157,7 +194,10 @@ export function IPOCard({ ipo }: IPOCardProps) {
         }`}>
           {isZeroGMP ? '0%' : isPositiveGMP ? `+${ipo.gmpPercent}%` : `${ipo.gmpPercent}%`}
         </span>
-        <div className="flex items-center gap-1 text-xs text-ink4 ml-auto">
+        <div
+          className="flex items-center gap-1 text-xs text-ink4 ml-auto"
+          title={formatFullTimestamp(ipo.gmpLastUpdated)}
+        >
           <Clock className="w-4 h-4" />
           <span>{timeAgo || 'just now'}</span>
         </div>
