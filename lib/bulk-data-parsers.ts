@@ -114,6 +114,22 @@ export interface MarketNewsEntry {
   display_order: number
 }
 
+export interface ExpertReviewEntry {
+  // One of ipo_slug / ipo_name must be present. The bulk API resolves
+  // these to the numeric `ipos.id` before insert.
+  ipo_slug: string | null
+  ipo_name: string | null
+  source: string
+  source_type: 'youtube' | 'analyst' | 'news' | 'firm'
+  author: string
+  summary: string
+  sentiment: 'positive' | 'neutral' | 'negative'
+  url: string | null
+  logo_url: string | null
+  // YYYY-MM-DD for the `review_date` column; null if not supplied.
+  review_date: string | null
+}
+
 export interface ParseResult<T> {
   success: boolean
   data: T[]
@@ -1253,7 +1269,28 @@ COMPANY_DETAILS: [Long-form company description: business model, products/servic
 IPO_DETAILS: [Long-form IPO commentary: issue structure, use of proceeds, valuation view, key strengths, key risks, comparable listings, fair-value take. 4-8 sentences. Plain text; use \\n\\n for paragraph breaks.]
 === END ===
 
-Keep tone factual, SEO-friendly, and similar to ipoji.com / chittorgarh.com. Avoid bullet-point formatting inside values — use full sentences.`
+Keep tone factual, SEO-friendly, and similar to ipoji.com / chittorgarh.com. Avoid bullet-point formatting inside values — use full sentences.`,
+
+  expertReviews: `Convert the following IPO expert reviews into this exact format:
+=== EXPERT_REVIEWS ===
+--- REVIEW ---
+IPO_SLUG: [Exact IPO slug from the site, e.g. acme-tech-ipo]
+SOURCE_TYPE: [One of: youtube / analyst / news / firm]
+SOURCE: [Channel / Brokerage / Outlet name, e.g. CA Rachana Ranade]
+AUTHOR: [Person or team name, e.g. Rachana Ranade]
+SENTIMENT: [One of: positive / neutral / negative]
+SUMMARY: [2-line summary of their view, max ~200 chars]
+URL: [Optional link to the video / article]
+DATE: [Optional YYYY-MM-DD review date]
+--- REVIEW ---
+[repeat for each review]
+=== END ===
+
+Rules:
+- IPO_SLUG MUST match the slug used on ipogyani.com (lowercase, hyphenated). If you only know the company name, use IPO_NAME: instead of IPO_SLUG:.
+- Only use the four SOURCE_TYPE values listed above.
+- Only use the three SENTIMENT values listed above.
+- Required per review: SOURCE_TYPE, SOURCE, AUTHOR, SUMMARY, SENTIMENT, and one of IPO_SLUG / IPO_NAME.`,
 }
 
 // ============================================
@@ -1642,6 +1679,175 @@ export function parseMarketNews(text: string): ParseResult<MarketNewsEntry> {
 
   if (result.data.length === 0 && result.errors.length === 0) {
     result.errors.push('No valid news items found. Use format: --- ITEM --- followed by TITLE: and URL:')
+  } else if (result.data.length > 0) {
+    result.success = true
+  }
+
+  return result
+}
+
+// ============================================
+// EXPERT REVIEWS PARSER
+// ============================================
+
+export const EXPERT_REVIEWS_TEMPLATE = `=== EXPERT_REVIEWS ===
+--- REVIEW ---
+IPO_SLUG: example-ipo
+SOURCE_TYPE: youtube
+SOURCE: CA Rachana Ranade
+AUTHOR: Rachana Ranade
+SENTIMENT: positive
+SUMMARY: Strong fundamentals and reasonable valuation. Expects listing gains and recommends subscribing for both listing and long term.
+URL: https://youtube.com/watch?v=xxxxxxxxxxx
+DATE: 2026-04-18
+--- REVIEW ---
+IPO_SLUG: example-ipo
+SOURCE_TYPE: analyst
+SOURCE: ICICI Direct
+AUTHOR: Research Team
+SENTIMENT: neutral
+SUMMARY: Fairly valued at the upper band. Subscribe for long term investors; short-term gains depend on market conditions.
+--- REVIEW ---
+IPO_NAME: Widgets Inc
+SOURCE_TYPE: news
+SOURCE: Moneycontrol
+AUTHOR: Editorial Desk
+SENTIMENT: negative
+SUMMARY: High debt-to-equity and thin retail quota make this IPO risky for retail investors. Avoid.
+URL: https://www.moneycontrol.com/news/ipo/widgets-inc-review-xxxxxx.html
+DATE: 2026-04-17
+=== END ===`
+
+const VALID_REVIEW_SOURCE_TYPES = new Set(['youtube', 'analyst', 'news', 'firm'])
+const VALID_REVIEW_SENTIMENTS = new Set(['positive', 'neutral', 'negative'])
+
+/**
+ * Parse expert-reviews bulk text into review items.
+ *
+ * Required per review: SOURCE_TYPE, SOURCE, AUTHOR, SUMMARY, SENTIMENT,
+ *                      and one of IPO_SLUG / IPO_NAME.
+ * Optional: URL, LOGO_URL, DATE (YYYY-MM-DD or common date formats).
+ *
+ * Items separated by `--- REVIEW ---`. Outer `=== EXPERT_REVIEWS ===` /
+ * `=== END ===` wrappers are tolerated but not required.
+ */
+export function parseExpertReviews(text: string): ParseResult<ExpertReviewEntry> {
+  const result: ParseResult<ExpertReviewEntry> = { success: false, data: [], errors: [] }
+
+  if (!text || typeof text !== 'string') {
+    result.errors.push('No text provided')
+    return result
+  }
+
+  const blocks = text.split(/---\s*REVIEW\s*\d*\s*---/i)
+  let index = 0
+
+  for (const rawBlock of blocks) {
+    const block = rawBlock.replace(/===[^=]*===/g, '').trim()
+    if (!block) continue
+    index += 1
+
+    // Walk lines. If a line matches KEY: value, start a new key. Otherwise,
+    // continuation lines are appended to the current key's value so admins
+    // can paste multi-line summaries without escaping newlines.
+    const values: Record<string, string> = {}
+    let currentKey: string | null = null
+    for (const rawLine of block.split('\n')) {
+      const line = rawLine.replace(/\r$/, '')
+      const m = line.match(/^\s*([A-Z_]+)\s*:\s*(.*)$/)
+      if (m && /^[A-Z_]+$/.test(m[1])) {
+        currentKey = m[1].toUpperCase()
+        values[currentKey] = m[2].trim()
+      } else if (currentKey && line.trim()) {
+        values[currentKey] = (values[currentKey] + ' ' + line.trim()).trim()
+      }
+    }
+
+    const ipo_slug = values.IPO_SLUG?.trim() || null
+    const ipo_name = values.IPO_NAME?.trim() || null
+    if (!ipo_slug && !ipo_name) {
+      result.errors.push(`Review ${index}: missing IPO_SLUG or IPO_NAME`)
+      continue
+    }
+
+    const source_type_raw = values.SOURCE_TYPE?.trim().toLowerCase()
+    if (!source_type_raw || !VALID_REVIEW_SOURCE_TYPES.has(source_type_raw)) {
+      result.errors.push(
+        `Review ${index}: SOURCE_TYPE must be one of youtube / analyst / news / firm (got "${values.SOURCE_TYPE || ''}")`
+      )
+      continue
+    }
+    const source_type = source_type_raw as 'youtube' | 'analyst' | 'news' | 'firm'
+
+    const source = values.SOURCE?.trim()
+    const author = values.AUTHOR?.trim()
+    const summary = values.SUMMARY?.trim()
+    const sentimentRaw = values.SENTIMENT?.trim().toLowerCase()
+
+    if (!source) {
+      result.errors.push(`Review ${index}: missing SOURCE`)
+      continue
+    }
+    if (!author) {
+      result.errors.push(`Review ${index}: missing AUTHOR`)
+      continue
+    }
+    if (!summary) {
+      result.errors.push(`Review ${index}: missing SUMMARY`)
+      continue
+    }
+    if (!sentimentRaw || !VALID_REVIEW_SENTIMENTS.has(sentimentRaw)) {
+      result.errors.push(
+        `Review ${index}: SENTIMENT must be one of positive / neutral / negative (got "${values.SENTIMENT || ''}")`
+      )
+      continue
+    }
+    const sentiment = sentimentRaw as 'positive' | 'neutral' | 'negative'
+
+    const url = values.URL?.trim() || null
+    if (url && !/^https?:\/\//i.test(url)) {
+      result.errors.push(`Review ${index}: URL must start with http:// or https://`)
+      continue
+    }
+
+    const logo_url = values.LOGO_URL?.trim() || null
+    if (logo_url && !/^https?:\/\//i.test(logo_url)) {
+      result.errors.push(`Review ${index}: LOGO_URL must start with http:// or https://`)
+      continue
+    }
+
+    // Reuse parseNewsDate so admins can paste the same date formats they
+    // already use for market news (YYYY-MM-DD, DD/MM/YYYY, "17 Apr 2026", ...).
+    // review_date is a DATE column so we keep just the YYYY-MM-DD slice.
+    const dateRaw = (values.DATE || values.REVIEW_DATE)?.trim()
+    let review_date: string | null = null
+    if (dateRaw) {
+      const iso = parseNewsDate(dateRaw)
+      if (!iso) {
+        result.errors.push(`Review ${index}: could not parse DATE "${dateRaw}"`)
+      } else {
+        review_date = iso.slice(0, 10)
+      }
+    }
+
+    result.data.push({
+      ipo_slug,
+      ipo_name,
+      source,
+      source_type,
+      author,
+      summary,
+      sentiment,
+      url,
+      logo_url,
+      review_date,
+    })
+  }
+
+  if (result.data.length === 0 && result.errors.length === 0) {
+    result.errors.push(
+      'No valid reviews found. Use format: --- REVIEW --- followed by SOURCE_TYPE, SOURCE, AUTHOR, SUMMARY, SENTIMENT, and IPO_SLUG (or IPO_NAME).'
+    )
   } else if (result.data.length > 0) {
     result.success = true
   }
