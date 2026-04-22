@@ -11,14 +11,21 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, Sparkles, BarChart2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronRight,
+  TrendingUp,
+  TrendingDown,
+  Sparkles,
+  BarChart2,
+} from 'lucide-react';
 import type { IPO } from '@/lib/data';
 
 interface Props {
   ipos: IPO[];
 }
 
-// Compact IST date+time formatter used for the "last updated" cell.
+// Compact IST date formatter used for the "last updated" cell.
 function formatShortDate(dateString?: string | null): string {
   if (!dateString) return '-';
   const d = new Date(dateString);
@@ -26,24 +33,24 @@ function formatShortDate(dateString?: string | null): string {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
 }
 
-// Build chart data from an IPO's gmpHistory. History is typically stored
-// newest -> oldest (see ipo-tabs); we reverse so the X axis is chronological.
+function formatHistoryDate(date: string): string {
+  // History rows come back as ISO timestamps from gmp_history.recorded_at;
+  // fall back gracefully if a stored label (e.g. "Today") sneaks through.
+  if (!date) return '-';
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return date;
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+}
+
+// Build chart data from an IPO's gmpHistory. History is stored newest ->
+// oldest (see queries.ts) so we reverse for a chronological X axis.
 function buildChartData(ipo: IPO) {
   const history = ipo.gmpHistory ?? [];
   if (history.length === 0) {
-    // Synthesize a single point from the latest value so the chart still
-    // renders something useful instead of an empty container.
-    return [
-      { name: 'Today', gmp: ipo.gmp ?? 0, percent: ipo.gmpPercent ?? 0 },
-    ];
+    return [{ name: 'Today', gmp: ipo.gmp ?? 0, percent: ipo.gmpPercent ?? 0 }];
   }
   return [...history].reverse().map((entry) => ({
-    name: entry.date?.includes('-')
-      ? new Date(entry.date).toLocaleDateString('en-IN', {
-          day: '2-digit',
-          month: 'short',
-        })
-      : entry.date,
+    name: formatHistoryDate(entry.date),
     gmp: entry.gmp,
     percent: entry.gmpPercent,
   }));
@@ -101,7 +108,6 @@ export function GMPTodayTable({ ipos }: Props) {
               const aiPct = ipo.aiPrediction ?? 0;
               const lot = ipo.lotSize ?? 0;
               const priceMax = ipo.priceMax ?? 0;
-              // One-lot rupee gains for both GMP and AI predicted price.
               const gmpGainPerLot = gmp * lot;
               const aiGainPerLot = (priceMax * aiPct * lot) / 100;
               const isExpanded = expandedSlug === ipo.slug;
@@ -216,84 +222,12 @@ export function GMPTodayTable({ ipos }: Props) {
 
                   {isExpanded && (
                     <tr
-                      className={`${isLastRow ? '' : 'border-b border-border'} bg-secondary/20`}
+                      className={`${
+                        isLastRow ? '' : 'border-b border-border'
+                      } bg-secondary/20`}
                     >
                       <td colSpan={8} className="p-4 md:p-6">
-                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-                          <h3 className="text-sm font-semibold text-ink">
-                            GMP Trend — {ipo.name}
-                          </h3>
-                          <Link
-                            href={`/ipo/${ipo.slug}`}
-                            className="text-xs font-semibold text-primary hover:underline"
-                          >
-                            View full analysis
-                          </Link>
-                        </div>
-
-                        <div className="bg-card rounded-xl border border-border p-3 md:p-4">
-                          <div className="h-56 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <AreaChart
-                                data={buildChartData(ipo)}
-                                margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                              >
-                                <defs>
-                                  <linearGradient
-                                    id={`gmp-grad-${ipo.slug}`}
-                                    x1="0"
-                                    y1="0"
-                                    x2="0"
-                                    y2="1"
-                                  >
-                                    <stop
-                                      offset="5%"
-                                      stopColor="var(--emerald-mid)"
-                                      stopOpacity={0.3}
-                                    />
-                                    <stop
-                                      offset="95%"
-                                      stopColor="var(--emerald-mid)"
-                                      stopOpacity={0}
-                                    />
-                                  </linearGradient>
-                                </defs>
-                                <CartesianGrid
-                                  strokeDasharray="3 3"
-                                  stroke="var(--border)"
-                                />
-                                <XAxis
-                                  dataKey="name"
-                                  tick={{ fontSize: 11, fill: 'var(--ink3)' }}
-                                  axisLine={{ stroke: 'var(--border)' }}
-                                  tickLine={false}
-                                />
-                                <YAxis
-                                  tick={{ fontSize: 11, fill: 'var(--ink3)' }}
-                                  axisLine={{ stroke: 'var(--border)' }}
-                                  tickLine={false}
-                                  tickFormatter={(v) => `Rs ${v}`}
-                                />
-                                <Tooltip
-                                  contentStyle={{
-                                    background: 'var(--card)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 8,
-                                    fontSize: 12,
-                                  }}
-                                  formatter={(value: number) => [`Rs ${value}`, 'GMP']}
-                                />
-                                <Area
-                                  type="monotone"
-                                  dataKey="gmp"
-                                  stroke="var(--emerald-mid)"
-                                  strokeWidth={2}
-                                  fill={`url(#gmp-grad-${ipo.slug})`}
-                                />
-                              </AreaChart>
-                            </ResponsiveContainer>
-                          </div>
-                        </div>
+                        <GmpExpandedPanel ipo={ipo} />
                       </td>
                     </tr>
                   )}
@@ -303,6 +237,185 @@ export function GMPTodayTable({ ipos }: Props) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// Expanded panel per IPO — mirrors the "GMP History" tab on the IPO detail
+// page so users see the exact same trend chart + historical data table.
+function GmpExpandedPanel({ ipo }: { ipo: IPO }) {
+  const history = ipo.gmpHistory ?? [];
+  const chartData = buildChartData(ipo);
+  const latestGmp = ipo.gmp ?? 0;
+  const latestPct = ipo.gmpPercent ?? 0;
+  const priceMax = ipo.priceMax ?? 0;
+
+  const badgeTone =
+    latestGmp > 0
+      ? 'bg-emerald-bg text-emerald'
+      : latestGmp < 0
+      ? 'bg-destructive-bg text-destructive'
+      : 'bg-secondary text-ink3';
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <h3 className="text-sm font-semibold text-ink">
+          GMP Trend — {ipo.name}
+        </h3>
+        <div className="flex items-center gap-3">
+          <span className={`text-xs font-bold px-3 py-1 rounded-lg ${badgeTone}`}>
+            Latest: {latestGmp >= 0 ? '+' : ''}Rs {latestGmp} (
+            {latestPct >= 0 ? '+' : ''}
+            {latestPct.toFixed(1)}%)
+          </span>
+          <Link
+            href={`/ipo/${ipo.slug}`}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            View full analysis
+          </Link>
+        </div>
+      </div>
+
+      {/* Trend chart */}
+      <div className="bg-card rounded-xl border border-border p-3 md:p-4 mb-4">
+        <div className="h-56 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient
+                  id={`gmp-grad-${ipo.slug}`}
+                  x1="0"
+                  y1="0"
+                  x2="0"
+                  y2="1"
+                >
+                  <stop
+                    offset="5%"
+                    stopColor="var(--emerald-mid)"
+                    stopOpacity={0.3}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--emerald-mid)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="var(--border)"
+              />
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11, fill: 'var(--ink3)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: 'var(--ink3)' }}
+                axisLine={{ stroke: 'var(--border)' }}
+                tickLine={false}
+                tickFormatter={(v) => `Rs ${v}`}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 8,
+                  fontSize: 12,
+                }}
+                formatter={(value: number) => [`Rs ${value}`, 'GMP']}
+              />
+              <Area
+                type="monotone"
+                dataKey="gmp"
+                stroke="var(--emerald-mid)"
+                strokeWidth={2}
+                fill={`url(#gmp-grad-${ipo.slug})`}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Historical Data table — matches the IPO detail page's GMP tab. */}
+      {history.length > 0 ? (
+        <div>
+          <h4 className="font-semibold text-sm mb-3 text-ink">Historical Data</h4>
+          <div className="overflow-x-auto bg-card rounded-xl border border-border">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-secondary">
+                  <th className="text-left py-2 px-3 font-bold text-ink3">
+                    Date
+                  </th>
+                  <th className="text-right py-2 px-3 font-bold text-ink3">
+                    GMP (Rs)
+                  </th>
+                  <th className="text-right py-2 px-3 font-bold text-ink3">
+                    Premium %
+                  </th>
+                  <th className="text-right py-2 px-3 font-bold text-ink3">
+                    Est. Listing (Rs)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((entry, index) => {
+                  const estListing = priceMax + (entry.gmp ?? 0);
+                  const toneGmp =
+                    entry.gmp > 0
+                      ? 'text-emerald-mid'
+                      : entry.gmp < 0
+                      ? 'text-destructive'
+                      : 'text-ink3';
+                  const tonePct =
+                    entry.gmpPercent > 0
+                      ? 'text-emerald-mid'
+                      : entry.gmpPercent < 0
+                      ? 'text-destructive'
+                      : 'text-ink3';
+                  return (
+                    <tr
+                      key={`${entry.date}-${index}`}
+                      className="border-b border-border last:border-b-0"
+                    >
+                      <td
+                        className={`py-2 px-3 ${
+                          index === 0 ? 'font-bold text-emerald-mid' : 'text-ink2'
+                        }`}
+                      >
+                        {formatHistoryDate(entry.date)}
+                        {index === 0 && ' (Latest)'}
+                      </td>
+                      <td className={`py-2 px-3 text-right font-bold ${toneGmp}`}>
+                        {entry.gmp > 0 ? '+' : ''}Rs {entry.gmp}
+                      </td>
+                      <td className={`py-2 px-3 text-right font-bold ${tonePct}`}>
+                        {entry.gmpPercent > 0 ? '+' : ''}
+                        {entry.gmpPercent.toFixed(1)}%
+                      </td>
+                      <td className="py-2 px-3 text-right font-medium text-ink">
+                        Rs {estListing.toLocaleString('en-IN')}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-ink3">
+          GMP history will appear here once multiple data points have been
+          recorded for this IPO.
+        </p>
+      )}
     </div>
   );
 }

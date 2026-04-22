@@ -209,7 +209,9 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
   }
 }
 
-// Fetch all current IPOs with latest GMP
+// Fetch all current IPOs with latest GMP, full GMP history, and live/day-wise
+// subscription so downstream pages (/, /gmp, /subscription) can render the
+// same rich charts and tables used on the IPO detail page without refetching.
 export async function getCurrentIPOs(): Promise<IPO[]> {
   const supabase = await createClient()
   
@@ -233,23 +235,147 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
   
   if (ipoIds.length === 0) return []
 
-  const { data: gmpData } = await supabase
-    .from('gmp_history')
-    .select('ipo_id, gmp, recorded_at')
-    .in('ipo_id', ipoIds)
-    .order('recorded_at', { ascending: false })
+  // Batch-fetch GMP history, live subscription and day-wise subscription
+  // history for every current IPO in parallel. This keeps /gmp and
+  // /subscription lit up with the exact same rows the detail page shows.
+  const [gmpHistoryResult, subLiveResult, subHistoryResult] = await Promise.all([
+    supabase
+      .from('gmp_history')
+      .select('ipo_id, gmp, gmp_percent, recorded_at, source, date, time_slot')
+      .in('ipo_id', ipoIds)
+      .order('recorded_at', { ascending: false }),
+    supabase
+      .from('subscription_live')
+      .select('*')
+      .in('ipo_id', ipoIds)
+      .order('display_order', { ascending: true }),
+    supabase
+      .from('subscription_history')
+      .select('*')
+      .in('ipo_id', ipoIds)
+      .order('date', { ascending: true })
+      .order('day_number', { ascending: true }),
+  ])
 
-  // Map latest GMP to each IPO
-  const latestGmpMap = new Map<string, { gmp: number; recorded_at: string }>()
-  gmpData?.forEach((g) => {
-    if (!latestGmpMap.has(g.ipo_id)) {
-      latestGmpMap.set(g.ipo_id, { gmp: g.gmp, recorded_at: g.recorded_at })
-    }
+  const gmpRows = gmpHistoryResult.data ?? []
+  const subLiveRows = subLiveResult.data ?? []
+  const subHistoryRows = subHistoryResult.data ?? []
+
+  // Group by ipo_id (string-keyed since Supabase returns whatever the
+  // column type is — we normalise via String()).
+  const gmpByIpo = new Map<string, typeof gmpRows>()
+  gmpRows.forEach((g) => {
+    const key = String(g.ipo_id)
+    const bucket = gmpByIpo.get(key) ?? []
+    bucket.push(g)
+    gmpByIpo.set(key, bucket)
+  })
+
+  const subLiveByIpo = new Map<string, typeof subLiveRows>()
+  subLiveRows.forEach((s) => {
+    const key = String(s.ipo_id)
+    const bucket = subLiveByIpo.get(key) ?? []
+    bucket.push(s)
+    subLiveByIpo.set(key, bucket)
+  })
+
+  const subHistoryByIpo = new Map<string, typeof subHistoryRows>()
+  subHistoryRows.forEach((s) => {
+    const key = String(s.ipo_id)
+    const bucket = subHistoryByIpo.get(key) ?? []
+    bucket.push(s)
+    subHistoryByIpo.set(key, bucket)
   })
 
   return ipos.map((ipo) => {
-    const gmpInfo = latestGmpMap.get(ipo.id)
-    return transformIPO(ipo as IPOSimple, gmpInfo?.gmp, gmpInfo?.recorded_at)
+    const key = String(ipo.id)
+    const priceMax = ipo.price_max || 0
+
+    // GMP — latest value + chronological full history.
+    const ipoGmp = gmpByIpo.get(key) ?? []
+    const latestGmp = ipoGmp.length > 0 ? ipoGmp[0] : null
+    const transformed = transformIPO(
+      ipo as IPOSimple,
+      latestGmp?.gmp,
+      latestGmp?.recorded_at,
+    )
+
+    const gmpHistory = ipoGmp.map((g) => ({
+      date: g.recorded_at || g.date,
+      gmp: Number(g.gmp ?? 0),
+      gmpPercent:
+        typeof g.gmp_percent === 'number' && g.gmp_percent !== null
+          ? Number(g.gmp_percent)
+          : priceMax > 0
+            ? Math.round((Number(g.gmp ?? 0) / priceMax) * 100 * 10) / 10
+            : 0,
+      source: g.source || 'investorgain',
+    }))
+
+    // Subscription live (category-wise) — mirrors the detail-page query.
+    const liveRows = subLiveByIpo.get(key) ?? []
+    const subscriptionLive = liveRows.map((s) => ({
+      category: s.category as
+        | 'anchor' | 'qib' | 'nii' | 'bnii' | 'snii' | 'retail' | 'employee' | 'total',
+      subscriptionTimes: Number(s.subscription_times ?? 0),
+      sharesOffered: Number(s.shares_offered ?? 0),
+      sharesBidFor: Number(s.shares_bid_for ?? 0),
+      totalAmountCr: Number(s.total_amount_cr ?? 0),
+      displayOrder: Number(s.display_order ?? 0),
+    }))
+    const subscriptionLastUpdated = liveRows.length > 0
+      ? liveRows[0].updated_at
+      : undefined
+
+    // Subscription history (day-wise) — full breakdown per day.
+    const historyRows = subHistoryByIpo.get(key) ?? []
+    const subscriptionHistory = historyRows.map((s) => ({
+      date: s.date,
+      time: s.time || '17:00',
+      dayNumber: Number(s.day_number ?? 1),
+      retail: Number(s.retail ?? 0),
+      nii: Number(s.nii ?? 0),
+      bnii: Number(s.bnii ?? 0),
+      snii: Number(s.snii ?? 0),
+      qib: Number(s.qib ?? 0),
+      anchor: Number(s.anchor ?? 0),
+      employee: Number(s.employee ?? 0),
+      total: Number(s.total ?? 0),
+    }))
+
+    // Upgrade the summary subscription from live data when we have it so
+    // cards/badges elsewhere don't need to be aware of the live table.
+    const totalLive = subscriptionLive.find((s) => s.category === 'total')
+    const retailLive = subscriptionLive.find((s) => s.category === 'retail')
+    const niiLive = subscriptionLive.find((s) => s.category === 'nii')
+    const qibLive = subscriptionLive.find((s) => s.category === 'qib')
+    const latestDay = subscriptionHistory.length > 0
+      ? subscriptionHistory[subscriptionHistory.length - 1].dayNumber ?? 0
+      : transformed.subscription.day ?? 0
+
+    const subscription = {
+      ...transformed.subscription,
+      total: totalLive?.subscriptionTimes ?? transformed.subscription.total,
+      retail: retailLive
+        ? `${retailLive.subscriptionTimes}x`
+        : transformed.subscription.retail,
+      nii: niiLive
+        ? `${niiLive.subscriptionTimes}x`
+        : transformed.subscription.nii,
+      qib: qibLive
+        ? `${qibLive.subscriptionTimes}x`
+        : transformed.subscription.qib,
+      day: latestDay,
+    }
+
+    return {
+      ...transformed,
+      subscription,
+      gmpHistory: gmpHistory.length > 0 ? gmpHistory : undefined,
+      subscriptionLive: subscriptionLive.length > 0 ? subscriptionLive : undefined,
+      subscriptionHistory: subscriptionHistory.length > 0 ? subscriptionHistory : undefined,
+      subscriptionLastUpdated,
+    }
   })
 }
 
