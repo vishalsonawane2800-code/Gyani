@@ -4,13 +4,14 @@ import { Header } from '@/components/header';
 import { Ticker } from '@/components/ticker';
 import { Footer } from '@/components/footer';
 import { SubscriptionStats } from '@/components/subscription/subscription-stats';
+import { LiveSubscriptionDetails } from '@/components/subscription/live-subscription-details';
 import { getCurrentIPOs } from '@/lib/supabase/queries';
 import {
   getMergedAvailableYears,
   getMergedListedIposByYear,
 } from '@/lib/listed-ipos/loader';
 import type { ListedIPO, ExchangeType } from '@/lib/data';
-import { Users, ChevronRight, BarChart3, Clock, Briefcase, UserCheck, Building2 } from 'lucide-react';
+import { Users, ChevronRight, BarChart3, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,10 +79,25 @@ export default async function SubscriptionPage() {
     (i) => (i.listingGainPercent ?? i.gmpPercent ?? 0) < 0
   ).length;
 
-  // Open IPOs that are still bidding - showcased below the stats.
-  const openIPOs = currentIpos.filter(
-    (i) => i.status === 'open' || i.status === 'lastday'
-  );
+  // Any IPO that still has meaningful subscription data to surface — open +
+  // lastday for live bidding, plus closed/allot/listing so the day-wise
+  // history remains visible after bidding ends. We prioritise live IPOs by
+  // putting them first in the list.
+  const liveOrder: Record<string, number> = {
+    lastday: 0,
+    open: 1,
+    closed: 2,
+    allot: 3,
+    listing: 4,
+  };
+  const liveCycleIPOs = currentIpos
+    .filter((i) =>
+      ['open', 'lastday', 'closed', 'allot', 'listing'].includes(i.status)
+    )
+    .sort(
+      (a, b) =>
+        (liveOrder[a.status] ?? 99) - (liveOrder[b.status] ?? 99)
+    );
 
   const yearStrings = years.map((y) => String(y));
 
@@ -123,13 +139,15 @@ export default async function SubscriptionPage() {
           openToday={{ listedAboveIssue, listedBelowIssue }}
         />
 
-        {/* Live subscription of currently-open IPOs */}
-        {openIPOs.length > 0 && (
+        {/* Live subscription per current IPO — day-wise + category-wise,
+            fetched directly from the same subscription_live +
+            subscription_history tables the IPO detail page uses. */}
+        {liveCycleIPOs.length > 0 && (
           <section className="mt-10">
             <div className="flex items-center gap-2 mb-4">
               <span className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
               <h2 className="font-heading text-lg md:text-xl font-bold text-ink">
-                Live Subscription - Open IPOs
+                Live Subscription - Current IPOs
               </h2>
               <div className="ml-auto flex items-center gap-1 text-xs text-ink3">
                 <Clock className="w-3.5 h-3.5" />
@@ -137,92 +155,12 @@ export default async function SubscriptionPage() {
               </div>
             </div>
 
-            <div className="bg-card rounded-2xl border border-border overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-secondary">
-                    <tr>
-                      <th className="text-left p-4 font-semibold text-ink2 min-w-[180px]">
-                        IPO
-                      </th>
-                      <th className="text-center p-4 font-semibold text-ink2">
-                        Day
-                      </th>
-                      <th className="text-right p-4 font-semibold text-ink2">
-                        <div className="inline-flex items-center gap-1">
-                          <Briefcase className="w-4 h-4" />
-                          QIB
-                        </div>
-                      </th>
-                      <th className="text-right p-4 font-semibold text-ink2">
-                        <div className="inline-flex items-center gap-1">
-                          <Building2 className="w-4 h-4" />
-                          NII
-                        </div>
-                      </th>
-                      <th className="text-right p-4 font-semibold text-ink2">
-                        <div className="inline-flex items-center gap-1">
-                          <UserCheck className="w-4 h-4" />
-                          Retail
-                        </div>
-                      </th>
-                      <th className="text-right p-4 font-semibold text-ink2">
-                        Total
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {openIPOs.map((ipo, idx) => (
-                      <tr
-                        key={ipo.slug}
-                        className={`${
-                          idx !== openIPOs.length - 1 ? 'border-b border-border' : ''
-                        } hover:bg-secondary/30 transition-colors`}
-                      >
-                        <td className="p-4">
-                          <Link
-                            href={`/ipo/${ipo.slug}`}
-                            className="font-semibold text-ink hover:text-primary transition-colors"
-                          >
-                            {ipo.name}
-                          </Link>
-                          <p className="text-xs text-ink3 mt-0.5">
-                            {ipo.exchange}
-                          </p>
-                        </td>
-                        <td className="text-center p-4">
-                          <span className="px-2 py-1 rounded bg-secondary text-ink2 text-xs font-medium">
-                            Day {ipo.subscription.day}
-                          </span>
-                        </td>
-                        <td className="text-right p-4 font-semibold text-ink">
-                          {ipo.subscription.qib}
-                        </td>
-                        <td className="text-right p-4 font-semibold text-ink">
-                          {ipo.subscription.nii}
-                        </td>
-                        <td className="text-right p-4 font-semibold text-ink">
-                          {ipo.subscription.retail}
-                        </td>
-                        <td className="text-right p-4">
-                          <span
-                            className={`font-bold ${
-                              ipo.subscription.total > 10
-                                ? 'text-emerald'
-                                : ipo.subscription.total > 1
-                                ? 'text-cobalt'
-                                : 'text-ink'
-                            }`}
-                          >
-                            {ipo.subscription.total.toFixed(2)}x
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <p className="text-sm text-ink3 mb-4">
+              Click any IPO to expand the category-wise breakdown (QIB, NII,
+              retail, employee, anchor) and day-wise subscription history.
+            </p>
+
+            <LiveSubscriptionDetails ipos={liveCycleIPOs} />
           </section>
         )}
 
