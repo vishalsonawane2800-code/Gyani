@@ -23,6 +23,7 @@ const navLinks: NavLink[] = [
   { href: '/listed', label: 'Listed' },
   { href: '/upcoming', label: 'Upcoming' },
   { href: '/gmp', label: 'GMP Today' },
+  { href: '/news', label: 'IPO News' },
   { href: '/allotment-status', label: 'Allotment' },
   { href: '/sme', label: 'SME IPOs' },
   { href: '/accuracy', label: 'AI Accuracy' },

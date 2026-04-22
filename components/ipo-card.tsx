@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Star, Clock } from 'lucide-react';
+import Image from 'next/image';
+import { Star, Clock, ClipboardCheck, Sparkles } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 import { formatDateRange, formatPrice } from '@/lib/data';
 
@@ -124,12 +125,28 @@ export function IPOCard({ ipo }: IPOCardProps) {
     >
       {/* Header */}
       <div className="flex gap-3 mb-3">
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm shrink-0"
-          style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-        >
-          {abbr}
-        </div>
+        {ipo.logoUrl ? (
+          // Use admin-provided logo when available. The small letter-mark
+          // fallback is kept below for IPOs without a logo so the card never
+          // looks half-empty.
+          <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-card border border-border flex items-center justify-center">
+            <Image
+              src={ipo.logoUrl}
+              alt={`${ipo.name} logo`}
+              width={40}
+              height={40}
+              className="object-contain w-full h-full"
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm shrink-0"
+            style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+          >
+            {abbr}
+          </div>
+        )}
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-sm sm:text-base truncate">{ipo.name}</h3>
           <p className="text-xs text-ink3 mt-0.5">
@@ -163,7 +180,12 @@ export function IPOCard({ ipo }: IPOCardProps) {
             {ipo.subscription.total > 0 ? `${ipo.subscription.total}x` : '-'}
           </p>
           <p className="text-xs text-ink4">
-            {ipo.subscriptionLastScraped
+            {/* Once bidding is over (status closed/allot/listing) the
+                subscription numbers are final - don't keep showing a
+                stale "Updated X ago" label. */}
+            {ipo.status === 'closed' || ipo.status === 'allot' || ipo.status === 'listing'
+              ? 'Final'
+              : ipo.subscriptionLastScraped
               ? `Updated ${formatTimeAgo(ipo.subscriptionLastScraped)}`
               : ipo.subscription.isFinal
               ? 'Final'
@@ -203,6 +225,53 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </div>
       </div>
 
+      {/* AI Predicted Listing Gain + rupee equivalent.
+          `aiPrediction` is stored as a percentage (e.g. 5.2 = +5.2%). We
+          derive the absolute rupee value on issue price so investors can
+          see both the % pop and the per-share gain at a glance. */}
+      {typeof ipo.aiPrediction === 'number' && ipo.priceMax > 0 && (() => {
+        const predPct = ipo.aiPrediction;
+        const predRupees = (ipo.priceMax * predPct) / 100;
+        const isPosPred = predPct > 0;
+        const isZeroPred = predPct === 0;
+        const rupeeAbs = Math.abs(predRupees);
+        const rupeeLabel =
+          rupeeAbs >= 1
+            ? `Rs ${rupeeAbs.toFixed(0)}`
+            : `Rs ${rupeeAbs.toFixed(2)}`;
+        return (
+          <div className="flex items-center gap-2 py-2 px-3 bg-secondary rounded-lg mb-2 text-sm">
+            <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+            <span className="text-xs font-extrabold text-ink4 tracking-wide shrink-0">
+              AI Gain
+            </span>
+            <span
+              className={`font-extrabold text-base ${
+                isZeroPred
+                  ? 'text-ink3'
+                  : isPosPred
+                  ? 'text-emerald-mid'
+                  : 'text-destructive'
+              }`}
+            >
+              {isZeroPred ? '0%' : isPosPred ? `+${predPct.toFixed(1)}%` : `${predPct.toFixed(1)}%`}
+            </span>
+            <span
+              className={`text-xs font-bold px-2 py-1 rounded-lg ${
+                isZeroPred
+                  ? 'bg-secondary text-ink3 border border-border'
+                  : isPosPred
+                  ? 'bg-emerald-bg text-emerald'
+                  : 'bg-destructive-bg text-destructive'
+              }`}
+            >
+              {isZeroPred ? 'Rs 0' : isPosPred ? `+${rupeeLabel}` : `-${rupeeLabel}`}
+            </span>
+            <span className="text-[10px] text-ink4 ml-auto">per share</span>
+          </div>
+        );
+      })()}
+
       {/* Market Sentiment Score */}
       <div className="flex items-center gap-2 py-2 px-3 border border-primary/20 bg-primary-bg/50 rounded-lg mb-3 text-sm">
         <Star className="w-4 h-4 text-primary" fill="currentColor" />
@@ -218,11 +287,38 @@ export function IPOCard({ ipo }: IPOCardProps) {
         </span>
       </div>
 
-      {/* Action */}
-      <div className="flex">
+      {/* Action row. On allotment day we surface a secondary "Check
+          Allotment" button so users can jump straight to the registrar
+          portal without scrolling into the detail page. Falls back to
+          the generic allotment-status hub if no registrar URL is set. */}
+      <div className="flex gap-2">
         <span className="flex-1 text-center py-2 rounded-lg text-sm font-bold bg-primary text-white cursor-pointer transition-opacity hover:opacity-90">
           View Analysis
         </span>
+        {ipo.status === 'allot' && (
+          // The outer element is already an <a> (Next.js Link) so we can't
+          // nest a second anchor here. Using a <button> + manual navigation
+          // keeps the DOM valid while still opening the registrar portal
+          // in a new tab when available.
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const target = ipo.allotmentUrl || '/allotment-status';
+              if (ipo.allotmentUrl) {
+                window.open(target, '_blank', 'noopener,noreferrer');
+              } else {
+                window.location.href = target;
+              }
+            }}
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-bold bg-primary-bg text-primary border border-primary/30 hover:bg-primary/10 transition-colors whitespace-nowrap"
+            aria-label={`Check allotment status for ${ipo.name}`}
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Check Allotment
+          </button>
+        )}
       </div>
     </Link>
   );
