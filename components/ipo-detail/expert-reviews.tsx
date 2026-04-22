@@ -15,6 +15,20 @@ type FilterType = 'all' | 'youtube' | 'analyst' | 'news' | 'firm';
 
 export function ExpertReviews({ reviews = [], ipoName, sentimentScore = 0, sentimentLabel = 'Neutral' }: ExpertReviewsProps) {
   const [filter, setFilter] = useState<FilterType>('all');
+  // Track which review summaries have been expanded by the user. Keeping
+  // expanded-IDs in a single Set (rather than a boolean per card) means
+  // each review card can stay a plain JSX block instead of its own
+  // component while still supporting independent toggles.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const filteredReviews = reviews.filter((review) => {
     if (filter === 'all') return true;
@@ -404,10 +418,38 @@ export function ExpertReviews({ reviews = [], ipoName, sentimentScore = 0, senti
                   {/* Author */}
                   <p className="text-[11px] text-ink3 mb-2">By {review.author}</p>
 
-                  {/* Summary - 2 lines */}
-                  <p className="text-[13px] text-ink2 leading-relaxed line-clamp-2">
-                    {review.summary}
-                  </p>
+                  {/* Summary - 2 lines by default, expands when user clicks
+                      Read more. Keep `whitespace-pre-wrap` so admin-entered
+                      paragraph breaks survive in the expanded view. */}
+                  {(() => {
+                    const isExpanded = expandedIds.has(review.id);
+                    const summary = review.summary ?? '';
+                    // Heuristic: only offer the toggle when the summary is
+                    // actually long enough to exceed 2 visual lines. ~140
+                    // chars matches the clamped layout at typical widths.
+                    const canExpand = summary.length > 140;
+                    return (
+                      <>
+                        <p
+                          className={`text-[13px] text-ink2 leading-relaxed whitespace-pre-wrap ${
+                            isExpanded ? '' : 'line-clamp-2'
+                          }`}
+                        >
+                          {summary}
+                        </p>
+                        {canExpand && (
+                          <button
+                            type="button"
+                            onClick={() => toggleExpanded(review.id)}
+                            className="text-[11px] font-semibold text-primary hover:underline mt-1"
+                            aria-expanded={isExpanded}
+                          >
+                            {isExpanded ? 'Show less' : 'Read more'}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Footer */}
                   <div className="flex items-center gap-3 mt-2.5">

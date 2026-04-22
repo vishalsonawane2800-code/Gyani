@@ -38,6 +38,37 @@ type IpoRow = {
   nse_symbol: string | null
   bse_scrip_code: string | null
   chittorgarh_url: string | null
+  close_date?: string | null
+}
+
+// ---------------------------------------------------------------------------
+// Scrape-window cutoff
+// ---------------------------------------------------------------------------
+// Business rule: once an IPO's bidding window is over we must stop scraping
+// its subscription numbers. Concretely:
+//   - close_date is in the past            -> do not scrape (stale data)
+//   - close_date is today but IST >= 18:00 -> do not scrape (final numbers
+//     published by exchanges around 6 PM after bidding ends at 5 PM)
+//   - close_date is today and IST < 18:00  -> scrape
+//   - close_date is in the future          -> scrape
+// Returning `true` means "still inside scrape window".
+function isWithinScrapeWindow(closeDate: string | null | undefined): boolean {
+  if (!closeDate) return true // no close date configured - don't filter out
+  // Compute current IST wall-clock time. Node's Date is UTC under the hood,
+  // so we offset by IST (+5:30) to get the IST date + hour without relying
+  // on a TZ library.
+  const now = new Date()
+  const istMs = now.getTime() + (5 * 60 + 30) * 60_000
+  const ist = new Date(istMs)
+  // Use UTC getters on the shifted Date - they return the IST wall-clock
+  // values because we moved the instant forward by +5:30.
+  const istDate = `${ist.getUTCFullYear()}-${String(ist.getUTCMonth() + 1).padStart(2, '0')}-${String(ist.getUTCDate()).padStart(2, '0')}`
+  const istHour = ist.getUTCHours()
+
+  if (closeDate < istDate) return false
+  if (closeDate > istDate) return true
+  // Same-day close: only scrape before 18:00 IST.
+  return istHour < 18
 }
 
 type SourceKey = "nse" | "bse" | "chittorgarh"
@@ -385,16 +416,31 @@ export async function runSubscriptionScraper(): Promise<{
     }
   }
 
-  const rows: IpoRow[] = (ipos ?? []).map((r) => ({
-    id: r.id,
-    company_name: r.company_name,
-    slug: r.slug,
-    exchange: r.exchange,
-    status: r.status,
-    nse_symbol: r.nse_symbol,
-    bse_scrip_code: r.bse_scrip_code,
-    chittorgarh_url: r.chittorgarh_url,
-  }))
+  const rows: IpoRow[] = (ipos ?? [])
+    .map((r) => ({
+      id: r.id,
+      company_name: r.company_name,
+      slug: r.slug,
+      exchange: r.exchange,
+      status: r.status,
+      nse_symbol: r.nse_symbol,
+      bse_scrip_code: r.bse_scrip_code,
+      chittorgarh_url: r.chittorgarh_url,
+      close_date: r.close_date,
+    }))
+    // Drop IPOs that are past the 6 PM IST cutoff on their close day -
+    // their subscription numbers are final and further polling just
+    // burns source quotas + risks overwriting the final snapshot with
+    // partial data.
+    .filter((r) => {
+      const inWindow = isWithinScrapeWindow(r.close_date)
+      if (!inWindow) {
+        console.log(
+          `[v0] scrape-subscription: skipping ${r.slug} (past 18:00 IST cutoff on close_date=${r.close_date})`
+        )
+      }
+      return inWindow
+    })
 
   if (rows.length === 0) {
     const duration = Date.now() - started
