@@ -84,16 +84,18 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
                       idx !== recentListedIPOs.length - 1 ? 'border-b border-border' : ''
                     }`}
                   >
-                    <td className="py-3 px-4">
+                    <td className="py-3 px-4 min-w-[200px]">
                       <Link href={detailHref} className="flex items-center gap-2.5 group">
-              <div
-                className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
-                style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-              >
-                {generateAbbr(ipo.name)}
-              </div>
-                        <div>
-                          <p className="font-medium text-[13px] text-ink group-hover:text-primary transition-colors line-clamp-1">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                          style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
+                        >
+                          {generateAbbr(ipo.name)}
+                        </div>
+                        <div className="min-w-0">
+                          {/* No line-clamp on mobile so full IPO names never get cut to
+                              something like "Om po...". Wraps to a second line if needed. */}
+                          <p className="font-medium text-[13px] text-ink group-hover:text-primary transition-colors break-words">
                             {ipo.name}
                           </p>
                           <p className="text-[10px] text-ink4">{ipo.exchange}</p>
