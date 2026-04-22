@@ -17,7 +17,7 @@ export function IPOTabs({ ipo }: IPOTabsProps) {
 
   const tabs: { id: TabType; label: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'financials', label: 'Financials' },
+    ...(ipo.financials ? [{ id: 'financials' as TabType, label: 'Financials' }] : []),
     { id: 'gmp', label: 'GMP History' },
     { id: 'subscription', label: 'Subscription' },
   ];
@@ -274,7 +274,6 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
               <th className="text-right py-2 px-3 font-bold text-ink3">GMP (Rs)</th>
               <th className="text-right py-2 px-3 font-bold text-ink3">Premium %</th>
               <th className="text-right py-2 px-3 font-bold text-ink3">Est. Listing (Rs)</th>
-              <th className="text-right py-2 px-3 font-bold text-ink3">Source</th>
             </tr>
           </thead>
           <tbody>
@@ -292,7 +291,6 @@ function GMPHistoryTab({ ipo }: { ipo: IPO }) {
                   <td className="py-2 px-3 text-right font-bold text-emerald-mid">+Rs {entry.gmp}</td>
                   <td className="py-2 px-3 text-right font-bold text-emerald-mid">+{entry.gmpPercent.toFixed(1)}%</td>
                   <td className="py-2 px-3 text-right font-medium">Rs {estListing.toLocaleString()}</td>
-                  <td className="py-2 px-3 text-right text-ink3">{entry.source}</td>
                 </tr>
               );
             })}
@@ -334,10 +332,36 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
     total: 'Total **',
   };
 
-  // Format large numbers with Indian comma notation
-  const formatShares = (num: number | undefined): string => {
-    if (!num) return '-';
-    return num.toLocaleString('en-IN');
+  // Build day-wise pivot from subscription history.
+  // For each dayNumber, keep the latest entry (by time) so the table shows the
+  // final/last recorded subscription-times for that day per category.
+  const dayMap = new Map<number, typeof subHistory[0]>();
+  subHistory.forEach((entry, idx) => {
+    const dayNum = entry.dayNumber || (idx + 1);
+    const existing = dayMap.get(dayNum);
+    if (!existing || (entry.time || '') >= (existing.time || '')) {
+      dayMap.set(dayNum, entry);
+    }
+  });
+  const dayNumbers = Array.from(dayMap.keys()).sort((a, b) => a - b);
+
+  // Map live category -> key on a subscription_history row
+  const historyKeyForCategory: Record<string, keyof typeof subHistory[0]> = {
+    anchor: 'anchor',
+    qib: 'qib',
+    nii: 'nii',
+    bnii: 'bnii',
+    snii: 'snii',
+    retail: 'retail',
+    employee: 'employee',
+    total: 'total',
+  };
+  const getDaySubForCategory = (category: string, dayNum: number): string => {
+    const entry = dayMap.get(dayNum);
+    const key = historyKeyForCategory[category];
+    if (!entry || !key) return '-';
+    const val = entry[key] as number | undefined | null;
+    return val && Number(val) > 0 ? `${Number(val).toFixed(2)}x` : '-';
   };
 
   // Get day number text
@@ -395,9 +419,11 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                 <tr className="bg-secondary">
                   <th className="text-left py-3 px-4 font-bold text-ink3">Category</th>
                   <th className="text-right py-3 px-4 font-bold text-ink3">Subscription (x)</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">Shares Offered*</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">Shares bid for</th>
-                  <th className="text-right py-3 px-4 font-bold text-ink3">{`Total Amt* (Rs Cr.)`}</th>
+                  {dayNumbers.map((d) => (
+                    <th key={d} className="text-right py-3 px-4 font-bold text-ink3">
+                      Day {d}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -413,9 +439,11 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
                         {categoryNames[entry.category] || entry.category}
                       </td>
                       <td className="py-3 px-4 text-right">{entry.subscriptionTimes || '-'}</td>
-                      <td className="py-3 px-4 text-right">{formatShares(entry.sharesOffered)}</td>
-                      <td className="py-3 px-4 text-right">{formatShares(entry.sharesBidFor)}</td>
-                      <td className="py-3 px-4 text-right">{entry.totalAmountCr ? entry.totalAmountCr.toFixed(3) : '-'}</td>
+                      {dayNumbers.map((d) => (
+                        <td key={d} className="py-3 px-4 text-right">
+                          {getDaySubForCategory(entry.category, d)}
+                        </td>
+                      ))}
                     </tr>
                   );
                 })}

@@ -109,8 +109,8 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* KPI Section */}
             {ipo.kpi && <KPITable kpi={ipo.kpi} ipoSlug={ipo.slug} />}
             
-            {/* Company Financials Section */}
-            <CompanyFinancials ipo={ipo} />
+            {/* Company Financials Section - only show if admin provided financials */}
+            {ipo.financials && <CompanyFinancials ipo={ipo} />}
             
             {/* Expert Reviews Section */}
             <div id="expert-reviews-section">
@@ -122,10 +122,12 @@ export default async function IPODetailPage({ params }: PageProps) {
               />
             </div>
             
-            {/* Peer Comparison */}
-            <div id="peer-comparison">
-              <PeerComparison ipo={ipo} peers={ipo.peerCompanies} />
-            </div>
+            {/* Peer Comparison - only show if admin provided peers */}
+            {ipo.peerCompanies && ipo.peerCompanies.length > 0 && (
+              <div id="peer-comparison">
+                <PeerComparison ipo={ipo} peers={ipo.peerCompanies} />
+              </div>
+            )}
             
             {/* Tabs - Overview, Financials, GMP History, Subscription */}
             <IPOTabs ipo={ipo} />
