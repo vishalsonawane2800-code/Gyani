@@ -2,8 +2,8 @@ import { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Ticker } from "@/components/ticker"
 import { Footer } from "@/components/footer"
-import { currentIPOs } from "@/lib/data"
-import { ClipboardCheck, ExternalLink, ChevronRight, Search, Calendar, Building2, HelpCircle, CheckCircle2, Clock, AlertCircle } from "lucide-react"
+import { currentIPOs, type IPO } from "@/lib/data"
+import { ClipboardCheck, ExternalLink, ChevronRight, Search, Calendar, Building2, HelpCircle, CheckCircle2, Clock, AlertCircle, Hourglass } from "lucide-react"
 import Link from "next/link"
 
 export const metadata: Metadata = {
@@ -111,16 +111,78 @@ const faqSchema = {
   ]
 }
 
+// Fallback registrar URLs - used when the IPO record does not have a
+// per-IPO allotmentUrl set. Keep in sync with components/ipo-detail/page-footer.tsx.
+const registrarUrlMap: Record<string, string> = {
+  'KFin Technologies': 'https://kosmic.kfintech.com/ipostatus/',
+  'KFIN Technologies': 'https://kosmic.kfintech.com/ipostatus/',
+  'Link Intime': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+  'Link Intime India': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+  'Bigshare Services': 'https://www.bigshareonline.com/IPOStatus.aspx',
+  'Skyline Financial': 'https://www.skylinerta.com/ipo.php',
+  'Skyline Financial Services': 'https://www.skylinerta.com/ipo.php',
+  'Cameo Corporate': 'https://ipostatus.cameoindia.com/',
+  'MUFG Intime India': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+}
+
+function getAllotmentUrl(ipo: IPO): string | null {
+  const perIpo = ipo.allotmentUrl?.trim()
+  if (perIpo) return perIpo
+  if (ipo.registrar && registrarUrlMap[ipo.registrar]) return registrarUrlMap[ipo.registrar]
+  return null
+}
+
+type AllotmentBucket = 'out' | 'awaited' | 'upcoming'
+
+// Categorise an IPO for the allotment-status page. We combine the
+// editorial `status` with the actual dates so that a "closed" IPO which
+// has not yet reached its allotment date is correctly shown as
+// "Allotment Awaited" (instead of being dropped from the page).
+function categorizeForAllotment(ipo: IPO, today: Date): AllotmentBucket | null {
+  const parse = (d: string) => {
+    const dt = new Date(d)
+    dt.setHours(0, 0, 0, 0)
+    return dt
+  }
+  const allot = parse(ipo.allotmentDate)
+  const list = parse(ipo.listDate)
+
+  // Explicit editorial statuses win when set by the admin
+  if (ipo.status === 'allot' || ipo.status === 'listing') return 'out'
+
+  if (ipo.status === 'closed') {
+    // IPOs that are already listed shouldn't appear on this page
+    if (list.getTime() < today.getTime()) return null
+    // Allotment date has arrived → allotment is out, listing awaited
+    if (allot.getTime() <= today.getTime()) return 'out'
+    // Subscription closed but allotment is still pending
+    return 'awaited'
+  }
+
+  if (ipo.status === 'lastday') {
+    // Subscription is closing today → allotment will be awaited
+    return 'awaited'
+  }
+
+  if (ipo.status === 'open' || ipo.status === 'upcoming') {
+    return 'upcoming'
+  }
+
+  return null
+}
+
 export default function AllotmentStatusPage() {
-  // Filter IPOs that are in allotment phase or recently allotted
-  const allotmentIPOs = currentIPOs.filter(ipo => 
-    ipo.status === 'allot' || ipo.status === 'listing'
-  )
-  
-  // IPOs with upcoming allotment
-  const upcomingAllotment = currentIPOs.filter(ipo => 
-    ipo.status === 'open' || ipo.status === 'lastday'
-  )
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // IPOs whose allotment is finalised (check your status now)
+  const allotmentIPOs = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'out')
+
+  // IPOs whose subscription has closed but allotment hasn't happened yet
+  const awaitingAllotment = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'awaited')
+
+  // IPOs that are open or opening soon – allotment will come later
+  const upcomingAllotment = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'upcoming')
 
   return (
     <div className="min-h-screen bg-background">
@@ -154,46 +216,127 @@ export default function AllotmentStatusPage() {
           </p>
         </div>
 
-        {/* Current Allotment IPOs */}
+        {/* Allotment Out - IPOs whose allotment is finalised */}
         {allotmentIPOs.length > 0 && (
           <section className="bg-emerald-bg border border-emerald/20 rounded-2xl p-6 mb-8">
             <div className="flex items-center gap-3 mb-4">
               <CheckCircle2 className="w-6 h-6 text-emerald" />
-              <h2 className="font-heading text-xl font-bold text-ink">IPOs with Allotment Today</h2>
+              <h2 className="font-heading text-xl font-bold text-ink">Allotment Out — Check Your Status</h2>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {allotmentIPOs.map(ipo => (
-                <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-ink">{ipo.name}</h3>
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      ipo.status === "listing" ? "bg-cobalt-bg text-cobalt" : "bg-emerald-bg text-emerald"
-                    }`}>
-                      {ipo.status === "listing" ? "Listing Soon" : "Allotment"}
+              {allotmentIPOs.map(ipo => {
+                const allotmentUrl = getAllotmentUrl(ipo)
+                return (
+                  <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border flex flex-col">
+                    <div className="flex items-center justify-between mb-3 gap-2">
+                      <h3 className="font-semibold text-ink text-pretty">{ipo.name}</h3>
+                      <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
+                        ipo.status === "listing" ? "bg-cobalt-bg text-cobalt" : "bg-emerald-bg text-emerald"
+                      }`}>
+                        {ipo.status === "listing" ? "Listing Soon" : "Allotment Out"}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-ink3">Registrar</span>
+                        <span className="text-ink font-medium text-right">{ipo.registrar}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-ink3">Allotment Date</span>
+                        <span className="text-ink">{ipo.allotmentDate}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-ink3">List Date</span>
+                        <span className="text-ink">{ipo.listDate}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-col gap-2">
+                      {allotmentUrl && (
+                        <a
+                          href={allotmentUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                        >
+                          Check on {ipo.registrar?.split(' ')[0] || 'Registrar'}
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                      <Link
+                        href={`/ipo/${ipo.slug}`}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-secondary text-ink rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors border border-border"
+                      >
+                        View IPO Details
+                      </Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Allotment Awaited - subscription closed, allotment pending */}
+        {awaitingAllotment.length > 0 && (
+          <section className="bg-gold-bg border border-gold/20 rounded-2xl p-6 mb-8">
+            <div className="flex items-center gap-3 mb-4">
+              <Hourglass className="w-6 h-6 text-gold" />
+              <h2 className="font-heading text-xl font-bold text-ink">Allotment Awaited</h2>
+            </div>
+            <p className="text-sm text-ink2 mb-4">
+              Subscription is closed for these IPOs. The allotment result will be available on the date shown below.
+            </p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {awaitingAllotment.map(ipo => (
+                <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border flex flex-col">
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <h3 className="font-semibold text-ink text-pretty">{ipo.name}</h3>
+                    <span className="shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-gold-bg text-gold border border-gold/30">
+                      Allotment Awaited
                     </span>
                   </div>
-                  <div className="space-y-2 text-sm">
+                  <div className="space-y-2 text-sm flex-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-ink3">Registrar</span>
-                      <span className="text-ink font-medium">{ipo.registrar}</span>
+                      <span className="text-ink3">Close Date</span>
+                      <span className="text-ink">{ipo.closeDate}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-ink3">Allotment Date</span>
-                      <span className="text-ink">{ipo.allotmentDate}</span>
+                      <span className="text-gold font-medium">{ipo.allotmentDate}</span>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-ink3">List Date</span>
-                      <span className="text-ink">{ipo.listDate}</span>
+                      <span className="text-ink3">Registrar</span>
+                      <span className="text-ink text-right">{ipo.registrar}</span>
                     </div>
                   </div>
-                  <Link 
+                  <Link
                     href={`/ipo/${ipo.slug}`}
                     className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                   >
-                    Check Status <ExternalLink className="w-4 h-4" />
+                    View IPO Details <ExternalLink className="w-4 h-4" />
                   </Link>
                 </div>
               ))}
+            </div>
+          </section>
+        )}
+
+        {/* Fallback when there are no current IPOs in any of the above buckets */}
+        {allotmentIPOs.length === 0 && awaitingAllotment.length === 0 && (
+          <section className="bg-card border border-border rounded-2xl p-6 mb-8 flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-cobalt-bg flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-cobalt" />
+            </div>
+            <div>
+              <h2 className="font-heading text-lg font-bold text-ink mb-1">No allotments in progress right now</h2>
+              <p className="text-sm text-ink2">
+                There are no IPOs with allotment out or pending today. Browse upcoming IPOs below, or use the registrar
+                links to check an older application. For live subscription data, see the{' '}
+                <Link href="/subscription-status" className="text-primary font-medium hover:underline">
+                  subscription status
+                </Link>{' '}
+                page.
+              </p>
             </div>
           </section>
         )}
@@ -207,8 +350,15 @@ export default function AllotmentStatusPage() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {upcomingAllotment.map(ipo => (
-                <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border">
-                  <h3 className="font-semibold text-ink mb-2">{ipo.name}</h3>
+                <Link
+                  key={ipo.slug}
+                  href={`/ipo/${ipo.slug}`}
+                  className="bg-card rounded-xl p-4 border border-border hover:border-cobalt transition-colors group"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <h3 className="font-semibold text-ink text-pretty group-hover:text-cobalt transition-colors">{ipo.name}</h3>
+                    <ExternalLink className="w-4 h-4 text-ink3 group-hover:text-cobalt transition-colors shrink-0" />
+                  </div>
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-ink3">Close Date</span>
@@ -220,10 +370,10 @@ export default function AllotmentStatusPage() {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-ink3">Registrar</span>
-                      <span className="text-ink">{ipo.registrar}</span>
+                      <span className="text-ink text-right">{ipo.registrar}</span>
                     </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </section>
