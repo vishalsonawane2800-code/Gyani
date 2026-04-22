@@ -6,19 +6,26 @@ import { IPOCard } from '@/components/ipo-card';
 
 type FilterType = 'all' | 'main' | 'sme';
 
-// Priority order for IPO status
+// Priority order for IPO status within each group
 const statusPriority: Record<string, number> = {
   listing: 5,
   allot: 4,
   lastday: 3,
   open: 2,
-  upcoming: 1,
-  closed: 0,
+  closed: 1,
+  upcoming: 0,
 };
 
-// Only show open/active IPOs (not listed - they move to listed section)
-const openStatuses: string[] = ['open', 'lastday', 'allot', 'listing'];
-// When nothing is actively live, fall back to upcoming so the section is never blank.
+// Live / applicable IPOs — investors can still place bids
+const liveStatuses: string[] = ['open', 'lastday'];
+// Closed for bidding but not yet listed — awaiting allotment / listing
+// (IPOs stay here until the day after listing when the cron migrates them
+// into the listed_ipos table.)
+const awaitingStatuses: string[] = ['closed', 'allot', 'listing'];
+// All IPOs currently in an active cycle
+const currentStatuses: string[] = [...liveStatuses, ...awaitingStatuses];
+// When nothing is in an active cycle, fall back to upcoming so the section
+// is never blank between IPO cycles.
 const upcomingStatuses: string[] = ['upcoming'];
 
 interface IPO {
@@ -40,23 +47,14 @@ interface CurrentIPOsProps {
   ipos: IPO[];
 }
 
-export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
-  const [filter, setFilter] = useState<FilterType>('all');
-
-  // Prefer active IPOs. If there are none, fall back to upcoming so the
-  // homepage never renders an empty grid between IPO cycles.
-  const openIPOs = ipos.filter((ipo) => openStatuses.includes(ipo.status));
-  const upcomingIPOs = ipos.filter((ipo) =>
-    upcomingStatuses.includes(ipo.status)
+function sortByStatus(list: IPO[]): IPO[] {
+  return [...list].sort(
+    (a, b) => (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0)
   );
-  const hasLive = openIPOs.length > 0;
-  const sourceIPOs = hasLive ? openIPOs : upcomingIPOs;
+}
 
-  const sortedIPOs = [...sourceIPOs].sort((a, b) => {
-    return (statusPriority[b.status] || 0) - (statusPriority[a.status] || 0);
-  });
-
-  const filteredIPOs = sortedIPOs.filter((ipo) => {
+function applyExchangeFilter(list: IPO[], filter: FilterType): IPO[] {
+  return list.filter((ipo) => {
     if (filter === 'all') return true;
     if (filter === 'main')
       return ipo.exchange === 'Mainboard' || ipo.exchange === 'REIT';
@@ -64,11 +62,44 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       return ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
     return true;
   });
+}
 
-  const activeCount = sourceIPOs.length;
-  const headingLabel = hasLive ? 'Current IPO' : 'Upcoming IPOs';
-  const countPillLabel = hasLive ? 'Active' : 'Upcoming';
-  const countPillClass = hasLive
+export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
+  const [filter, setFilter] = useState<FilterType>('all');
+
+  // Partition by lifecycle stage
+  const currentIPOs = ipos.filter((ipo) => currentStatuses.includes(ipo.status));
+  const upcomingIPOs = ipos.filter((ipo) =>
+    upcomingStatuses.includes(ipo.status)
+  );
+
+  const hasCurrent = currentIPOs.length > 0;
+
+  // Live group: applicable IPOs always on top
+  const liveIPOs = sortByStatus(
+    currentIPOs.filter((ipo) => liveStatuses.includes(ipo.status))
+  );
+  // Awaiting group: closed bidding → allot → listing, shown below live
+  const awaitingIPOs = sortByStatus(
+    currentIPOs.filter((ipo) => awaitingStatuses.includes(ipo.status))
+  );
+
+  // Apply Mainboard / SME filter per group
+  const filteredLive = applyExchangeFilter(liveIPOs, filter);
+  const filteredAwaiting = applyExchangeFilter(awaitingIPOs, filter);
+  const filteredUpcoming = applyExchangeFilter(
+    sortByStatus(upcomingIPOs),
+    filter
+  );
+
+  const totalFiltered = hasCurrent
+    ? filteredLive.length + filteredAwaiting.length
+    : filteredUpcoming.length;
+
+  const activeCount = hasCurrent ? currentIPOs.length : upcomingIPOs.length;
+  const headingLabel = hasCurrent ? 'Current IPO' : 'Upcoming IPOs';
+  const countPillLabel = hasCurrent ? 'Active' : 'Upcoming';
+  const countPillClass = hasCurrent
     ? 'bg-emerald-bg text-emerald'
     : 'bg-primary-bg text-primary';
 
@@ -77,10 +108,10 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-bold">
-            {headingLabel}
-          </h2>
-          <span className={`text-xs font-extrabold py-1 px-3 rounded-full ${countPillClass}`}>
+          <h2 className="text-lg font-bold">{headingLabel}</h2>
+          <span
+            className={`text-xs font-extrabold py-1 px-3 rounded-full ${countPillClass}`}
+          >
             {activeCount} {countPillLabel}
           </span>
         </div>
@@ -117,16 +148,60 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
       </div>
 
       {/* IPO Cards */}
-      {filteredIPOs.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filteredIPOs.map((ipo) => (
-            <IPOCard key={ipo.id} ipo={ipo} />
-          ))}
-        </div>
+      {totalFiltered > 0 ? (
+        hasCurrent ? (
+          <div className="flex flex-col gap-6">
+            {/* Live / applicable IPOs */}
+            {filteredLive.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald" />
+                  <h3 className="text-sm font-bold text-ink">
+                    Live &amp; Applicable
+                  </h3>
+                  <span className="text-xs font-extrabold py-0.5 px-2 rounded-full bg-emerald-bg text-emerald">
+                    {filteredLive.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredLive.map((ipo) => (
+                    <IPOCard key={ipo.id} ipo={ipo} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Awaiting allotment / listing */}
+            {filteredAwaiting.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  <h3 className="text-sm font-bold text-ink">
+                    Awaiting Allotment &amp; Listing
+                  </h3>
+                  <span className="text-xs font-extrabold py-0.5 px-2 rounded-full bg-primary-bg text-primary">
+                    {filteredAwaiting.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredAwaiting.map((ipo) => (
+                    <IPOCard key={ipo.id} ipo={ipo} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredUpcoming.map((ipo) => (
+              <IPOCard key={ipo.id} ipo={ipo} />
+            ))}
+          </div>
+        )
       ) : (
         <div className="bg-card border border-border rounded-xl p-8 text-center">
           <p className="text-sm font-semibold text-ink2">
-            No {hasLive ? 'active' : 'upcoming'} IPOs right now.
+            No {hasCurrent ? 'active' : 'upcoming'} IPOs right now.
           </p>
           <p className="text-[12.5px] text-ink3 mt-1">
             Add IPOs from the admin panel and they will appear here.
