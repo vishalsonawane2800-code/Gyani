@@ -19,13 +19,16 @@ type NavLink = {
 
 const navLinks: NavLink[] = [
   { href: '/', label: 'Home' },
-  { href: '/#current', label: 'Live IPOs', badgeColor: 'bg-emerald-500', liveBadge: true },
+  // Live IPOs now has a dedicated page at /live - the previous `/#current`
+  // anchor only worked from the homepage and often failed to scroll on
+  // cross-page navigation.
+  { href: '/live', label: 'Live IPOs', badgeColor: 'bg-emerald-500', liveBadge: true },
   { href: '/listed', label: 'Listed' },
   { href: '/upcoming', label: 'Upcoming' },
   { href: '/gmp', label: 'GMP Today' },
+  { href: '/subscription', label: 'Subscription' },
   { href: '/news', label: 'IPO News' },
   { href: '/allotment-status', label: 'Allotment' },
-  { href: '/sme', label: 'SME IPOs' },
   { href: '/accuracy', label: 'AI Accuracy' },
 ];
 
