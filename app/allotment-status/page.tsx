@@ -27,12 +27,13 @@ export const metadata: Metadata = {
   }
 }
 
-// Registrar portals data
+// Registrar portals data. URLs verified against each registrar's official
+// public allotment-status portal.
 const registrars = [
   {
     name: "Link Intime India",
     shortName: "Link Intime",
-    url: "https://linkintime.co.in/IPO/public-issues.html",
+    url: "https://linkintime.co.in/Initial_Offer/public-issues.html",
     logo: "/registrars/linkintime.png",
     description: "One of India's leading registrar and transfer agents",
     color: "bg-cobalt-bg text-cobalt"
@@ -40,15 +41,15 @@ const registrars = [
   {
     name: "KFin Technologies",
     shortName: "KFin Tech",
-    url: "https://ris.kfintech.com/ipostatus/",
-    logo: "/registrars/kfintech.png", 
+    url: "https://ipostatus.kfintech.com/",
+    logo: "/registrars/kfintech.png",
     description: "Technology-driven registrar services provider",
     color: "bg-primary-bg text-primary"
   },
   {
     name: "Bigshare Services",
     shortName: "Bigshare",
-    url: "https://ipo.bigshareonline.com/IPO_STATUS.html",
+    url: "https://ipo.bigshareonline.com/IPO_Status.html",
     logo: "/registrars/bigshare.png",
     description: "Registrar for many SME IPOs",
     color: "bg-gold-bg text-gold"
@@ -56,7 +57,7 @@ const registrars = [
   {
     name: "Skyline Financial Services",
     shortName: "Skyline",
-    url: "https://www.skylinerta.com/ipo.php",
+    url: "https://www.skylinerta.com/display_ipo_rightissue_allotment.php",
     logo: "/registrars/skyline.png",
     description: "Growing registrar with SME focus",
     color: "bg-emerald-bg text-emerald"
@@ -118,17 +119,19 @@ const faqSchema = {
 }
 
 // Fallback registrar URLs - used when the IPO record does not have a
-// per-IPO allotmentUrl set. Keep in sync with components/ipo-detail/page-footer.tsx.
+// per-IPO allotmentUrl set. Kept in sync with the `registrars` array above
+// so both the "Check Allotment by Registrar" section and the per-IPO
+// "Check on Registrar" buttons link to the same verified portals.
 const registrarUrlMap: Record<string, string> = {
-  'KFin Technologies': 'https://kosmic.kfintech.com/ipostatus/',
-  'KFIN Technologies': 'https://kosmic.kfintech.com/ipostatus/',
-  'Link Intime': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
-  'Link Intime India': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
-  'Bigshare Services': 'https://www.bigshareonline.com/IPOStatus.aspx',
-  'Skyline Financial': 'https://www.skylinerta.com/ipo.php',
-  'Skyline Financial Services': 'https://www.skylinerta.com/ipo.php',
+  'KFin Technologies': 'https://ipostatus.kfintech.com/',
+  'KFIN Technologies': 'https://ipostatus.kfintech.com/',
+  'Link Intime': 'https://linkintime.co.in/Initial_Offer/public-issues.html',
+  'Link Intime India': 'https://linkintime.co.in/Initial_Offer/public-issues.html',
+  'Bigshare Services': 'https://ipo.bigshareonline.com/IPO_Status.html',
+  'Skyline Financial': 'https://www.skylinerta.com/display_ipo_rightissue_allotment.php',
+  'Skyline Financial Services': 'https://www.skylinerta.com/display_ipo_rightissue_allotment.php',
   'Cameo Corporate': 'https://ipostatus.cameoindia.com/',
-  'MUFG Intime India': 'https://linkintime.co.in/MIPO/Ipoallotment.html',
+  'MUFG Intime India': 'https://linkintime.co.in/Initial_Offer/public-issues.html',
 }
 
 function getAllotmentUrl(ipo: IPO): string | null {
