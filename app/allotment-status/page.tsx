@@ -2,9 +2,15 @@ import { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Ticker } from "@/components/ticker"
 import { Footer } from "@/components/footer"
-import { currentIPOs, type IPO } from "@/lib/data"
+import { type IPO } from "@/lib/data"
+import { getCurrentIPOs } from "@/lib/supabase/queries"
 import { ClipboardCheck, ExternalLink, ChevronRight, Search, Calendar, Building2, HelpCircle, CheckCircle2, Clock, AlertCircle, Hourglass } from "lucide-react"
 import Link from "next/link"
+
+// Always render on the server with fresh data so newly created / status-updated
+// IPOs from the admin panel show up immediately on this page (same approach
+// used on the homepage for the Current IPOs section).
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: "IPO Allotment Status 2026 - Check Online BSE, NSE, Link Intime, KFin | IPOGyani",
@@ -171,18 +177,23 @@ function categorizeForAllotment(ipo: IPO, today: Date): AllotmentBucket | null {
   return null
 }
 
-export default function AllotmentStatusPage() {
+export default async function AllotmentStatusPage() {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
+  // Pull the live list of current IPOs from Supabase (same source used on the
+  // homepage's "Current IPO" section). This ensures the IPOs surfaced here
+  // match whatever the admin has published.
+  const liveIPOs = await getCurrentIPOs()
+
   // IPOs whose allotment is finalised (check your status now)
-  const allotmentIPOs = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'out')
+  const allotmentIPOs = liveIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'out')
 
   // IPOs whose subscription has closed but allotment hasn't happened yet
-  const awaitingAllotment = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'awaited')
+  const awaitingAllotment = liveIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'awaited')
 
   // IPOs that are open or opening soon – allotment will come later
-  const upcomingAllotment = currentIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'upcoming')
+  const upcomingAllotment = liveIPOs.filter(ipo => categorizeForAllotment(ipo, today) === 'upcoming')
 
   return (
     <div className="min-h-screen bg-background">
