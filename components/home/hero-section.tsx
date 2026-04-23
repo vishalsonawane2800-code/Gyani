@@ -174,30 +174,48 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             <div className="space-y-0">
               {displayIPOs.length > 0 ? displayIPOs.map((ipo, index) => {
                 const isSme = ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+                const smeExchangeShort = ipo.exchange === 'BSE SME' ? 'BSE' : 'NSE';
                 return (
                 <Link 
                   key={ipo.id} 
                   href={`/ipo/${ipo.slug}`}
-                  className={`flex items-center gap-3 py-3 group ${index < displayIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
+                  className={`relative flex items-center gap-3 py-3 group ${
+                    isSme
+                      // SME rows get a visible gold left-accent, tinted
+                      // background, rounded corners, and extra side-padding
+                      // so they read as a clearly different class of IPO
+                      // at a glance — not just a small badge tweak.
+                      ? 'pl-3 pr-2 my-1 rounded-lg border border-amber-400/30 bg-gradient-to-r from-amber-400/[0.12] via-amber-400/[0.06] to-transparent shadow-[inset_3px_0_0_0_rgb(251_191_36)]'
+                      : index < displayIPOs.length - 1
+                        ? 'border-b border-white/[0.06]'
+                        : ''
+                  }`}
                 >
                   {ipo.logoUrl ? (
                     // Use admin-provided company logo when available so the
                     // snapshot card shows real branding instead of a
                     // letter-mark. Falls back to the coloured abbreviation
-                    // when no logo is set.
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
+                    // when no logo is set. SME logos get a gold ring to
+                    // reinforce the distinction even when scanning quickly.
+                    <div
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center ${
+                        isSme ? 'ring-2 ring-amber-400/70' : ''
+                      }`}
+                    >
                       <Image
                         src={ipo.logoUrl}
                         alt={`${ipo.name} logo`}
-                        width={36}
-                        height={36}
+                        width={40}
+                        height={40}
                         className="object-contain w-full h-full"
                         unoptimized
                       />
                     </div>
                   ) : (
                     <div
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
+                      className={`w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0 ${
+                        isSme ? 'ring-2 ring-amber-400/70' : ''
+                      }`}
                       style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                     >
                       {generateAbbr(ipo.name)}
@@ -213,16 +231,18 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                         {ipo.name}
                       </div>
                       {isSme && (
-                        // Distinct gold pill so SME IPOs are unmistakable
-                        // in the hero snapshot, matching the SME styling
-                        // used on the main IPO cards.
-                        <span className="shrink-0 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40">
-                          SME
+                        // Solid gold pill with a tiny dot — much more
+                        // prominent than the previous translucent badge
+                        // and aligned with how SME is flagged on the
+                        // main IPO cards.
+                        <span className="shrink-0 inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.08em] px-2 py-0.5 rounded-md bg-amber-400 text-[#1a0f3c] shadow-[0_0_0_1px_rgba(0,0,0,0.15)]">
+                          <span className="w-1 h-1 rounded-full bg-[#1a0f3c]" />
+                          SME IPO
                         </span>
                       )}
                     </div>
-                    <div className="text-white/40 text-xs mt-0.5">
-                      {ipo.sector} · {isSme ? `SME IPO (${ipo.exchange === 'BSE SME' ? 'BSE' : 'NSE'})` : ipo.exchange}
+                    <div className={`text-xs mt-0.5 ${isSme ? 'text-amber-300/90 font-semibold' : 'text-white/40'}`}>
+                      {ipo.sector} {isSme ? `· ${smeExchangeShort} SME Platform` : `· ${ipo.exchange}`}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

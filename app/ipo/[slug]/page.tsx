@@ -63,6 +63,15 @@ export async function generateStaticParams() {
 // Enable dynamic rendering for pages not in static params
 export const dynamicParams = true;
 
+// Re-validate the ISR cache every 60 seconds. Without this, any
+// on-demand-rendered IPO page (admin-created IPOs not in the static
+// seed) is cached indefinitely — including `notFound()` responses,
+// which leaves newly-added IPOs stuck as permanent 404s even after
+// their data is valid in Supabase. 60s is a good balance between
+// freshness and origin load; admin CRUD endpoints also call
+// revalidatePath() for instant invalidation on publish.
+export const revalidate = 60;
+
 export default async function IPODetailPage({ params }: PageProps) {
   const { slug } = await params;
   

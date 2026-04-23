@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 // GET /api/admin/ipos - List all IPOs
@@ -104,6 +105,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'An IPO with this slug already exists' }, { status: 400 })
       }
       return NextResponse.json({ error: `Failed to create IPO: ${error.message}` }, { status: 500 })
+    }
+
+    // Bust the ISR cache for the new IPO's public detail page and the
+    // surfaces that list it, otherwise the freshly-created IPO stays
+    // hidden behind a cached 404 / stale listing until the next
+    // `revalidate` tick.
+    try {
+      if (data?.slug) revalidatePath(`/ipo/${data.slug}`)
+      revalidatePath('/')
+      revalidatePath('/gmp')
+      revalidatePath('/subscription')
+    } catch (e) {
+      console.error('[v0] revalidatePath failed on POST /api/admin/ipos:', e)
     }
 
     return NextResponse.json({ data }, { status: 201 })

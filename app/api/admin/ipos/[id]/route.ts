@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 interface RouteParams {
@@ -138,6 +139,19 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     }
 
+    // Invalidate cached public pages so admin edits publish immediately
+    // instead of waiting for the 60s ISR revalidate tick. Also bust the
+    // old slug in case the admin renamed the slug during this update.
+    try {
+      if (data?.slug) revalidatePath(`/ipo/${data.slug}`)
+      if (body.slug && body.slug !== data?.slug) revalidatePath(`/ipo/${body.slug}`)
+      revalidatePath('/')
+      revalidatePath('/gmp')
+      revalidatePath('/subscription')
+    } catch (e) {
+      console.error('[v0] revalidatePath failed on PUT /api/admin/ipos/[id]:', e)
+    }
+
     return NextResponse.json({ data })
   } catch (error) {
     console.error('Server error:', error)
@@ -150,7 +164,15 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   try {
     const { id } = await params
     const supabase = createAdminClient()
-    
+
+    // Fetch slug before deletion so we can invalidate the correct
+    // public page path after the row is gone.
+    const { data: existing } = await supabase
+      .from('ipos')
+      .select('slug')
+      .eq('id', id)
+      .maybeSingle()
+
     const { error } = await supabase
       .from('ipos')
       .delete()
@@ -159,6 +181,15 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     if (error) {
       console.error('Error deleting IPO:', error)
       return NextResponse.json({ error: 'Failed to delete IPO' }, { status: 500 })
+    }
+
+    try {
+      if (existing?.slug) revalidatePath(`/ipo/${existing.slug}`)
+      revalidatePath('/')
+      revalidatePath('/gmp')
+      revalidatePath('/subscription')
+    } catch (e) {
+      console.error('[v0] revalidatePath failed on DELETE /api/admin/ipos/[id]:', e)
     }
 
     return NextResponse.json({ success: true })
