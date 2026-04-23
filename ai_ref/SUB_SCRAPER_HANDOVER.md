@@ -1,122 +1,142 @@
-# Subscription Scraper Handover
+# Subscription Scraper Handover (v3)
 
-Context doc for the next v0 agent. The previous session ran out of credit mid-implementation. Read this end-to-end before touching code.
+Context doc for the next v0 agent. **This is the third session on this bug.** Two previous sessions ran out of credit. Read this end-to-end before touching code.
 
-## TL;DR
+## TL;DR — where we are RIGHT NOW
 
-- **User bug report:** Adisoft (open, NSE SME) and Mehul Telecom (closed, BSE SME) showed identical subscription numbers on the homepage IPO cards — retail 37.41 / nii 79.38 / qib 32.50 / total 44.91. Same values on both cards, both detail pages.
-- **Root cause (confirmed by DB query):** Adisoft's `ipos.chittorgarh_url` column in the connected Supabase is pointing at Mehul's Chittorgarh page (`https://www.chittorgarh.com/ipo/mehul-telecom-limited-ipo/2536/`). The scraper is behaving correctly — it scrapes whatever URL it's given and writes the numbers against Adisoft.
-- **Why the admin's paste didn't fix it:** The admin form exposes a field labeled *"InvestorGain Subscription URL — Primary source for live subscription"* that writes to `ipos.investorgain_sub_url`. **No scraper reads that column.** There is no `subscription-investorgain.ts`. The column is dead weight. The Chittorgarh URL is the only one driving the actual scrape, and that one is stale/wrong.
-- **User's decision:** Build a real InvestorGain subscription scraper so the admin-pasted URL (`investorgain_sub_url`) becomes the primary source, with Chittorgarh as fallback. User explicitly declined the title-match defensive guard — they'll keep URLs clean themselves.
+- **Current live symptom (screenshot from user, session 3):** Adisoft Technologies IPO (open, NSE SME, id=3) detail page shows subscription `RETAIL 37.41x / NII 79.38x / QIB 32.50x / TOTAL 44.91x`. These are **Mehul Telecom's** numbers, displayed under Adisoft.
+- **The merge-logic bug is fixed.** See "What was fixed in session 2" below. Numbers are now internally consistent (total matches weighted categories). The remaining bug is that the **entire snapshot is coming from the wrong source URL** — the scraper is pulling Mehul's page and writing it against Adisoft.
+- **Root cause (confirmed in session 1, still true):** `ipos.chittorgarh_url` for Adisoft points at `https://www.chittorgarh.com/ipo/mehul-telecom-limited-ipo/2536/`. The Chittorgarh scraper works correctly — it scrapes whatever URL it's given.
+- **User will not run title-match guards.** Previous sessions' agents were told explicitly: "admin will paste correct URLs; don't second-guess them in code." Respect this.
+- **Session 3 ended out of credits** before fixing the Adisoft URL in DB and before finishing the real InvestorGain table parser.
 
-## What's already done in this branch
+## What was fixed in session 2 (already committed — DO NOT redo)
 
-Nothing for subscription scraping yet. Only investigation was completed. The previous session's actual code changes in this chat were unrelated:
+1. **Cron merge-logic bug in `app/api/cron/scrape-subscription/route.ts` (`processIpoSubscription`).**
+   - **Old behavior:** "first non-null wins per field" — mixed `total` from InvestorGain with `retail/nii/qib` from Chittorgarh, producing impossible snapshots like `total=1.59` with `retail=37 / nii=79 / qib=32` (total lower than every category).
+   - **New behavior:** gather snapshots from every source that responds, pick the snapshot with the most category fields (retail/nii/qib), and use **that same source's total**. Only fall back to cross-source merging when no source provided category data at all.
+   - This is why the numbers now all match Mehul cleanly instead of being a Frankenstein mix. The merge is doing its job — it's picking one consistent snapshot per IPO. The bug is purely that the snapshot is from the wrong URL.
 
-1. `lib/supabase/queries.ts` — fixed `IPOSimple.last_gmp_update` → `gmp_last_updated`, and switched `transformIPO` to prefer `ipos.gmp_last_updated` over `gmp_history.recorded_at` for the displayed "Updated X ago" timestamp. (This fixed the separate GMP freshness bug.)
-2. `app/api/cron/scrape-gmp/route.ts` — when all sources return `no_data`, still bump `ipos.gmp_last_updated`.
-3. `components/ipo-detail/ipo-tabs.tsx` — removed the public-facing "Add Data Manually" admin link from the Subscription tab empty state.
+2. **ISR / 404-cache bug on `/ipo/[slug]`.** Added `export const revalidate = 60` and wired `revalidatePath` into admin POST/PUT/DELETE routes (`app/api/admin/ipos/route.ts` and `app/api/admin/ipos/[id]/route.ts`). This was a separate bug where new IPOs got cached as 404 forever; it's unrelated to subscription data but worth knowing so you don't confuse cache-staleness with scraper issues.
 
-These are committed. Do not redo them.
+3. **IPO card SME styling** + hero snapshot SME badge + company logo rendering in `components/home/hero-section.tsx` and `components/ipo-card.tsx`. Cosmetic; orthogonal to scraping.
 
-## What needs to be built
+## What was fixed in session 1 (already committed)
 
-### 1. `lib/scraper/sources/subscription-investorgain.ts` (NEW)
+1. `lib/supabase/queries.ts` — `last_gmp_update` → `gmp_last_updated` rename, `transformIPO` prefers `ipos.gmp_last_updated` over `gmp_history.recorded_at` for the "Updated X ago" timestamp.
+2. `app/api/cron/scrape-gmp/route.ts` — bumps `ipos.gmp_last_updated` even when all sources return `no_data`.
+3. `components/ipo-detail/ipo-tabs.tsx` — removed public-facing "Add Data Manually" admin link from empty Subscription tab state.
 
-A new subscription source module that:
+## What was partially built in session 2 — `lib/scraper/sources/subscription-investorgain.ts`
 
-- Exports a function with the same signature pattern as `lib/scraper/sources/subscription-chittorgarh.ts` so `app/api/cron/scrape-subscription/route.ts` can call it the same way.
-- Takes the `investorgain_sub_url` (e.g. `https://www.investorgain.com/subscription/adisoft-technologies-ipo/2042/`) and returns `{ total, retail, nii, qib, anchor?, employee?, shareholder? } | null`.
-- Uses the same fetch/UA pattern as `lib/scraper/sources/gmp-investorgain.ts` (that file is already working, copy the fetch headers and error handling).
-- Returns `null` on non-200, empty body, or parse failure — do not throw.
+**It exists now.** But it is MINIMAL — it only parses the `<title>` tag for the Total (regex `/Total:\s*([\d.]+)\s*times/i`) and returns `{ total, retail: null, nii: null, qib: null }`. It does NOT parse the category table.
 
-**What the InvestorGain subscription page looks like (for the parser):**
+**Why it's not finished:** InvestorGain's subscription page (e.g. `https://www.investorgain.com/subscription/mehul-telecom-ipo/2536/`) is a Next.js SPA. Static HTML only contains `"Loading..."` spinners in the main content area. The category numbers are loaded client-side via fetch. Session 2 confirmed this by curling the HTML — grep for `QIB`, `Retail`, `NII` returned 0 matches in the `<body>`. Only the `<title>` tag and OpenGraph meta contain data server-side.
 
-The previous agent confirmed:
-- URL pattern: `https://www.investorgain.com/subscription/<slug>/<id>/` (e.g. `.../adisoft-technologies-ipo/2042/`).
-- `<title>` contains the total, e.g. `"Adisoft Technologies SME Live Subscription. Total: 1.40 times."` — this alone is enough for a total-only fallback if the table parse fails. Regex: `/Total:\s*([\d.]+)\s*times/i`.
-- The page has a visible subscription table with category rows (QIB, NII, Retail, Total, sometimes Employee / Shareholder / Anchor). The previous agent was about to inspect the exact HTML structure with the curl dump at `/tmp/ig.html` when credit ran out. **Step 1 for the next agent: run `curl` on that URL, save to `/tmp/ig.html`, and read the structure around the first `QIB` occurrence to see whether it's an HTML `<table>`, a flex grid of divs, or JSON embedded in a `<script>` tag.** The previous bash attempts all hit permission prompts — just approve them and run.
-- Expect subscription values as decimals in `"1.40x"` / `"1.40"` format. Strip `x` / `X` / commas / whitespace before `parseFloat`.
+**What the next agent MUST investigate — step-by-step:**
 
-**Parser implementation notes:**
-- Use `cheerio` — it's already a project dep; `subscription-chittorgarh.ts` uses it.
-- Match rows by category label (case-insensitive `trim`), not by row index. InvestorGain reorders categories across IPOs.
-- For category aliases: `"QIB"` / `"Qualified Institutional Buyers"`, `"NII"` / `"Non Institutional Investors"` / `"HNI"`, `"Retail"` / `"Retail Investors"` / `"Retail Individual Investors"`, `"Total"` / `"Total (incl EMP)"` — the parentheses matter for distinguishing "Total" from "Total Application".
-- Validate: each numeric must be `>= 0` and `< 10000`. Reject obvious junk.
+1. Run with browser DevTools open on `https://www.investorgain.com/subscription/mehul-telecom-ipo/2536/` and watch the Network tab. Find the XHR/fetch call that loads the category data. It's almost certainly JSON at an endpoint like `https://www.investorgain.com/api/subscription/2536` or a Next.js route handler URL with the IPO id. If we can hit that JSON endpoint directly from the scraper, we get clean structured data — better than HTML parsing.
+2. If no public JSON endpoint exists, fall back to one of: (a) use `@vercel/og` or `puppeteer-core` + `@sparticuz/chromium` to render the page headlessly — heavy, but possible on Vercel serverless with 1024 MB memory; (b) keep the `<title>`-only scraper and accept that InvestorGain can only ever fill `total` — treat it as a "total-confirm" source rather than primary, and keep Chittorgarh as the real source for categories.
+3. Option (b) is probably what the user wants, given the complexity cost of headless browsing and the fact that Chittorgarh already works. The merge logic from session 2 already handles "one source has only total, another has categories" correctly — it picks Chittorgarh for everything because Chittorgarh has more category coverage.
 
-### 2. Wire it into `app/api/cron/scrape-subscription/route.ts`
+**Given this, the better next-session plan is:**
+- Fix the Adisoft URL in DB so Chittorgarh scrapes the right page.
+- Leave `subscription-investorgain.ts` as title-only (it's a useful cross-check / fallback when Chittorgarh 404s).
+- Do NOT promote InvestorGain to "primary" as the old v1 of this doc suggested — that plan was written before we knew the page was a SPA.
 
-Current order (read the file — it's ~500 lines): NSE → BSE → Chittorgarh, with Chittorgarh only attempted if the IPO has `chittorgarh_url`.
+## The remaining work for session 4
 
-New desired order: **InvestorGain first (if `investorgain_sub_url` is set) → NSE → BSE → Chittorgarh fallback**.
+### Priority 1 — Fix Adisoft's bad URL in Supabase
 
-Match the existing outcome object shape (look for `outcomes.push(...)` inside `processIpoSubscription`). Add a new source string `"investorgain"` to whatever discriminated union / type is in use — grep for `subscription_source` in `lib/supabase/queries.ts` and the cron file.
+The root cause of what the user is seeing right now. Ask the user to run:
 
-When InvestorGain succeeds, write `subscription_source = 'investorgain'` on the `ipos` row upsert.
+```sql
+-- Check current state
+select id, slug, chittorgarh_url, investorgain_sub_url, nse_symbol, bse_scrip_code
+from ipos
+where slug in ('adisoft-technologies-limited-ipo', 'mehul-telecom-limited-ipo');
+```
 
-### 3. Admin scrape-ipo route
+Expected bad state: Adisoft's `chittorgarh_url` will be `https://www.chittorgarh.com/ipo/mehul-telecom-limited-ipo/2536/` (Mehul's URL). The user must paste the correct Adisoft Chittorgarh URL via the admin panel at `/admin/ipos/<id>/edit`. If they don't know the URL, correct one to find is on Chittorgarh's IPO list page — search "Adisoft".
 
-`app/api/admin/scrape-ipo/route.ts` has an "InvestorGain Subscription" scrape path at line 114 (per grep). Verify whether it already expects an investorgain subscription scraper or whether it just falls through. If it references a function that doesn't exist, wire it to the new `subscription-investorgain.ts`.
+After URL is corrected, clear the stale cached snapshot so the UI doesn't keep showing Mehul's numbers until next cron tick:
 
-### 4. Do NOT add a title-match guard
+```sql
+update ipos
+set subscription_total  = null,
+    subscription_retail = null,
+    subscription_nii    = null,
+    subscription_qib    = null,
+    subscription_source = null
+where slug = 'adisoft-technologies-limited-ipo';
 
-User explicitly said: *"admin will add the proper url to scrape"* — they don't want a defensive company-name check on the Chittorgarh (or any) scraper that rejects mismatched pages. Skip it. If a URL is wrong, the fix is to correct the URL in admin, not to make the scraper second-guess.
+delete from subscription_live
+where ipo_id = (select id from ipos where slug = 'adisoft-technologies-limited-ipo');
 
-### 5. Data cleanup for the user's current bad row
+-- Also purge the wrong history row so we don't dedupe against it
+delete from subscription_history
+where ipo_id = (select id from ipos where slug = 'adisoft-technologies-limited-ipo')
+  and (total, retail, nii, qib) = (44.91, 37.41, 79.38, 32.5);
+```
 
-After the code change, the user still has Adisoft row with wrong `chittorgarh_url` and wrong cached subscription numbers. Two options, ask the user:
+Then trigger a manual scrape via `POST /api/admin/scrape-subscription/3` (Adisoft id) and verify `subscription_live` rows for ipo_id=3 match the correct Adisoft Chittorgarh page. The merge-logic fix from session 2 ensures the numbers will be consistent once the URL is right.
 
-a) They'll fix the URL in the admin dashboard themselves and re-run the scraper manually (`app/api/admin/scrape-subscription/[ipoId]/route.ts`). Preferred — no migration script needed.
+### Priority 2 (optional) — Category parsing for InvestorGain
 
-b) Offer to write a one-off script in `scripts/` to clear `subscription_total/retail/nii/qib` + `subscription_live` rows for Adisoft so the stale cached values don't render until the next cron tick.
+Only pursue this if the user wants InvestorGain as a real primary source. See "What was partially built in session 2" above for the investigation plan. Recommended answer: **skip it**, keep InvestorGain as title-only `total`-confirm source, document that Chittorgarh is the primary for categories. If the user insists, the least-bad option is hitting InvestorGain's internal JSON endpoint (discover via browser DevTools Network tab) rather than headless browsing.
 
-## Evidence collected (DB queries already run by user)
+### Priority 3 — Defensive DB-level guardrail (optional, ask user first)
 
-Run against the connected Supabase (user confirmed they connected a different Supabase to the build env — ask them if you need fresh output).
+The user refused title-match guards **in the scrapers**. But a DB-level unique constraint preventing two IPOs from sharing the same scrape URLs would prevent recurrence:
 
-### Query 1 — `ipos` row state
+```sql
+alter table ipos
+  add constraint uniq_chittorgarh_url unique (chittorgarh_url)
+  deferrable initially deferred;
+-- Same for investorgain_sub_url, nse_symbol, bse_scrip_code where non-null.
+```
 
-Both rows returned:
-- `mehul-telecom-limited-ipo` / BSE SME / `allot` / close 2026-04-21 / `chittorgarh_url = https://www.chittorgarh.com/ipo/mehul-telecom-limited-ipo/2536/` / subs 44.91 / 37.41 / 79.38 / 32.5 / source `chittorgarh`
-- `adisoft-technologies-limited-ipo` / NSE SME / `open` / close 2026-04-27 / `chittorgarh_url = https://www.chittorgarh.com/ipo/mehul-telecom-limited-ipo/2536/` **← WRONG, same URL** / subs 44.91 / 37.41 / 79.38 / 32.5 / source `chittorgarh`
-
-Both have `nse_symbol = NULL` and `bse_scrip_code = NULL`, so NSE/BSE sources are being skipped and Chittorgarh is the only live source — which explains why the wrong URL poisoned the data.
-
-### Query 2 — `subscription_live`
-
-Confirmed byte-identical values written to both IPOs (ipo_id 2 = Mehul, ipo_id 3 = Adisoft). Mehul frozen at 2026-04-21 18:30 (bidding close), Adisoft rewritten today 2026-04-23 08:30 — proving the cron wrote Mehul's values onto Adisoft on a recent run.
-
-### Query 3
-
-User got an error because `subscription_history` uses `created_at`, not `updated_at`. Not actually needed for the diagnosis, already complete without it.
-
-## Repo conventions the next agent must follow
-
-- **No ORM.** Direct `supabase.from(...)` calls. Match the style in `scrape-subscription/route.ts`.
-- **No localStorage / client-only storage.** Cron writes to Supabase, UI reads from Supabase through `lib/supabase/queries.ts`. Never bypass.
-- **Package manager:** there's a `pnpm-lock.yaml` at repo root. Use `pnpm add` if a new dep is needed (shouldn't be — `cheerio` and `undici`/native fetch already available).
-- **Cron cadence:** `/api/cron/dispatch` is driven by the Cloudflare Worker at `cloudflare-worker/` every 15 min. Do not touch that — it's working. User confirmed dispatcher rows appear every ~15 min in `scraper_health`.
-- **Scraper health telemetry:** every scraper run writes a row to `scraper_health` (see `app/api/cron/scrape-gmp/route.ts` for the pattern — `logScraperRun` helper). The new InvestorGain source must do the same so `/admin/automation` surfaces its status.
+Ask the user before applying — they may not want this either.
 
 ## Files the next agent will need to read (in order)
 
-1. `lib/scraper/sources/subscription-chittorgarh.ts` — template to clone.
-2. `lib/scraper/sources/gmp-investorgain.ts` — existing InvestorGain fetch pattern, copy the UA/headers.
-3. `app/api/cron/scrape-subscription/route.ts` — dispatcher to wire the new source into; note the `processIpoSubscription` function and the `outcomes` shape.
-4. `lib/supabase/queries.ts` — `subscription_source` type union and `transformIPO` to make sure the new source string doesn't break display logic.
-5. `components/admin/ipo-form.tsx` lines ~884–897 — the admin field labeled "InvestorGain Subscription URL". Its label is accurate once the scraper exists; no form change needed.
-6. `scripts/002_add_scrape_fields.sql` and `scripts/012_add_gmp_source_urls.sql` — confirm `investorgain_sub_url` column already exists (it does, per grep; no migration needed).
+1. `app/api/cron/scrape-subscription/route.ts` — read `processIpoSubscription` end-to-end. The merge logic was rewritten in session 2; understand it before touching.
+2. `lib/scraper/sources/subscription-chittorgarh.ts` — working template, proves the pattern.
+3. `lib/scraper/sources/subscription-investorgain.ts` — current minimal title-only version.
+4. `lib/scraper/sources/gmp-investorgain.ts` — reference for fetch headers / UA.
+5. `lib/supabase/queries.ts` — `transformIPO` and the `subscription_source` type union.
+6. `components/admin/ipo-form.tsx` ~884–897 — admin URL field. No change needed; field already writes to `investorgain_sub_url`.
+7. `app/api/admin/scrape-subscription/[ipoId]/route.ts` — manual trigger endpoint used for testing.
+8. `ai_ref/AI_CODEBASE_GUIDE.md`, `ai_ref/DATABASE_SCHEMA.md`, `ai_ref/QUICK_REFERENCE.md` — read first.
 
-## Quick sanity checks before claiming done
+## Repo conventions (unchanged across sessions)
+
+- **No ORM.** Direct `supabase.from(...)` calls.
+- **No localStorage.** Cron writes Supabase, UI reads Supabase.
+- **pnpm** is the package manager (`pnpm-lock.yaml` at repo root).
+- **Cron dispatcher** is the Cloudflare Worker at `cloudflare-worker/`, calls `/api/cron/dispatch` every 15 min. Do not touch.
+- **Scraper health logging:** every source writes a row to `scraper_health` via `logScraperRun`. Match the pattern in `scrape-gmp/route.ts`.
+
+## Sanity checks before claiming done
 
 1. `pnpm tsc --noEmit` clean.
-2. Hit `/api/admin/scrape-subscription/3` (Adisoft's id) after the user pastes a correct Adisoft URL into `investorgain_sub_url` and verify `subscription_live` rows for ipo_id 3 reflect InvestorGain's table, not Mehul's values.
-3. Verify `subscription_source` on `ipos` row for ipo_id 3 flips to `investorgain`.
-4. Verify homepage card for Adisoft shows the correct (non-44.91) value.
-5. Verify `scraper_health` has rows with `scraper = 'subscription-investorgain'` (or whatever naming convention the existing subscription sources use — check before naming).
+2. Query `ipos` where id=3 — `chittorgarh_url` points at an actual Adisoft page on chittorgarh.com (NOT Mehul's 2536 page).
+3. `POST /api/admin/scrape-subscription/3` returns success and `subscription_live` has a new row for ipo_id=3 with Adisoft's actual numbers.
+4. Homepage IPO card for Adisoft and `/ipo/adisoft-technologies-limited-ipo` both show Adisoft's real numbers, not 44.91/37.41/79.38/32.50.
+5. Mehul's card still shows 44.91/37.41/79.38/32.50 (unchanged — Mehul closed, values frozen).
+6. `scraper_health` rows for `scraper = 'subscription-chittorgarh'` show success for ipo_id=3 with the new URL, and the `error` column is empty.
 
-## Anything else the next agent should know
+## Session-3 addendum — what happened in this session
 
-- User is non-technical-adjacent but careful — they paste URLs into admin and expect them to work. Don't silently swallow a misconfigured URL. Do log clearly to `scraper_health.error` when a source is skipped because the URL field is empty vs. when it 404s.
-- `ai_ref/` contains other handovers (`GMP_SCRAPER_FIX_HANDOVER.md`, `SCRAPER_HANDOVER.md`, `AI_CODEBASE_GUIDE.md`, `DATABASE_SCHEMA.md`, `QUICK_REFERENCE.md`). Read `AI_CODEBASE_GUIDE.md` and `DATABASE_SCHEMA.md` first before writing code — they contain the column names, table relationships, and conventions this project uses.
-- The user has a separate Supabase connected to the build env. If you need to query DB state, ask them to run SQL — don't assume the schema from scripts folder alone (though scripts after `006_*` reflect what's actually deployed, per user).
+1. User reported impossible snapshot (total 1.59 below all categories) → session-2 agent fixed the merge logic in `scrape-subscription/route.ts`. Build committed.
+2. User reported new snapshot (total 44.91, matches categories) — the merge fix worked, but numbers are still Mehul's because the URL is wrong. Session-2 agent explained this is the session-1 original root cause (wrong `chittorgarh_url`) resurfacing now that the merge-bug is fixed and no longer hiding it.
+3. User ran out of credits before Priority 1 (DB URL fix + cache clear) was applied.
+
+**The next agent's FIRST action should be:** ask the user to run the SQL in Priority 1 above, wait for output, then walk them through pasting the correct Adisoft URL in admin.
+
+## Anything else
+
+- Previous sessions have already investigated the `investorgain_sub_url` column — it exists (per `scripts/012_add_gmp_source_urls.sql`), no migration needed.
+- The user has a separate Supabase connected to the build env (not the one in Vercel envs visible to v0). Ask them to run queries and share output screenshots.
+- Do not proactively create scripts/ files for data cleanup unless the user explicitly asks — they prefer running SQL manually in Supabase dashboard.
+- Do not re-run the cron merge-logic rewrite — it's already committed. Verify with `git log app/api/cron/scrape-subscription/route.ts` if unsure.
