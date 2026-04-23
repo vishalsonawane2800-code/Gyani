@@ -3,81 +3,69 @@ import Link from 'next/link';
 import { Header } from '@/components/header';
 import { Ticker } from '@/components/ticker';
 import { Footer } from '@/components/footer';
-import { SubscriptionStats } from '@/components/subscription/subscription-stats';
 import { LiveSubscriptionDetails } from '@/components/subscription/live-subscription-details';
+import { ListingGainSummary } from '@/components/subscription/listing-gain-summary';
+import { ProbabilityCalculator } from '@/components/subscription/probability-calculator';
 import { getCurrentIPOs } from '@/lib/supabase/queries';
 import {
   getMergedAvailableYears,
   getMergedListedIposByYear,
 } from '@/lib/listed-ipos/loader';
-import type { ListedIPO, ExchangeType } from '@/lib/data';
 import { Users, ChevronRight, BarChart3, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'IPO Subscription Stats 2026 - Mainboard vs SME | IPOGyani',
+  title: 'IPO Subscription & Allotment Probability Calculator | IPOGyani',
   description:
-    'Year-wise IPO subscription and listing-gain statistics for Mainboard and SME IPOs. Average subscription, average / median listing gains, and live counts of IPOs listed in profit or loss.',
+    'Historical avg and median listing gains for Mainboard and SME IPOs, a retail allotment probability calculator (1 / retail subscription, capped at 100%), and live subscription tracking for current IPOs.',
   alternates: { canonical: 'https://ipogyani.com/subscription' },
 };
 
-// Same cheap mapper used on the home page, inlined so we avoid importing a
-// private helper. Only the fields Subscription Stats reads are populated.
-function toListedIpoCard(
-  row: Awaited<ReturnType<typeof getMergedListedIposByYear>>[number],
-  index: number
-): ListedIPO {
-  // Fall back to Mainboard when the row doesn't have a recognised exchange
-  // string - still preferable to dropping it silently.
-  const exchange: ExchangeType =
-    row.exchange === 'BSE SME'
-      ? 'BSE SME'
-      : row.exchange === 'NSE SME'
-      ? 'NSE SME'
-      : row.exchange === 'REIT'
-      ? 'REIT'
-      : 'Mainboard';
-
-  return {
-    id: index + 1,
-    name: row.name,
-    slug: row.slug,
-    abbr: row.name.slice(0, 2).toUpperCase(),
-    bgColor: '#f0f9ff',
-    fgColor: '#0369a1',
-    exchange,
-    sector: row.sector || 'General',
-    listDate: row.listingDate,
-    issuePrice: row.issuePriceUpper ?? 0,
-    listPrice: row.listingPrice ?? 0,
-    gainPct: row.listingGainPct ?? 0,
-    subTimes: row.day3Sub ?? 0,
-    gmpPeak: '-',
-    aiPred: '-',
-    aiErr: 0,
-    year: String(row.year),
-  };
+// Compute avg + median listing gain from an array of values. Returns null
+// when the bucket is empty so callers can render a dash instead of a
+// misleading "+0%".
+function summarize(values: number[]): { avg: number | null; median: number | null } {
+  if (values.length === 0) return { avg: null, median: null };
+  const avg = values.reduce((s, v) => s + v, 0) / values.length;
+  const sorted = [...values].sort((a, b) => a - b);
+  const median =
+    values.length % 2 === 1
+      ? sorted[(values.length - 1) / 2]
+      : (sorted[values.length / 2 - 1] + sorted[values.length / 2]) / 2;
+  return { avg, median };
 }
 
 export default async function SubscriptionPage() {
+  // Pull the full listed-IPO excel history across every available year,
+  // then bucket by Mainboard vs SME so we can surface avg / median listing
+  // gain for each segment. The listed IPO excel sheet is the single source
+  // of truth for these historical numbers.
   const years = await getMergedAvailableYears();
   const rowsByYear = await Promise.all(
     years.map((y) => getMergedListedIposByYear(y))
   );
-  const listed: ListedIPO[] = rowsByYear.flat().map((row, idx) => toListedIpoCard(row, idx));
+  const listedRows = rowsByYear.flat();
 
-  // Count IPOs that are listing today (or currently in the listing state)
-  // and bucket by current / listing price vs issue price. This mirrors the
-  // "IPOs Open in Profit / Loss" tiles in the reference design.
+  const mainboardGains = listedRows
+    .filter((r) => r.exchange !== 'BSE SME' && r.exchange !== 'NSE SME' && r.listingGainPct !== null && r.listingGainPct !== undefined)
+    .map((r) => r.listingGainPct as number);
+  const smeGains = listedRows
+    .filter((r) => (r.exchange === 'BSE SME' || r.exchange === 'NSE SME') && r.listingGainPct !== null && r.listingGainPct !== undefined)
+    .map((r) => r.listingGainPct as number);
+
+  const mainboardSummary = summarize(mainboardGains);
+  const smeSummary = summarize(smeGains);
+
+  const yearsLabel =
+    years.length === 0
+      ? ''
+      : years.length === 1
+      ? `${years[0]}`
+      : `${Math.min(...years.map(Number))} - ${Math.max(...years.map(Number))}`;
+
+  // Live subscription data for the bottom section.
   const currentIpos = await getCurrentIPOs();
-  const listingToday = currentIpos.filter((i) => i.status === 'listing');
-  const listedAboveIssue = listingToday.filter(
-    (i) => (i.listingGainPercent ?? i.gmpPercent ?? 0) > 0
-  ).length;
-  const listedBelowIssue = listingToday.filter(
-    (i) => (i.listingGainPercent ?? i.gmpPercent ?? 0) < 0
-  ).length;
 
   // Any IPO that still has meaningful subscription data to surface — open +
   // lastday for live bidding, plus closed/allot/listing so the day-wise
@@ -98,8 +86,6 @@ export default async function SubscriptionPage() {
       (a, b) =>
         (liveOrder[a.status] ?? 99) - (liveOrder[b.status] ?? 99)
     );
-
-  const yearStrings = years.map((y) => String(y));
 
   return (
     <div className="min-h-screen bg-background">
@@ -123,21 +109,37 @@ export default async function SubscriptionPage() {
           </div>
           <div>
             <h1 className="font-heading text-2xl md:text-3xl font-bold text-ink mb-1">
-              IPO Subscription Stats
+              IPO Subscription &amp; Allotment
             </h1>
             <p className="text-ink3 text-sm md:text-base">
-              Switch between Mainboard and SME, change the year, and see how
-              this year&apos;s listings have performed at a glance.
+              Listing-gain history from our listed IPO dataset, a quick
+              retail allotment probability calculator, and live subscription
+              tracking for every current IPO.
             </p>
           </div>
         </div>
 
-        {/* Stats reference component (tabs + 6 tiles) */}
-        <SubscriptionStats
-          listed={listed}
-          years={yearStrings}
-          openToday={{ listedAboveIssue, listedBelowIssue }}
+        {/* Listing-gain summary pulled directly from the listed IPO excel
+            sheet — avg and median gains bucketed by Mainboard vs SME. */}
+        <ListingGainSummary
+          mainboard={{
+            count: mainboardGains.length,
+            avg: mainboardSummary.avg,
+            median: mainboardSummary.median,
+          }}
+          sme={{
+            count: smeGains.length,
+            avg: smeSummary.avg,
+            median: smeSummary.median,
+          }}
+          yearsLabel={yearsLabel}
         />
+
+        {/* Retail allotment probability calculator: 1 / retail sub (capped
+            at 100%). Lets investors gauge their odds before applying. */}
+        <div className="mt-6">
+          <ProbabilityCalculator />
+        </div>
 
         {/* Live subscription per current IPO — day-wise + category-wise,
             fetched directly from the same subscription_live +
@@ -174,16 +176,19 @@ export default async function SubscriptionPage() {
           </div>
           <ul className="text-sm text-ink2 space-y-1.5 list-disc pl-5">
             <li>
-              <strong>Avg Subscription</strong> averages the final subscription
-              multiple across all listed IPOs in the selected year.
+              <strong>Avg / Median Listing Gain</strong> is calculated from
+              the listing-day gain % of every row in our listed IPO excel
+              sheet, bucketed by Mainboard and SME.
             </li>
             <li>
-              <strong>Avg / Median Listing Gain</strong> uses the listing-day
-              gain % recorded for each listed IPO.
+              <strong>Allotment Probability</strong> uses the standard
+              retail-category formula <code>1 / retail subscription</code>,
+              capped at 100% when the category is undersubscribed.
             </li>
             <li>
-              <strong>IPOs Open in Profit / Loss</strong> counts IPOs currently
-              on their listing day with a positive / negative listing gain.
+              <strong>Live Subscription</strong> streams from the same
+              subscription tables powering the IPO detail page and refreshes
+              hourly on bidding days.
             </li>
           </ul>
         </div>
