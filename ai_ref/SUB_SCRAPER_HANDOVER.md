@@ -134,6 +134,22 @@ Ask the user before applying — they may not want this either.
 
 **The next agent's FIRST action should be:** ask the user to run the SQL in Priority 1 above, wait for output, then walk them through pasting the correct Adisoft URL in admin.
 
+## Session-4 progress — THIS SESSION
+
+1. **Issue identified:** Adisoft URLs in database are correct (`adisoft-technologies-ipo/2788/` for Chittorgarh). The problem is **stale cached data** from when the URL was wrong. Cache is stored in **Upstash Redis** with key `subscription:{ipoId}`.
+
+2. **Fixed env var config:** The old scripts `clear-subscription-cache.js` and created `fix-adisoft-subscription.js` had incorrect env vars:
+   - Old: `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (don't exist)
+   - Actual Vercel integration provides: `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   - Updated both scripts with correct variable names and Redis initialization.
+
+3. **About to execute:** Running the fix-adisoft-subscription.js script which will:
+   - Fetch Adisoft IPO ID from Supabase
+   - Clear the stale subscription cache from Redis for that IPO
+   - Clear database subscription columns and subscription_live rows
+   - Trigger a fresh manual scrape via the scrape-subscription endpoint
+   - Return the new data so we can verify Adisoft's correct numbers loaded
+
 ## Anything else
 
 - Previous sessions have already investigated the `investorgain_sub_url` column — it exists (per `scripts/012_add_gmp_source_urls.sql`), no migration needed.
