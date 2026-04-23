@@ -273,6 +273,16 @@ export async function processIpoGMP(ipo: IpoRow): Promise<{
     const allCleanNoData = realErrors.length === 0
 
     if (allCleanNoData) {
+      // Still bump `gmp_last_updated` so the UI's "Updated X ago" reflects
+      // that we actually checked this tick. Without this, closed /
+      // awaiting-allotment IPOs (which often stop appearing on IPOWatch +
+      // ipoji because bidding is over) would freeze their timestamp at the
+      // last value change — making a freshly-checked value look hours stale.
+      const now = new Date().toISOString()
+      await supabase
+        .from("ipos")
+        .update({ gmp_last_updated: now })
+        .eq("id", ipo.id)
       return {
         inserted: false,
         skipped: true, // treat as a clean "nothing to record" skip
