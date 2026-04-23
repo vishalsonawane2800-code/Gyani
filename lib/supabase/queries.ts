@@ -677,6 +677,27 @@ function parseFinancials(financialsData: any[]): IPO['financials'] | null {
       fy24: fy24?.ebitda || 0,
       fy25: fy25?.ebitda || latest?.ebitda || 0,
     },
+    // Per-year borrowing (total debt) and valuation — populated from the
+    // ipo_financials.borrowing / ipo_financials.valuation columns added in
+    // scripts/030_add_borrowing_valuation.sql. Values remain undefined when
+    // the columns are absent or blank, so the detail page falls back to
+    // its legacy estimated values.
+    borrowing:
+      fy23?.borrowing != null || fy24?.borrowing != null || fy25?.borrowing != null
+        ? {
+            fy23: fy23?.borrowing ?? 0,
+            fy24: fy24?.borrowing ?? 0,
+            fy25: fy25?.borrowing ?? latest?.borrowing ?? 0,
+          }
+        : undefined,
+    valuation:
+      fy23?.valuation != null || fy24?.valuation != null || fy25?.valuation != null
+        ? {
+            fy23: fy23?.valuation ?? 0,
+            fy24: fy24?.valuation ?? 0,
+            fy25: fy25?.valuation ?? latest?.valuation ?? 0,
+          }
+        : undefined,
     roe: latest?.roe || 0,
     roce: latest?.roce || 0,
     debtEquity: latest?.debt_equity || 0,

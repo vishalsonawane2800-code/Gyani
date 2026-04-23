@@ -63,7 +63,8 @@ export async function POST(
         .eq('ipo_id', id)
     }
 
-    // Insert new financials
+    // Insert new financials (borrowing + valuation feed the Borrowing and
+    // Valuation tabs on the public IPO detail page).
     const financialsToInsert = parseResult.data.map(f => ({
       ipo_id: id,
       fiscal_year: f.fiscal_year,
@@ -73,6 +74,8 @@ export async function POST(
       net_worth: f.net_worth,
       assets: f.assets,
       liabilities: f.liabilities,
+      borrowing: f.borrowing,
+      valuation: f.valuation,
       roe: f.roe,
       roce: f.roce,
       debt_equity: f.debt_equity,
