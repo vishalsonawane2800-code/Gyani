@@ -994,12 +994,18 @@ export const FINANCIALS_TEMPLATE = `=== FINANCIALS ===
 FY23_REVENUE: 5.38
 FY23_PAT: 0.23
 FY23_EBITDA: 0.81
+FY23_BORROWING: 1.20
+FY23_VALUATION: 45.00
 FY24_REVENUE: 7.82
 FY24_PAT: 0.21
 FY24_EBITDA: 1.29
+FY24_BORROWING: 1.45
+FY24_VALUATION: 62.00
 FY25_REVENUE: 9.45
 FY25_PAT: 0.67
 FY25_EBITDA: 1.52
+FY25_BORROWING: 1.60
+FY25_VALUATION: 85.00
 ROE: 40.26
 ROCE: 46.85
 DEBT_EQUITY: 0.15
@@ -1135,12 +1141,18 @@ export const AI_PROMPTS = {
 FY23_REVENUE: [value in Cr]
 FY23_PAT: [value in Cr]
 FY23_EBITDA: [value in Cr]
+FY23_BORROWING: [total borrowings in Cr]
+FY23_VALUATION: [enterprise value / company valuation in Cr]
 FY24_REVENUE: [value in Cr]
 FY24_PAT: [value in Cr]
 FY24_EBITDA: [value in Cr]
+FY24_BORROWING: [total borrowings in Cr]
+FY24_VALUATION: [enterprise value / company valuation in Cr]
 FY25_REVENUE: [value in Cr]
 FY25_PAT: [value in Cr]
 FY25_EBITDA: [value in Cr]
+FY25_BORROWING: [total borrowings in Cr]
+FY25_VALUATION: [enterprise value / company valuation in Cr]
 ROE: [percentage]
 ROCE: [percentage]
 DEBT_EQUITY: [ratio]
@@ -1148,7 +1160,9 @@ EPS: [value]
 BOOK_VALUE: [value]
 === END ===
 
-Use only the fiscal years available. Leave out any field without data.`,
+Use only the fiscal years available. Leave out any field without data.
+BORROWING = total debt / borrowings for that fiscal year (in Cr).
+VALUATION = enterprise value or company valuation for that fiscal year (in Cr).`,
 
   peerComparison: `Convert the following peer comparison data into this exact format:
 === PEER_COMPARISON ===

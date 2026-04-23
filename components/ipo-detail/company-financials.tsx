@@ -27,21 +27,39 @@ export function CompanyFinancials({ ipo }: CompanyFinancialsProps) {
 
   const { revenue, pat, ebitda, roe, roce, debtEquity } = financials;
 
+  // Admin-supplied per-year borrowing/valuation (from ipo_financials table
+  // via the bulk-data-entry form). Undefined when the admin hasn't entered
+  // FY*_BORROWING / FY*_VALUATION yet.
+  const borrowingReal = financials.borrowing;
+  const valuationReal = financials.valuation;
+  const hasRealBorrowing =
+    !!borrowingReal &&
+    (borrowingReal.fy23 > 0 || borrowingReal.fy24 > 0 || borrowingReal.fy25 > 0);
+  const hasRealValuation =
+    !!valuationReal &&
+    (valuationReal.fy23 > 0 || valuationReal.fy24 > 0 || valuationReal.fy25 > 0);
+
   // Calculate company valuation based on market cap (extract number from string like "~4,200 Cr")
   const marketCapNum = parseFloat(ipo.marketCap.replace(/[^0-9.]/g, '')) || 0;
-  // Borrowing estimate based on debt/equity ratio and equity (simplified)
-  const equityEstimate = pat.fy25 > 0 ? (pat.fy25 / (roe / 100)) : 50; // Rough equity estimate
-  const borrowingEstimate = {
-    fy23: equityEstimate * debtEquity * 0.7,
-    fy24: equityEstimate * debtEquity * 0.85,
-    fy25: equityEstimate * debtEquity
-  };
-  // Valuation progression (company grew to current market cap)
-  const valuationData = {
-    fy23: marketCapNum * 0.6,
-    fy24: marketCapNum * 0.8,
-    fy25: marketCapNum
-  };
+  // Borrowing estimate based on debt/equity ratio and equity (simplified).
+  // Only used as a fallback when the admin hasn't entered real values.
+  const equityEstimate = pat.fy25 > 0 ? (pat.fy25 / (roe / 100)) : 50;
+  const borrowingEstimate = hasRealBorrowing
+    ? borrowingReal!
+    : {
+        fy23: equityEstimate * debtEquity * 0.7,
+        fy24: equityEstimate * debtEquity * 0.85,
+        fy25: equityEstimate * debtEquity,
+      };
+  // Valuation progression (company grew to current market cap). Real
+  // per-year values take precedence when present.
+  const valuationData = hasRealValuation
+    ? valuationReal!
+    : {
+        fy23: marketCapNum * 0.6,
+        fy24: marketCapNum * 0.8,
+        fy25: marketCapNum,
+      };
 
   // Prepare chart data based on active metric
   const getChartData = () => {

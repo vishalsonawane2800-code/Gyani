@@ -141,6 +141,12 @@ export interface IPO {
     revenue: { fy23: number; fy24: number; fy25: number };
     pat: { fy23: number; fy24: number; fy25: number };
     ebitda: { fy23: number; fy24: number; fy25: number };
+    // Optional per-year maps surfaced when the admin has entered
+    // FY*_BORROWING / FY*_VALUATION in the bulk financials form. The
+    // Borrowing and Valuation tabs on the IPO detail page prefer these
+    // real values and fall back to computed estimates when absent.
+    borrowing?: { fy23: number; fy24: number; fy25: number };
+    valuation?: { fy23: number; fy24: number; fy25: number };
     roe: number;
     roce: number;
     debtEquity: number;
