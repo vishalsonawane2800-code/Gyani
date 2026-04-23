@@ -2,8 +2,8 @@
 // Subscription scraper orchestrator.
 //
 // Source routing (primary -> fallback):
-//   Mainboard / NSE SME -> NSE API  -> Chittorgarh
-//   BSE SME             -> BSE page -> Chittorgarh
+//   Mainboard / NSE SME -> InvestorGain -> NSE API  -> Chittorgarh
+//   BSE SME             -> InvestorGain -> BSE page -> Chittorgarh
 //
 // Key behaviours:
 //   - Redis cache per-IPO (`subscription:<id>`) for 5 min to avoid
@@ -22,6 +22,7 @@ import { logScraperRun } from "@/lib/scraper/base"
 import { scrapeNSESubscription } from "@/lib/scraper/sources/subscription-nse"
 import { scrapeBSESubscription } from "@/lib/scraper/sources/subscription-bse"
 import { scrapeChittorgarhSubscription } from "@/lib/scraper/sources/subscription-chittorgarh"
+import { scrapeInvestorGainSubscription } from "@/lib/scraper/sources/subscription-investorgain"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
@@ -38,6 +39,7 @@ type IpoRow = {
   nse_symbol: string | null
   bse_scrip_code: string | null
   chittorgarh_url: string | null
+  investorgain_sub_url: string | null
   close_date?: string | null
 }
 
@@ -71,7 +73,7 @@ function isWithinScrapeWindow(closeDate: string | null | undefined): boolean {
   return istHour < 18
 }
 
-type SourceKey = "nse" | "bse" | "chittorgarh"
+type SourceKey = "investorgain" | "nse" | "bse" | "chittorgarh"
 
 export type SubscriptionSnapshot = {
   total: number | null
@@ -100,9 +102,9 @@ function sleep(ms: number) {
 }
 
 function exchangeOrder(exchange: string | null): SourceKey[] {
-  if (exchange === "BSE SME") return ["bse", "chittorgarh"]
+  if (exchange === "BSE SME") return ["investorgain", "bse", "chittorgarh"]
   // Mainboard, REIT, NSE SME all prefer NSE.
-  return ["nse", "chittorgarh"]
+  return ["investorgain", "nse", "chittorgarh"]
 }
 
 async function runSource(
@@ -110,6 +112,17 @@ async function runSource(
   ipo: IpoRow
 ): Promise<SubscriptionSnapshot | null> {
   try {
+    if (source === "investorgain") {
+      const result = await scrapeInvestorGainSubscription({
+        investorgain_sub_url: ipo.investorgain_sub_url,
+      })
+      // InvestorGain returns { total, status } not the full snapshot.
+      // Map to SubscriptionSnapshot with total only (partial coverage).
+      if (result && result.total != null) {
+        return { total: result.total, retail: null, nii: null, qib: null }
+      }
+      return null
+    }
     if (source === "nse") {
       return await scrapeNSESubscription({ nse_symbol: ipo.nse_symbol })
     }
@@ -390,7 +403,7 @@ export async function runSubscriptionScraper(): Promise<{
   const { data: ipos, error: fetchErr } = await supabase
     .from("ipos")
     .select(
-      "id, company_name, slug, exchange, status, nse_symbol, bse_scrip_code, chittorgarh_url, close_date"
+      "id, company_name, slug, exchange, status, nse_symbol, bse_scrip_code, chittorgarh_url, investorgain_sub_url, close_date"
     )
     .in("status", ["open", "lastday", "closed"])
     .gte("close_date", thresholdIso)
@@ -411,7 +424,7 @@ export async function runSubscriptionScraper(): Promise<{
       skipped: 0,
       failed: 0,
       duration_ms: duration,
-      by_source: { nse: 0, bse: 0, chittorgarh: 0 },
+      by_source: { investorgain: 0, nse: 0, bse: 0, chittorgarh: 0 },
       error: fetchErr.message,
     }
   }
@@ -426,6 +439,7 @@ export async function runSubscriptionScraper(): Promise<{
       nse_symbol: r.nse_symbol,
       bse_scrip_code: r.bse_scrip_code,
       chittorgarh_url: r.chittorgarh_url,
+      investorgain_sub_url: r.investorgain_sub_url,
       close_date: r.close_date,
     }))
     // Drop IPOs that are past the 6 PM IST cutoff on their close day -
@@ -456,7 +470,7 @@ export async function runSubscriptionScraper(): Promise<{
       skipped: 0,
       failed: 0,
       duration_ms: duration,
-      by_source: { nse: 0, bse: 0, chittorgarh: 0 },
+      by_source: { investorgain: 0, nse: 0, bse: 0, chittorgarh: 0 },
     }
   }
 
@@ -464,7 +478,7 @@ export async function runSubscriptionScraper(): Promise<{
   let skipped = 0
   let failed = 0
   let noData = 0
-  const sourceCounts: Record<string, number> = { nse: 0, bse: 0, chittorgarh: 0 }
+  const sourceCounts: Record<string, number> = { investorgain: 0, nse: 0, bse: 0, chittorgarh: 0 }
   const failureDetails: string[] = []
   const noDataSlugs: string[] = []
 
