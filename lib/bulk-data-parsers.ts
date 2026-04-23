@@ -22,12 +22,18 @@ export interface FinancialData {
   net_worth: number | null
   assets: number | null
   liabilities: number | null
+  // Per-year borrowing (total debt) and valuation (enterprise value /
+  // company valuation). These feed the Borrowing and Valuation tabs in
+  // components/ipo-detail/company-financials.tsx when present; otherwise
+  // the component falls back to its legacy estimated values.
+  borrowing: number | null
+  valuation: number | null
   roe: number | null
   roce: number | null
   debt_equity: number | null
   eps: number | null
   book_value: number | null
-}
+  }
 
 export interface PeerCompany {
   company_name: string
@@ -250,9 +256,21 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
           yearData[year].assets = value
           break
         case 'LIABILITIES':
-          yearData[year].liabilities = value
-          break
-        case 'ROE':
+  yearData[year].liabilities = value
+  break
+  case 'BORROWING':
+  case 'BORROWINGS':
+  case 'TOTAL_BORROWING':
+  case 'TOTAL_BORROWINGS':
+  case 'DEBT':
+  yearData[year].borrowing = value
+  break
+  case 'VALUATION':
+  case 'ENTERPRISE_VALUE':
+  case 'EV':
+  yearData[year].valuation = value
+  break
+  case 'ROE':
           yearData[year].roe = value
           break
         case 'ROCE':
@@ -283,6 +301,8 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
       net_worth: yearData[year].net_worth ?? null,
       assets: yearData[year].assets ?? null,
       liabilities: yearData[year].liabilities ?? null,
+      borrowing: yearData[year].borrowing ?? null,
+      valuation: yearData[year].valuation ?? null,
       roe: yearData[year].roe ?? commonRoe,
       roce: yearData[year].roce ?? commonRoce,
       debt_equity: yearData[year].debt_equity ?? commonDebtEquity,
