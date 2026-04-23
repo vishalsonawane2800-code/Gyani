@@ -60,7 +60,11 @@ export interface IPOSimple {
   anchor_investors_url?: string | null
   created_at: string
   updated_at: string
-  last_gmp_update: string | null
+  // Canonical "last checked" timestamp for GMP. Bumped on every cron tick
+  // whether or not the value changed (or sources returned no_data), so
+  // "Updated X ago" reflects freshness of the check, not the last value
+  // change. See app/api/cron/scrape-gmp/route.ts.
+  gmp_last_updated: string | null
   last_subscription_update: string | null
 
   // Automation columns (migration 004_automation_extensions)
@@ -132,7 +136,15 @@ export interface GMPHistory {
 }
 
 // Transform Supabase IPO to match the IPO interface expected by components
-function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: string): IPO {
+//
+// `latestGmp` / `latestGmpRecordedAt` come from the most recent `gmp_history`
+// row. They represent "last GMP *change*", not "last checked". For the
+// display timestamp ("Updated 4m ago") we prefer `ipos.gmp_last_updated`,
+// which the cron bumps on every tick — including ticks where the value
+// didn't change or sources returned no_data. That keeps the freshness
+// indicator tied to the 15-min cron cadence instead of freezing whenever
+// the GMP value happens to be stable (e.g. closed / awaiting-allotment IPOs).
+function transformIPO(ipo: IPOSimple, latestGmp?: number, latestGmpRecordedAt?: string): IPO {
   const priceMax = ipo.price_max || 0
   const gmp = latestGmp ?? ipo.gmp ?? 0
   const gmpPercent = priceMax > 0 ? Math.round((gmp / priceMax) * 100 * 10) / 10 : 0
@@ -163,7 +175,11 @@ function transformIPO(ipo: IPOSimple, latestGmp?: number, gmpLastUpdated?: strin
     ofs: 'Nil',
     gmp: gmp,
     gmpPercent: gmpPercent,
-    gmpLastUpdated: gmpLastUpdated || ipo.last_gmp_update || new Date().toISOString(),
+    // Prefer the "last checked" timestamp from ipos.gmp_last_updated so the
+    // UI reflects cron freshness, not value-change freshness. Fall back to
+    // the latest gmp_history row (last change), and finally to now() only
+    // if neither exists (e.g. IPOs that have never been scraped yet).
+    gmpLastUpdated: ipo.gmp_last_updated || latestGmpRecordedAt || new Date().toISOString(),
     estListPrice: priceMax + gmp,
     subscription: {
       total: ipo.subscription_total || 0,
