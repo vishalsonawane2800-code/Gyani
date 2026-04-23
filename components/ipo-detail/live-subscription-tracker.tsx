@@ -20,6 +20,13 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // Render-time derivation: is the IPO still actively bidding, or are we
+  // showing the final subscription snapshot?
+  const statusStr = String(ipo.status ?? '');
+  const isLiveBidding = ['open', 'closing', 'lastday'].includes(statusStr);
+  const isFinal = ['closed', 'allot', 'listing'].includes(statusStr);
+  const isUpcomingOrUnknown = !isLiveBidding && !isFinal;
+
   // Color coding for different categories - matching page theme
   const categoryConfig: Record<string, { bg: string; border: string; text: string; label: string }> = {
     retail: {
@@ -70,11 +77,23 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
   };
 
   useEffect(() => {
-    // `closing` is not a real IPOStatus value but kept here for forward-compat
-    // in case the lifecycle ever adds it. We always coerce to string first.
-    const pollStatuses: string[] = ['open', 'closing', 'lastday', 'closed'];
+    // Any status from "bidding started" onward should surface subscription
+    // figures. Open/lastday/closing are live; closed/allot/listing show the
+    // *final* snapshot captured at close. `closing` is not a real IPOStatus
+    // value today but kept for forward-compat.
+    const trackableStatuses: string[] = [
+      'open',
+      'closing',
+      'lastday',
+      'closed',
+      'allot',
+      'listing',
+    ];
     const statusStr = String(ipo.status ?? '');
-    const isTrackable = pollStatuses.includes(statusStr);
+    const isTrackable = trackableStatuses.includes(statusStr);
+    // Only truly live states get the 30s poll + "Live" badge.
+    const livePollStatuses: string[] = ['open', 'closing', 'lastday'];
+    const isLiveStatus = livePollStatuses.includes(statusStr);
 
     // Seed from scraped ipos columns immediately so the UI is never empty
     // while the first fetch is in flight.
@@ -146,9 +165,9 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
 
     if (ipo.id && isTrackable) {
       fetchSubscriptionData();
-      // Only poll while the issue is actually live.
-      const livePollStatuses: string[] = ['open', 'closing', 'lastday'];
-      if (livePollStatuses.includes(statusStr)) {
+      // Only poll while the issue is actually live. Post-close the numbers
+      // are frozen, so a single fetch is enough.
+      if (isLiveStatus) {
         const interval = setInterval(fetchSubscriptionData, 30000);
         return () => clearInterval(interval);
       }
@@ -162,8 +181,23 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
     ipo.subscriptionLastScraped,
   ]);
 
-  // If IPO hasn't opened for subscription yet, show placeholder
+  // Placeholder: shown only when we truly have no data AND the IPO isn't
+  // yet in a state that should have data (upcoming/unknown). If the IPO is
+  // closed/allot/listing but we still have no numbers, show a "final data
+  // unavailable" variant instead of the misleading "will appear when IPO
+  // opens" copy.
   if (!isLive || !subscriptionData || subscriptionData.length === 0) {
+    const headerTitle = isFinal
+      ? 'Final Subscription'
+      : 'Live Subscription Tracker';
+    const headerSub = isFinal
+      ? 'Final subscription snapshot'
+      : 'Real-time subscription data';
+    const bodyPrimary = isFinal
+      ? 'Final subscription data is being compiled.'
+      : isUpcomingOrUnknown
+        ? 'Subscription data will appear when IPO opens'
+        : 'Waiting for first subscription update…';
     return (
       <div className="bg-card rounded-xl border border-border card-shadow p-6 mb-8">
         <div className="flex items-center gap-3 mb-4">
@@ -171,13 +205,13 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
             <TrendingUp className="w-5 h-5 text-ink3" />
           </div>
           <div>
-            <h3 className="font-bold text-ink">Live Subscription Tracker</h3>
-            <p className="text-xs text-ink3">Real-time subscription data</p>
+            <h3 className="font-bold text-ink">{headerTitle}</h3>
+            <p className="text-xs text-ink3">{headerSub}</p>
           </div>
         </div>
 
         <div className="bg-muted rounded-lg p-4 text-center border border-border">
-          <p className="text-ink2 text-sm mb-2">Subscription data will appear when IPO opens</p>
+          <p className="text-ink2 text-sm mb-2">{bodyPrimary}</p>
           <p className="text-xs text-ink3">Current IPO Status: <span className="capitalize font-semibold text-ink2">{ipo.status}</span></p>
         </div>
       </div>
@@ -199,20 +233,42 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
             <TrendingUp className="w-5 h-5 text-emerald" />
           </div>
           <div>
-            <h3 className="font-bold text-ink">Live Subscription Tracker</h3>
-            <p className="text-xs text-ink3">Day {ipo.subscription?.day || '1'} • Real-time updates</p>
+            <h3 className="font-bold text-ink">
+              {isFinal ? 'Final Subscription' : 'Live Subscription Tracker'}
+            </h3>
+            <p className="text-xs text-ink3">
+              {isFinal
+                ? `Closed on ${
+                    ipo.closeDate
+                      ? new Date(ipo.closeDate).toLocaleDateString('en-IN', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'close date'
+                  } • Final snapshot`
+                : `Day ${ipo.subscription?.day || '1'} • Real-time updates`}
+            </p>
           </div>
         </div>
 
         {lastUpdated && (
           <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-mid opacity-75"></span>
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald"></span>
-            </span>
-            <p className="text-xs font-mono text-emerald">
-              {new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
-            </p>
+            {isLiveBidding ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-mid opacity-75"></span>
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald"></span>
+                </span>
+                <p className="text-xs font-mono text-emerald">
+                  {new Date(lastUpdated).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                </p>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-muted border border-border text-[11px] font-semibold text-ink2 uppercase tracking-wider">
+                Final
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -254,7 +310,9 @@ export function LiveSubscriptionTracker({ ipo }: LiveSubscriptionTrackerProps) {
       {/* Footer Note */}
       <div className="mt-4 pt-4 border-t border-border">
         <p className="text-xs text-ink3">
-          * Subscription data updates during IPO period. Shown as &quot;Times Oversubscribed&quot; (x). Auto-refreshes every 30 seconds.
+          {isFinal
+            ? '* Final subscription snapshot captured at IPO close. Shown as "Times Oversubscribed" (x).'
+            : '* Subscription data updates during IPO period. Shown as "Times Oversubscribed" (x). Auto-refreshes every 30 seconds.'}
         </p>
       </div>
     </div>
