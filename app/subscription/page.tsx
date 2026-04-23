@@ -11,6 +11,10 @@ import {
   getMergedAvailableYears,
   getMergedListedIposByYear,
 } from '@/lib/listed-ipos/loader';
+import {
+  getSmeAvailableYears,
+  getListedSmeIposByYear,
+} from '@/lib/listed-sme-ipos/loader';
 import { Users, ChevronRight, BarChart3, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -38,31 +42,37 @@ function summarize(values: number[]): { avg: number | null; median: number | nul
 
 export default async function SubscriptionPage() {
   // Pull the full listed-IPO excel history across every available year,
-  // then bucket by Mainboard vs SME so we can surface avg / median listing
-  // gain for each segment. The listed IPO excel sheet is the single source
-  // of truth for these historical numbers.
-  const years = await getMergedAvailableYears();
-  const rowsByYear = await Promise.all(
-    years.map((y) => getMergedListedIposByYear(y))
-  );
-  const listedRows = rowsByYear.flat();
+  // bucketed into Mainboard vs SME using the two dedicated loaders. These
+  // excel sheets are the single source of truth for historical listing
+  // gains on each segment.
+  const mainboardYears = await getMergedAvailableYears();
+  const smeYears = getSmeAvailableYears();
 
-  const mainboardGains = listedRows
-    .filter((r) => r.exchange !== 'BSE SME' && r.exchange !== 'NSE SME' && r.listingGainPct !== null && r.listingGainPct !== undefined)
-    .map((r) => r.listingGainPct as number);
-  const smeGains = listedRows
-    .filter((r) => (r.exchange === 'BSE SME' || r.exchange === 'NSE SME') && r.listingGainPct !== null && r.listingGainPct !== undefined)
-    .map((r) => r.listingGainPct as number);
+  const mainboardRowsByYear = await Promise.all(
+    mainboardYears.map((y) => getMergedListedIposByYear(y))
+  );
+  const smeRowsByYear = smeYears.map((y) => getListedSmeIposByYear(y));
+
+  const mainboardRows = mainboardRowsByYear.flat();
+  const smeRows = smeRowsByYear.flat();
+
+  const mainboardGains = mainboardRows
+    .map((r) => r.listingGainPct)
+    .filter((v): v is number => v !== null && v !== undefined);
+  const smeGains = smeRows
+    .map((r) => r.listingGainPct)
+    .filter((v): v is number => v !== null && v !== undefined);
 
   const mainboardSummary = summarize(mainboardGains);
   const smeSummary = summarize(smeGains);
 
+  const allYears = Array.from(new Set([...mainboardYears, ...smeYears]));
   const yearsLabel =
-    years.length === 0
+    allYears.length === 0
       ? ''
-      : years.length === 1
-      ? `${years[0]}`
-      : `${Math.min(...years.map(Number))} - ${Math.max(...years.map(Number))}`;
+      : allYears.length === 1
+      ? `${allYears[0]}`
+      : `${Math.min(...allYears)} - ${Math.max(...allYears)}`;
 
   // Live subscription data for the bottom section.
   const currentIpos = await getCurrentIPOs();
