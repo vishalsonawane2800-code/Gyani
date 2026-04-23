@@ -102,13 +102,17 @@ export function IPOCard({ ipo }: IPOCardProps) {
     }
   };
 
+  const isSme = ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+
   const getExchangeBadge = () => {
     switch (ipo.exchange) {
       case 'Mainboard':
         return 'bg-cobalt-bg text-cobalt';
       case 'BSE SME':
       case 'NSE SME':
-        return 'bg-muted text-ink3';
+        // SME IPOs get a distinct gold/amber badge so they stand out
+        // visually from Mainboard issues at a glance.
+        return 'bg-gold-bg text-gold border border-gold/30';
       case 'REIT':
         return 'bg-gold-bg text-gold';
       default:
@@ -121,7 +125,11 @@ export function IPOCard({ ipo }: IPOCardProps) {
   return (
     <Link
       href={`/ipo/${ipo.slug}`}
-      className="block bg-card border border-border rounded-2xl p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-border-secondary"
+      className={`block bg-card border rounded-2xl p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
+        isSme
+          ? 'border-gold/40 bg-gold-bg/30 hover:border-gold/60'
+          : 'border-border hover:border-border-secondary'
+      }`}
     >
       {/* Header */}
       <div className="flex gap-3 mb-3">
@@ -156,8 +164,12 @@ export function IPOCard({ ipo }: IPOCardProps) {
             <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${statusBadge.className}`}>
               {statusBadge.label}
             </span>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${getExchangeBadge()}`}>
-              {ipo.exchange}
+            <span
+              className={`text-xs px-2 py-0.5 rounded-lg ${getExchangeBadge()} ${
+                isSme ? 'font-extrabold uppercase tracking-wide' : 'font-bold'
+              }`}
+            >
+              {isSme ? `SME IPO (${ipo.exchange === 'BSE SME' ? 'BSE' : 'NSE'})` : ipo.exchange}
             </span>
           </div>
         </div>
