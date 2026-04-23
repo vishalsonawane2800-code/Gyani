@@ -177,12 +177,28 @@ export default function SubscriptionStatusPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {openIPOs.map((ipo, idx) => (
-                      <tr key={ipo.slug} className={`${idx !== openIPOs.length - 1 ? "border-b border-border" : ""} hover:bg-secondary/30 transition-colors`}>
+                    {openIPOs.map((ipo, idx) => {
+                      const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                      const isMainboard = ipo.exchange === "Mainboard"
+                      return (
+                      <tr
+                        key={ipo.slug}
+                        className={`${idx !== openIPOs.length - 1 ? "border-b border-border" : ""} transition-colors ${
+                          isMainboard ? "bg-gold-bg/40 hover:bg-gold-bg/60" : "hover:bg-secondary/30"
+                        }`}
+                      >
                         <td className="p-4">
-                          <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
-                            {ipo.name}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
+                              {ipo.name}
+                            </Link>
+                            {isSme && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                                <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                                SME IPO
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-ink3">{ipo.exchange} | {ipo.closeDate}</p>
                         </td>
                         <td className="text-center p-4">
@@ -220,7 +236,8 @@ export default function SubscriptionStatusPage() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -296,12 +313,28 @@ export default function SubscriptionStatusPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {closedIPOs.map((ipo, idx) => (
-                      <tr key={ipo.slug} className={`${idx !== closedIPOs.length - 1 ? "border-b border-border" : ""} hover:bg-secondary/30 transition-colors`}>
+                    {closedIPOs.map((ipo, idx) => {
+                      const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                      const isMainboard = ipo.exchange === "Mainboard"
+                      return (
+                      <tr
+                        key={ipo.slug}
+                        className={`${idx !== closedIPOs.length - 1 ? "border-b border-border" : ""} transition-colors ${
+                          isMainboard ? "bg-gold-bg/40 hover:bg-gold-bg/60" : "hover:bg-secondary/30"
+                        }`}
+                      >
                         <td className="p-4">
-                          <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
-                            {ipo.name}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
+                              {ipo.name}
+                            </Link>
+                            {isSme && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                                <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                                SME IPO
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-ink3">{ipo.exchange}</p>
                         </td>
                         <td className="text-right p-4 font-semibold text-ink">{ipo.subscription.qib}</td>
@@ -329,7 +362,8 @@ export default function SubscriptionStatusPage() {
                           </span>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -232,23 +232,40 @@ export default function IPOGMPGuidePage() {
                   {allIPOs.map((ipo, idx) => {
                     const expectedListing = ipo.priceMax + (ipo.gmp || 0)
                     const estGain = ipo.priceMax > 0 ? ((ipo.gmp || 0) / ipo.priceMax * 100).toFixed(1) : "0"
-                    
+                    const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                    const isMainboard = ipo.exchange === "Mainboard"
                     return (
-                      <tr key={ipo.slug} className={`${idx !== allIPOs.length - 1 ? "border-b border-border" : ""} hover:bg-secondary/30 transition-colors`}>
+                      <tr
+                        key={ipo.slug}
+                        className={`${idx !== allIPOs.length - 1 ? "border-b border-border" : ""} transition-colors ${
+                          isMainboard ? "bg-gold-bg/40 hover:bg-gold-bg/60" : "hover:bg-secondary/30"
+                        }`}
+                      >
                         <td className="p-4">
-                          <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
-                            {ipo.name}
-                          </Link>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
+                              {ipo.name}
+                            </Link>
+                            {isSme && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                                <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                                SME IPO
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-ink3">{ipo.openDate} - {ipo.closeDate}</p>
                         </td>
                         <td className="text-center p-4">
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            ipo.exchange === "Mainboard" 
-                              ? "bg-primary-bg text-primary" 
-                              : "bg-gold-bg text-gold"
-                          }`}>
-                            {ipo.exchange}
-                          </span>
+                          {isSme ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-extrabold uppercase tracking-wide bg-destructive-bg text-destructive border border-destructive/40">
+                              <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                              SME ({ipo.exchange === "BSE SME" ? "BSE" : "NSE"})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded text-xs font-bold bg-gold-bg text-gold border border-gold/30">
+                              {ipo.exchange}
+                            </span>
+                          )}
                         </td>
                         <td className="text-right p-4 font-medium text-ink">
                           Rs {ipo.priceMax.toLocaleString()}
