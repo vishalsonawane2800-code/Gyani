@@ -233,15 +233,16 @@ export default async function UpcomingPage() {
                       <td className="p-4 font-semibold text-ink">{item.name}</td>
                       <td className="p-4 text-ink2">{item.sector}</td>
                       <td className="p-4">
-                        <span
-                          className={`px-2 py-1 rounded text-xs font-medium ${
-                            item.exchange === 'Mainboard'
-                              ? 'bg-primary-bg text-primary'
-                              : 'bg-gold-bg text-gold'
-                          }`}
-                        >
-                          {item.exchange ?? 'Mainboard'}
-                        </span>
+                        {item.exchange === 'BSE SME' || item.exchange === 'NSE SME' ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-extrabold uppercase tracking-wide bg-destructive-bg text-destructive border border-destructive/40">
+                            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                            SME IPO ({item.exchange === 'BSE SME' ? 'BSE' : 'NSE'})
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 rounded text-xs font-bold bg-gold-bg text-gold border border-gold/30">
+                            {item.exchange ?? 'Mainboard'}
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 text-right font-medium text-ink">
                         {item.issueSizeCr

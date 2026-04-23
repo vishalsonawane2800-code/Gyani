@@ -112,6 +112,9 @@ export function GMPTodayTable({ ipos }: Props) {
               const aiGainPerLot = (priceMax * aiPct * lot) / 100;
               const isExpanded = expandedSlug === ipo.slug;
               const isLastRow = idx === ipos.length - 1;
+              const isSme =
+                ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+              const isMainboard = ipo.exchange === 'Mainboard';
               const priceRange =
                 ipo.priceMin === ipo.priceMax
                   ? `Rs ${priceMax}`
@@ -122,7 +125,11 @@ export function GMPTodayTable({ ipos }: Props) {
                   <tr
                     className={`${
                       isLastRow && !isExpanded ? '' : 'border-b border-border'
-                    } hover:bg-secondary/30 transition-colors cursor-pointer`}
+                    } transition-colors cursor-pointer ${
+                      isMainboard
+                        ? 'bg-gold-bg/40 hover:bg-gold-bg/60'
+                        : 'hover:bg-secondary/30'
+                    }`}
                     onClick={() =>
                       setExpandedSlug(isExpanded ? null : ipo.slug)
                     }
@@ -136,13 +143,21 @@ export function GMPTodayTable({ ipos }: Props) {
                       )}
                     </td>
                     <td className="p-4">
-                      <Link
-                        href={`/ipo/${ipo.slug}`}
-                        className="font-semibold text-ink hover:text-primary transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {ipo.name}
-                      </Link>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Link
+                          href={`/ipo/${ipo.slug}`}
+                          className="font-semibold text-ink hover:text-primary transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {ipo.name}
+                        </Link>
+                        {isSme && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                            SME IPO
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-ink3 mt-0.5">
                         {ipo.exchange} | Lot: {lot.toLocaleString('en-IN')}
                       </p>

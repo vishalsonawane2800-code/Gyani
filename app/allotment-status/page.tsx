@@ -240,9 +240,18 @@ export default async function AllotmentStatusPage() {
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {allotmentIPOs.map(ipo => {
                 const allotmentUrl = getAllotmentUrl(ipo)
+                const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                const isMainboard = ipo.exchange === "Mainboard"
                 return (
-                  <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border flex flex-col">
-                    <div className="flex items-center justify-between mb-3 gap-2">
+                  <div
+                    key={ipo.slug}
+                    className={`rounded-xl p-4 border flex flex-col ${
+                      isMainboard
+                        ? "bg-gold-bg/40 border-gold/40"
+                        : "bg-card border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2 gap-2">
                       <h3 className="font-semibold text-ink text-pretty">{ipo.name}</h3>
                       <span className={`shrink-0 px-2 py-0.5 rounded text-xs font-medium ${
                         ipo.status === "listing" ? "bg-cobalt-bg text-cobalt" : "bg-emerald-bg text-emerald"
@@ -250,6 +259,14 @@ export default async function AllotmentStatusPage() {
                         {ipo.status === "listing" ? "Listing Soon" : "Allotment Out"}
                       </span>
                     </div>
+                    {isSme && (
+                      <div className="mb-2">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                          <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                          SME IPO
+                        </span>
+                      </div>
+                    )}
                     <div className="space-y-2 text-sm flex-1">
                       <div className="flex items-center justify-between">
                         <span className="text-ink3">Registrar</span>
@@ -301,14 +318,32 @@ export default async function AllotmentStatusPage() {
               Subscription is closed for these IPOs. The allotment result will be available on the date shown below.
             </p>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {awaitingAllotment.map(ipo => (
-                <div key={ipo.slug} className="bg-card rounded-xl p-4 border border-border flex flex-col">
-                  <div className="flex items-center justify-between mb-3 gap-2">
+              {awaitingAllotment.map(ipo => {
+                const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                const isMainboard = ipo.exchange === "Mainboard"
+                return (
+                <div
+                  key={ipo.slug}
+                  className={`rounded-xl p-4 border flex flex-col ${
+                    isMainboard
+                      ? "bg-gold-bg/40 border-gold/40"
+                      : "bg-card border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2 gap-2">
                     <h3 className="font-semibold text-ink text-pretty">{ipo.name}</h3>
                     <span className="shrink-0 px-2 py-0.5 rounded text-xs font-medium bg-gold-bg text-gold border border-gold/30">
                       Allotment Awaited
                     </span>
                   </div>
+                  {isSme && (
+                    <div className="mb-2">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                        <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                        SME IPO
+                      </span>
+                    </div>
+                  )}
                   <div className="space-y-2 text-sm flex-1">
                     <div className="flex items-center justify-between">
                       <span className="text-ink3">Close Date</span>
@@ -330,7 +365,8 @@ export default async function AllotmentStatusPage() {
                     View IPO Details <ExternalLink className="w-4 h-4" />
                   </Link>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}
@@ -363,16 +399,31 @@ export default async function AllotmentStatusPage() {
               <h2 className="font-heading text-xl font-bold text-ink">Upcoming Allotments</h2>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcomingAllotment.map(ipo => (
+              {upcomingAllotment.map(ipo => {
+                const isSme = ipo.exchange === "BSE SME" || ipo.exchange === "NSE SME"
+                const isMainboard = ipo.exchange === "Mainboard"
+                return (
                 <Link
                   key={ipo.slug}
                   href={`/ipo/${ipo.slug}`}
-                  className="bg-card rounded-xl p-4 border border-border hover:border-cobalt transition-colors group"
+                  className={`rounded-xl p-4 border transition-colors group ${
+                    isMainboard
+                      ? "bg-gold-bg/40 border-gold/40 hover:border-gold"
+                      : "bg-card border-border hover:border-cobalt"
+                  }`}
                 >
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <h3 className="font-semibold text-ink text-pretty group-hover:text-cobalt transition-colors">{ipo.name}</h3>
                     <ExternalLink className="w-4 h-4 text-ink3 group-hover:text-cobalt transition-colors shrink-0" />
                   </div>
+                  {isSme && (
+                    <div className="mb-2">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                        <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                        SME IPO
+                      </span>
+                    </div>
+                  )}
                   <div className="space-y-1 text-sm">
                     <div className="flex items-center justify-between">
                       <span className="text-ink3">Close Date</span>
@@ -388,7 +439,8 @@ export default async function AllotmentStatusPage() {
                     </div>
                   </div>
                 </Link>
-              ))}
+                )
+              })}
             </div>
           </section>
         )}
