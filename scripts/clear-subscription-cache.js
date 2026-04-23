@@ -7,11 +7,11 @@
 
 import { Redis } from '@upstash/redis';
 
-const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
-const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const UPSTASH_URL = process.env.KV_URL;
+const UPSTASH_TOKEN = process.env.KV_REST_API_TOKEN;
 
 if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-  console.error('[v0] ERROR: Missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN');
+  console.error('[v0] ERROR: Missing KV_URL or KV_REST_API_TOKEN');
   process.exit(1);
 }
 
