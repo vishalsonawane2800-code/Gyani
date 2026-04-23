@@ -186,18 +186,21 @@ export async function processIpoSubscription(
   }
 
   const order = exchangeOrder(ipo.exchange)
-  const merged: SubscriptionSnapshot = {
-    total: null,
-    retail: null,
-    nii: null,
-    qib: null,
-  }
-  let primarySource: SourceKey | null = null
-  const usedSources: SourceKey[] = []
 
-  // Merge snapshots across sources so partial coverage from one provider
-  // (e.g. NSE giving only `total`) is complemented by another (Chittorgarh
-  // filling in retail/nii/qib). First non-null wins per field.
+  // Gather snapshots from every source that returns data. We intentionally
+  // collect all of them first and then pick the best one, rather than
+  // merging field-by-field.
+  //
+  // Why: `total` is a weighted aggregate of the three category subscriptions
+  // (retail / nii / qib) using each category's issue-size share as the
+  // weight. Different sources publish on slightly different schedules and
+  // with different rounding, so a `total` from source A will almost never
+  // line up with category numbers from source B. The old "first non-null
+  // wins per field" logic happily mixed them, producing impossible
+  // snapshots like total=1.59 with retail=37, nii=79, qib=32 — where the
+  // weighted total has to be somewhere between the smallest and largest
+  // category, not below all of them.
+  const gathered: Array<{ source: SourceKey; snap: SubscriptionSnapshot }> = []
   for (const src of order) {
     // Skip sources that obviously can't work for this IPO.
     if (src === "nse" && !ipo.nse_symbol) continue
@@ -206,31 +209,22 @@ export async function processIpoSubscription(
     const snap = await runSource(src, ipo)
     if (!hasAnyValue(snap)) continue
 
-    let contributed = false
-    for (const k of ["total", "retail", "nii", "qib"] as (keyof SubscriptionSnapshot)[]) {
-      if (merged[k] == null && snap[k] != null) {
-        merged[k] = snap[k]
-        contributed = true
-      }
-    }
+    gathered.push({ source: src, snap })
 
-    if (contributed) {
-      usedSources.push(src)
-      if (!primarySource) primarySource = src
-    }
-
-    // Stop early once every category is filled.
+    // Stop early once we have a source that gave us every field — no
+    // point hitting additional sources that will only slow the run and
+    // add rate-limit risk.
     if (
-      merged.total != null &&
-      merged.retail != null &&
-      merged.nii != null &&
-      merged.qib != null
+      snap.total != null &&
+      snap.retail != null &&
+      snap.nii != null &&
+      snap.qib != null
     ) {
       break
     }
   }
 
-  if (!hasAnyValue(merged) || !primarySource) {
+  if (gathered.length === 0) {
     return {
       ipo_id: ipo.id,
       company_name: ipo.company_name,
@@ -243,7 +237,50 @@ export async function processIpoSubscription(
     }
   }
 
-  const chosen = { source: primarySource, snapshot: merged }
+  // Category coverage for a snapshot (ignoring `total`). We rank by this
+  // first because the UI primarily displays the three category boxes;
+  // total is nice-to-have.
+  const categoryCount = (s: SubscriptionSnapshot) =>
+    (s.retail != null ? 1 : 0) + (s.nii != null ? 1 : 0) + (s.qib != null ? 1 : 0)
+
+  // Pick the snapshot with the most category fields. Ties break toward
+  // the earlier source in `order` (which reflects our preferred-source
+  // priority for each exchange).
+  let best = gathered[0]
+  for (let i = 1; i < gathered.length; i++) {
+    if (categoryCount(gathered[i].snap) > categoryCount(best.snap)) {
+      best = gathered[i]
+    }
+  }
+
+  // Build the final snapshot. Start from `best` and only borrow fields
+  // from other snapshots when it is SAFE to do so:
+  //   - If `best` already provides category data (retail/nii/qib), we
+  //     use ONLY its total to avoid the source-mismatch bug. A missing
+  //     total from that source is better than a wrong total from another.
+  //   - If `best` has no category data at all (e.g. only InvestorGain
+  //     responded and it only gives total), we fall back to first-non-null
+  //     merging across all gathered snapshots to surface something.
+  const chosenSnapshot: SubscriptionSnapshot = {
+    total: best.snap.total,
+    retail: best.snap.retail,
+    nii: best.snap.nii,
+    qib: best.snap.qib,
+  }
+
+  if (categoryCount(best.snap) === 0) {
+    // Total-only fallback path: safe to merge because there are no
+    // categories to mismatch with.
+    for (const g of gathered) {
+      for (const k of ["total", "retail", "nii", "qib"] as (keyof SubscriptionSnapshot)[]) {
+        if (chosenSnapshot[k] == null && g.snap[k] != null) {
+          chosenSnapshot[k] = g.snap[k]
+        }
+      }
+    }
+  }
+
+  const chosen = { source: best.source, snapshot: chosenSnapshot }
 
   // Dedup against the most recent subscription_history row.
   const { data: latest } = await supabase
