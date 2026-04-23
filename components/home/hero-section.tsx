@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { TrendingUp, ArrowRight } from 'lucide-react';
 import type { IPO } from '@/lib/data';
 
@@ -171,28 +172,57 @@ export function HeroSection({ ipos }: HeroSectionProps) {
             </div>
             
             <div className="space-y-0">
-              {displayIPOs.length > 0 ? displayIPOs.map((ipo, index) => (
+              {displayIPOs.length > 0 ? displayIPOs.map((ipo, index) => {
+                const isSme = ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+                return (
                 <Link 
                   key={ipo.id} 
                   href={`/ipo/${ipo.slug}`}
                   className={`flex items-center gap-3 py-3 group ${index < displayIPOs.length - 1 ? 'border-b border-white/[0.06]' : ''}`}
                 >
-                  <div 
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
-                    style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
-                  >
-                    {generateAbbr(ipo.name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
+                  {ipo.logoUrl ? (
+                    // Use admin-provided company logo when available so the
+                    // snapshot card shows real branding instead of a
+                    // letter-mark. Falls back to the coloured abbreviation
+                    // when no logo is set.
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg overflow-hidden shrink-0 bg-white flex items-center justify-center">
+                      <Image
+                        src={ipo.logoUrl}
+                        alt={`${ipo.name} logo`}
+                        width={36}
+                        height={36}
+                        className="object-contain w-full h-full"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
                     <div
-                      className={`text-white text-sm sm:text-base font-semibold truncate transition-colors ${
-                        hasLive ? 'group-hover:text-sky-400' : 'group-hover:text-violet-400'
-                      }`}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center text-xs sm:text-sm font-bold shrink-0"
+                      style={{ backgroundColor: ipo.bgColor, color: ipo.fgColor }}
                     >
-                      {ipo.name}
+                      {generateAbbr(ipo.name)}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div
+                        className={`text-white text-sm sm:text-base font-semibold truncate transition-colors ${
+                          hasLive ? 'group-hover:text-sky-400' : 'group-hover:text-violet-400'
+                        }`}
+                      >
+                        {ipo.name}
+                      </div>
+                      {isSme && (
+                        // Distinct gold pill so SME IPOs are unmistakable
+                        // in the hero snapshot, matching the SME styling
+                        // used on the main IPO cards.
+                        <span className="shrink-0 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/40">
+                          SME
+                        </span>
+                      )}
                     </div>
                     <div className="text-white/40 text-xs mt-0.5">
-                      {ipo.sector} · {ipo.exchange}
+                      {ipo.sector} · {isSme ? `SME IPO (${ipo.exchange === 'BSE SME' ? 'BSE' : 'NSE'})` : ipo.exchange}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
@@ -214,7 +244,8 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                     )}
                   </div>
                 </Link>
-              )) : (
+                );
+              }) : (
                 <div className="text-center py-6 text-white/40 text-sm">
                   {emptyLabel}
                 </div>
