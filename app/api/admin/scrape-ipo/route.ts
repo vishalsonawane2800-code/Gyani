@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { scrapeInvestorGainSubscription } from '@/lib/scraper/sources/subscription-investorgain'
 
 // POST /api/admin/scrape-ipo
 // Body: { ipo_id: string, type: 'gmp' | 'subscription' | 'both' }
@@ -74,16 +75,26 @@ export async function POST(request: Request) {
 
     // Scrape Subscription
     if (type === 'subscription' || type === 'both') {
-      let subData: { total: number; retail: number; nii: number; qib: number } | null = null
+      let subTotal: number | null = null
+      let subSource = ''
 
       if (ipo.investorgain_sub_url) {
-        subData = await fetchSubscription(ipo.investorgain_sub_url)
+        const r = await scrapeInvestorGainSubscription({ investorgain_sub_url: ipo.investorgain_sub_url })
+        if (r && r.total != null) {
+          subTotal = r.total
+          subSource = 'investorgain'
+        }
       }
-      if (!subData && ipo.chittorgarh_url) {
-        subData = await fetchSubscription(ipo.chittorgarh_url)
+      // Fallback to regex-based fetchSubscription for partial data or other sources
+      if (subTotal === null && ipo.chittorgarh_url) {
+        const fallback = await fetchSubscription(ipo.chittorgarh_url)
+        if (fallback && fallback.total > 0) {
+          subTotal = fallback.total
+          subSource = 'chittorgarh'
+        }
       }
 
-      if (subData) {
+      if (subTotal !== null) {
         const now = new Date().toISOString()
         const today = now.split('T')[0]
         const d = new Date()
@@ -91,25 +102,20 @@ export async function POST(request: Request) {
         const slot = `${String(d.getHours()).padStart(2, '0')}:${mins}`
 
         await supabase.from('ipos').update({
-          subscription_total: subData.total,
-          subscription_retail: subData.retail,
-          subscription_nii: subData.nii,
-          subscription_qib: subData.qib,
-          last_scraped_at: now,
+          subscription_total: subTotal,
+          subscription_source: subSource,
+          subscription_last_scraped: now,
         }).eq('id', ipo.id)
 
         await supabase.from('subscription_history').upsert({
           ipo_id: ipo.id,
           date: today,
           time: slot,
-          retail: subData.retail,
-          nii: subData.nii,
-          qib: subData.qib,
-          total: subData.total,
-          recorded_at: now,
+          total: subTotal,
+          updated_at: now,
         }, { onConflict: 'ipo_id,date,time', ignoreDuplicates: false })
 
-        results.push({ type: 'subscription', success: true, value: subData.total })
+        results.push({ type: 'subscription', success: true, value: subTotal })
       } else {
         results.push({ type: 'subscription', success: false, error: 'No subscription data found. Check investorgain_sub_url in IPO settings.' })
       }
