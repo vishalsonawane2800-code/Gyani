@@ -12,8 +12,8 @@ import { Redis } from '@upstash/redis'
 
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-const UPSTASH_URL = process.env.KV_URL
-const UPSTASH_TOKEN = process.env.KV_REST_API_TOKEN
+const KV_REST_API_URL = process.env.KV_REST_API_URL
+const KV_REST_API_TOKEN = process.env.KV_REST_API_TOKEN
 const VERCEL_URL = process.env.VERCEL_URL || 'http://localhost:3000'
 const ADMIN_JWT_TOKEN = process.env.ADMIN_JWT_TOKEN
 
@@ -22,13 +22,13 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   process.exit(1)
 }
 
-if (!UPSTASH_URL || !UPSTASH_TOKEN) {
-  console.error('[v0] ERROR: Missing KV_URL or KV_REST_API_TOKEN')
+if (!KV_REST_API_URL || !KV_REST_API_TOKEN) {
+  console.error('[v0] ERROR: Missing KV_REST_API_URL or KV_REST_API_TOKEN')
   process.exit(1)
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-const redis = new Redis({ url: UPSTASH_URL, token: UPSTASH_TOKEN })
+const redis = new Redis({ url: KV_REST_API_URL, token: KV_REST_API_TOKEN })
 
 async function main() {
   try {
