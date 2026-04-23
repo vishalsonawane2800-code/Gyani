@@ -529,18 +529,9 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         !(subscription.total > 0 || subscription.retail > 0 || subscription.nii > 0 || subscription.qib > 0) && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
             <p className="text-ink3 font-medium mb-2">Subscription data not available</p>
-            <p className="text-ink4 text-sm mb-4">
-              Subscription data will appear here once the IPO opens. You can also add it manually via the admin dashboard.
+            <p className="text-ink4 text-sm">
+              Subscription data will appear here once the IPO opens for bidding.
             </p>
-            <a
-              href="/admin/dashboard"
-              className="inline-flex items-center gap-2 text-primary font-semibold text-sm hover:underline"
-            >
-              Add Data Manually
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
           </div>
         )}
 
