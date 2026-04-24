@@ -198,6 +198,18 @@ export interface IPO {
   companyDetails?: string;
   ipoDetailsLong?: string;
   faqs?: IPOFAQ[];
+
+  // Admin-typed text overrides for numeric fields (migration 032). When
+  // an admin types "NA" / "-" for a number, we store the literal string
+  // here so the UI can display it verbatim instead of coercing to 0.
+  // Keys are canonical, e.g.
+  //   "pe_ratio"
+  //   "financials.fy23.revenue"
+  //   "financials.roe"
+  //   "kpi.pe.post"
+  //   "kpi.roe.0"   (index into dated kpi.roe array)
+  // Consumed by the helper in lib/display-overrides.ts.
+  textOverrides?: Record<string, string>;
 }
 
 export interface IPOFAQ {

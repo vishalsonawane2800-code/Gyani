@@ -63,7 +63,10 @@ export async function POST(
         .eq('ipo_id', id)
     }
 
-    // Build KPI records with ipo_id
+    // Build KPI records with ipo_id. `text_override` preserves admin-
+    // typed "NA" / "-" for numeric KPIs (e.g. PE, ROE) — see migration
+    // 032. The IPO detail page prefers this string over the numeric
+    // `value` column so the UI shows the exact literal the admin typed.
     const kpiRecords = parseResult.data.map(entry => ({
       ipo_id: id,
       kpi_type: entry.kpi_type,
@@ -71,6 +74,7 @@ export async function POST(
       date_label: entry.date_label,
       value: entry.value,
       text_value: entry.text_value,
+      text_override: entry.text_override,
     }))
 
     // Insert all KPI records

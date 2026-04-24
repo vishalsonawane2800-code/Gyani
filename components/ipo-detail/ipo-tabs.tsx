@@ -5,6 +5,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
+import { formatNumeric, getOverride } from '@/lib/display-overrides';
 
 interface IPOTabsProps {
   ipo: IPO;
@@ -86,7 +87,13 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
     ['Registrar', ipo.registrar ?? 'N/A'],
     ['Lead Manager', ipo.leadManager ?? 'N/A'],
     ['Market Cap (Upper)', ipo.marketCap ?? 'N/A'],
-    ['P/E (Upper Band)', peRatio > 0 ? `${peRatio}x` : 'N/A'],
+    [
+      'P/E (Upper Band)',
+      formatNumeric(ipo, 'pe_ratio', peRatio, {
+        format: (n) => (n > 0 ? `${n}x` : 'N/A'),
+        emptyFallback: 'N/A',
+      }),
+    ],
   ];
 
   return (
@@ -134,7 +141,20 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
     );
   }
 
-  const { revenue, pat, ebitda, roe, roce, debtEquity } = ipo.financials;
+  const { revenue, pat, ebitda, roe, debtEquity } = ipo.financials;
+
+  // Helper: render a "Rs X Cr" cell with admin override fallback.
+  const cellCr = (field: 'revenue' | 'ebitda' | 'pat', fy: 'fy23' | 'fy24' | 'fy25', n: number) =>
+    formatNumeric(ipo, `financials.${fy}.${field}`, n, {
+      format: (v) => `Rs ${v} Cr`,
+      emptyFallback: 'NA',
+    });
+
+  // P/Sales uses FY25 revenue in its denominator — suppress if override exists.
+  const revFy25Override = getOverride(ipo, 'financials.fy25.revenue');
+  const pSalesDisplay = revFy25Override || revenue.fy25 <= 0
+    ? 'NA'
+    : `${(ipo.issueSizeCr / revenue.fy25).toFixed(1)}x`;
 
   return (
     <div>
@@ -152,21 +172,21 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
           <tbody>
             <tr className="border-b border-border">
               <td className="py-2 px-3">Revenue</td>
-              <td className="py-2 px-3 text-right">Rs {revenue.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {revenue.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {revenue.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('revenue', 'fy23', revenue.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('revenue', 'fy24', revenue.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('revenue', 'fy25', revenue.fy25)}</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2 px-3">EBITDA</td>
-              <td className="py-2 px-3 text-right">Rs {ebitda.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {ebitda.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {ebitda.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('ebitda', 'fy23', ebitda.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('ebitda', 'fy24', ebitda.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('ebitda', 'fy25', ebitda.fy25)}</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2 px-3">PAT (Net Profit)</td>
-              <td className="py-2 px-3 text-right">Rs {pat.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {pat.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {pat.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('pat', 'fy23', pat.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('pat', 'fy24', pat.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('pat', 'fy25', pat.fy25)}</td>
             </tr>
           </tbody>
         </table>
@@ -175,19 +195,34 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
       <h3 className="text-base font-bold mt-6 mb-4">Key Valuation Metrics</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-gold-mid">{ipo.peRatio}x</div>
+          <div className="text-2xl font-extrabold text-gold-mid">
+            {formatNumeric(ipo, 'pe_ratio', ipo.peRatio, {
+              format: (n) => `${n}x`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">P/E (Upper Band)</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-foreground">{(ipo.issueSizeCr / revenue.fy25).toFixed(1)}x</div>
+          <div className="text-2xl font-extrabold text-foreground">{pSalesDisplay}</div>
           <div className="text-xs text-ink3 mt-1">P/Sales</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-emerald-mid">{roe}%</div>
+          <div className="text-2xl font-extrabold text-emerald-mid">
+            {formatNumeric(ipo, 'financials.roe', roe, {
+              format: (n) => `${n}%`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">ROE (FY25)</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-emerald-mid">{debtEquity}</div>
+          <div className="text-2xl font-extrabold text-emerald-mid">
+            {formatNumeric(ipo, 'financials.debt_equity', debtEquity, {
+              format: (n) => `${n}`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">Debt/Equity</div>
         </div>
       </div>
