@@ -64,7 +64,9 @@ export async function POST(
     }
 
     // Insert new financials (borrowing + valuation feed the Borrowing and
-    // Valuation tabs on the public IPO detail page).
+    // Valuation tabs on the public IPO detail page). `text_overrides`
+    // preserves admin-typed "NA" / "-" markers so the UI can render
+    // those literals instead of coercing to 0 — see migration 032.
     const financialsToInsert = parseResult.data.map(f => ({
       ipo_id: id,
       fiscal_year: f.fiscal_year,
@@ -81,6 +83,7 @@ export async function POST(
       debt_equity: f.debt_equity,
       eps: f.eps,
       book_value: f.book_value,
+      text_overrides: f.text_overrides || {},
     }))
 
     // Upsert based on ipo_id + fiscal_year

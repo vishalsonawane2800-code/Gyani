@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, LineChart, Line, Area, AreaChart } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { IPO } from '@/lib/data';
+import { formatNumeric, getOverride } from '@/lib/display-overrides';
 
 interface CompanyFinancialsProps {
   ipo: IPO;
@@ -253,16 +254,24 @@ export function CompanyFinancials({ ipo }: CompanyFinancialsProps) {
           </AreaChart>
         </ChartContainer>
         
-        {/* Quick Stats below chart */}
+        {/* Quick Stats below chart. Any admin-typed "NA"/"-" override is
+            shown verbatim; otherwise the numeric value is formatted. */}
         <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-border/50">
-          {chartData.map((data, index) => (
-            <div key={data.year} className="text-center">
-              <p className="text-[10px] text-ink4 mb-0.5">{data.year}</p>
-              <p className={`text-[13px] font-bold ${index === 2 ? metricConfig.textClass : ''}`}>
-                Rs {data.value} Cr
-              </p>
-            </div>
-          ))}
+          {chartData.map((data, index) => {
+            const fyKey = data.year.toLowerCase(); // e.g. "fy23"
+            const overrideKey = `financials.${fyKey}.${activeMetric === 'profit' ? 'pat' : activeMetric}`;
+            const display = formatNumeric(ipo, overrideKey, data.value, {
+              format: (n) => `Rs ${n} Cr`,
+            });
+            return (
+              <div key={data.year} className="text-center">
+                <p className="text-[10px] text-ink4 mb-0.5">{data.year}</p>
+                <p className={`text-[13px] font-bold ${index === 2 ? metricConfig.textClass : ''}`}>
+                  {display}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -272,69 +281,116 @@ export function CompanyFinancials({ ipo }: CompanyFinancialsProps) {
         
         <div className="grid grid-cols-2 gap-3">
           {/* EBITDA */}
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-[10px] text-ink4 font-semibold mb-1">EBITDA (FY25)</p>
-            <p className="font-[family-name:var(--font-sora)] text-lg font-bold">Rs {ebitda.fy25} Cr</p>
-            <div className="flex items-center gap-1 mt-1">
-              {getGrowthIcon(((ebitda.fy25 - ebitda.fy24) / ebitda.fy24 * 100).toFixed(1))}
-              <span className={`text-[10px] font-semibold ${getGrowthColor(((ebitda.fy25 - ebitda.fy24) / ebitda.fy24 * 100).toFixed(1))}`}>
-                {((ebitda.fy25 - ebitda.fy24) / ebitda.fy24 * 100).toFixed(1)}% YoY
-              </span>
-            </div>
-          </div>
-          
+          {(() => {
+            const ebitdaOverride = getOverride(ipo, 'financials.fy25.ebitda');
+            const ebitdaDisplay = ebitdaOverride ?? (ebitda.fy25 ? `Rs ${ebitda.fy25} Cr` : 'NA');
+            const canComputeYoY = !ebitdaOverride && !getOverride(ipo, 'financials.fy24.ebitda') && ebitda.fy24 > 0;
+            const yoyRaw = canComputeYoY ? ((ebitda.fy25 - ebitda.fy24) / ebitda.fy24 * 100).toFixed(1) : null;
+            return (
+              <div className="bg-secondary rounded-xl p-3">
+                <p className="text-[10px] text-ink4 font-semibold mb-1">EBITDA (FY25)</p>
+                <p className="font-[family-name:var(--font-sora)] text-lg font-bold">{ebitdaDisplay}</p>
+                {yoyRaw !== null && (
+                  <div className="flex items-center gap-1 mt-1">
+                    {getGrowthIcon(yoyRaw)}
+                    <span className={`text-[10px] font-semibold ${getGrowthColor(yoyRaw)}`}>
+                      {yoyRaw}% YoY
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* ROE */}
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-[10px] text-ink4 font-semibold mb-1">ROE</p>
-            <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${roe >= 15 ? 'text-emerald-mid' : roe >= 10 ? 'text-gold-mid' : 'text-ink2'}`}>
-              {roe}%
-            </p>
-            <p className="text-[10px] text-ink4 mt-1">Return on Equity</p>
-          </div>
-          
+          {(() => {
+            const roeOverride = getOverride(ipo, 'financials.roe');
+            return (
+              <div className="bg-secondary rounded-xl p-3">
+                <p className="text-[10px] text-ink4 font-semibold mb-1">ROE</p>
+                <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${!roeOverride && roe >= 15 ? 'text-emerald-mid' : !roeOverride && roe >= 10 ? 'text-gold-mid' : 'text-ink2'}`}>
+                  {roeOverride ?? (roe > 0 ? `${roe}%` : 'NA')}
+                </p>
+                <p className="text-[10px] text-ink4 mt-1">Return on Equity</p>
+              </div>
+            );
+          })()}
+
           {/* ROCE */}
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-[10px] text-ink4 font-semibold mb-1">ROCE</p>
-            <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${roce >= 15 ? 'text-emerald-mid' : roce >= 10 ? 'text-gold-mid' : 'text-ink2'}`}>
-              {roce}%
-            </p>
-            <p className="text-[10px] text-ink4 mt-1">Return on Capital</p>
-          </div>
-          
+          {(() => {
+            const roceOverride = getOverride(ipo, 'financials.roce');
+            return (
+              <div className="bg-secondary rounded-xl p-3">
+                <p className="text-[10px] text-ink4 font-semibold mb-1">ROCE</p>
+                <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${!roceOverride && roce >= 15 ? 'text-emerald-mid' : !roceOverride && roce >= 10 ? 'text-gold-mid' : 'text-ink2'}`}>
+                  {roceOverride ?? (roce > 0 ? `${roce}%` : 'NA')}
+                </p>
+                <p className="text-[10px] text-ink4 mt-1">Return on Capital</p>
+              </div>
+            );
+          })()}
+
           {/* Debt/Equity */}
-          <div className="bg-secondary rounded-xl p-3">
-            <p className="text-[10px] text-ink4 font-semibold mb-1">Debt/Equity</p>
-            <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${debtEquity <= 0.5 ? 'text-emerald-mid' : debtEquity <= 1 ? 'text-gold-mid' : 'text-destructive'}`}>
-              {debtEquity}
-            </p>
-            <p className="text-[10px] text-ink4 mt-1">{debtEquity <= 0.5 ? 'Low Debt' : debtEquity <= 1 ? 'Moderate Debt' : 'High Debt'}</p>
-          </div>
+          {(() => {
+            const deOverride = getOverride(ipo, 'financials.debt_equity');
+            const deLabel = deOverride ?? (Number.isFinite(debtEquity) ? `${debtEquity}` : 'NA');
+            const deCommentary = deOverride
+              ? '\u00A0'
+              : debtEquity <= 0.5 ? 'Low Debt' : debtEquity <= 1 ? 'Moderate Debt' : 'High Debt';
+            return (
+              <div className="bg-secondary rounded-xl p-3">
+                <p className="text-[10px] text-ink4 font-semibold mb-1">Debt/Equity</p>
+                <p className={`font-[family-name:var(--font-sora)] text-lg font-bold ${!deOverride && debtEquity <= 0.5 ? 'text-emerald-mid' : !deOverride && debtEquity <= 1 ? 'text-gold-mid' : !deOverride ? 'text-destructive' : 'text-ink2'}`}>
+                  {deLabel}
+                </p>
+                <p className="text-[10px] text-ink4 mt-1">{deCommentary}</p>
+              </div>
+            );
+          })()}
         </div>
 
-        {/* CAGR Row */}
-        <div className="bg-gradient-to-r from-cobalt/5 to-emerald/5 border border-border rounded-xl p-3">
-          <p className="text-[11px] font-bold text-ink3 mb-2">2-Year CAGR</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] text-ink3">Revenue CAGR</span>
-              <span className={`text-[13px] font-bold ${parseFloat(revenue3YrCAGR) >= 0 ? 'text-cobalt-mid' : 'text-destructive'}`}>
-                {revenue3YrCAGR}%
-              </span>
+        {/* CAGR Row — suppressed to "NA" when any of the FY23/FY25 inputs
+            have an admin-supplied text override (NA/-); computing a CAGR
+            over those would produce a misleading number. */}
+        {(() => {
+          const revOverridden =
+            !!getOverride(ipo, 'financials.fy23.revenue') ||
+            !!getOverride(ipo, 'financials.fy25.revenue');
+          const patOverridden =
+            !!getOverride(ipo, 'financials.fy23.pat') ||
+            !!getOverride(ipo, 'financials.fy25.pat');
+          const revCAGR = revOverridden ? 'NA' : `${revenue3YrCAGR}%`;
+          const patCAGR = patOverridden ? 'NA' : `${profit3YrCAGR}%`;
+          return (
+            <div className="bg-gradient-to-r from-cobalt/5 to-emerald/5 border border-border rounded-xl p-3">
+              <p className="text-[11px] font-bold text-ink3 mb-2">2-Year CAGR</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-ink3">Revenue CAGR</span>
+                  <span className={`text-[13px] font-bold ${revOverridden ? 'text-ink2' : parseFloat(revenue3YrCAGR) >= 0 ? 'text-cobalt-mid' : 'text-destructive'}`}>
+                    {revCAGR}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] text-ink3">Profit CAGR</span>
+                  <span className={`text-[13px] font-bold ${patOverridden ? 'text-ink2' : parseFloat(profit3YrCAGR) >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
+                    {patCAGR}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] text-ink3">Profit CAGR</span>
-              <span className={`text-[13px] font-bold ${parseFloat(profit3YrCAGR) >= 0 ? 'text-emerald-mid' : 'text-destructive'}`}>
-                {profit3YrCAGR}%
-              </span>
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* P/E and Market Cap */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-secondary rounded-xl p-3">
             <p className="text-[10px] text-ink4 font-semibold mb-1">P/E Ratio</p>
-            <p className="font-[family-name:var(--font-sora)] text-lg font-bold">{ipo.peRatio}x</p>
+            <p className="font-[family-name:var(--font-sora)] text-lg font-bold">
+              {formatNumeric(ipo, 'pe_ratio', ipo.peRatio, {
+                format: (n) => `${n}x`,
+              })}
+            </p>
             <p className="text-[10px] text-ink4 mt-1">At upper band</p>
           </div>
           <div className="bg-secondary rounded-xl p-3">

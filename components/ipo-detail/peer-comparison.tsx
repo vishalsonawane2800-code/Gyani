@@ -1,5 +1,6 @@
 import { BarChart3, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import type { PeerCompany, IPO } from '@/lib/data';
+import { formatNumeric, getOverride } from '@/lib/display-overrides';
 
 // Generate abbreviation from company name
 function generateAbbr(name: string | undefined | null): string {
@@ -103,24 +104,35 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
       </div>
 
       {/* Quick Summary Cards */}
+      {(() => null)()}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <div className="bg-secondary rounded-xl p-3">
-          <div className="text-[10px] text-ink4 font-semibold mb-1">IPO P/E Ratio</div>
-          <div className="font-[family-name:var(--font-sora)] text-lg font-bold">
-            {ipoPE > 0 ? `${ipoPE}x` : 'N/A'}
-          </div>
-          {ipoPE > 0 && avgPE > 0 && (
-            <div className={`text-[10px] font-medium flex items-center gap-1 mt-1 ${getComparisonIndicator(ipoPE, avgPE, true).color}`}>
-              {(() => {
-                const indicator = getComparisonIndicator(ipoPE, avgPE, true);
-                const Icon = indicator.icon;
-                return <Icon className="w-3 h-3" />;
-              })()}
-              vs Peer Avg: {avgPE.toFixed(1)}x
+        {(() => {
+          const peOverride =
+            getOverride(ipo, 'pe_ratio') ||
+            getOverride(ipo, 'kpi.pe.post') ||
+            getOverride(ipo, 'kpi.pe.pre');
+          const peDisplay = peOverride ?? (ipoPE > 0 ? `${ipoPE}x` : 'N/A');
+          const showCompare = !peOverride && ipoPE > 0 && avgPE > 0;
+          const indicator = showCompare ? getComparisonIndicator(ipoPE, avgPE, true) : null;
+          return (
+            <div className="bg-secondary rounded-xl p-3">
+              <div className="text-[10px] text-ink4 font-semibold mb-1">IPO P/E Ratio</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-bold">
+                {peDisplay}
+              </div>
+              {indicator && (
+                <div className={`text-[10px] font-medium flex items-center gap-1 mt-1 ${indicator.color}`}>
+                  {(() => {
+                    const Icon = indicator.icon;
+                    return <Icon className="w-3 h-3" />;
+                  })()}
+                  vs Peer Avg: {avgPE.toFixed(1)}x
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        
+          );
+        })()}
+
         <div className="bg-secondary rounded-xl p-3">
           <div className="text-[10px] text-ink4 font-semibold mb-1">IPO Market Cap</div>
           <div className="font-[family-name:var(--font-sora)] text-lg font-bold">
@@ -130,23 +142,32 @@ export function PeerComparison({ ipo, peers = [] }: PeerComparisonProps) {
             Peer Avg: {formatCr(avgMarketCap)}
           </div>
         </div>
-        
-        <div className="bg-secondary rounded-xl p-3">
-          <div className="text-[10px] text-ink4 font-semibold mb-1">IPO ROE</div>
-          <div className="font-[family-name:var(--font-sora)] text-lg font-bold text-emerald-mid">
-            {ipoROE > 0 ? `${ipoROE}%` : 'N/A'}
-          </div>
-          {ipoROE > 0 && (
-            <div className={`text-[10px] font-medium flex items-center gap-1 mt-1 ${getComparisonIndicator(ipoROE, avgROE).color}`}>
-              {(() => {
-                const indicator = getComparisonIndicator(ipoROE, avgROE);
-                const Icon = indicator.icon;
-                return <Icon className="w-3 h-3" />;
-              })()}
-              vs Peer Avg: {avgROE.toFixed(1)}%
+
+        {(() => {
+          const roeOverride =
+            getOverride(ipo, 'financials.roe') ||
+            getOverride(ipo, 'kpi.roe.0');
+          const roeDisplay = roeOverride ?? (ipoROE > 0 ? `${ipoROE}%` : 'N/A');
+          const showCompare = !roeOverride && ipoROE > 0 && avgROE > 0;
+          const indicator = showCompare ? getComparisonIndicator(ipoROE, avgROE) : null;
+          return (
+            <div className="bg-secondary rounded-xl p-3">
+              <div className="text-[10px] text-ink4 font-semibold mb-1">IPO ROE</div>
+              <div className="font-[family-name:var(--font-sora)] text-lg font-bold text-emerald-mid">
+                {roeDisplay}
+              </div>
+              {indicator && (
+                <div className={`text-[10px] font-medium flex items-center gap-1 mt-1 ${indicator.color}`}>
+                  {(() => {
+                    const Icon = indicator.icon;
+                    return <Icon className="w-3 h-3" />;
+                  })()}
+                  vs Peer Avg: {avgROE.toFixed(1)}%
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          );
+        })()}
         
         <div className="bg-secondary rounded-xl p-3">
           <div className="text-[10px] text-ink4 font-semibold mb-1">Peer Avg P/B</div>
