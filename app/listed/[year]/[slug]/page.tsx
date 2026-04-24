@@ -575,6 +575,46 @@ export default async function ListedIpoDetail({
             </div>
           </section>
 
+          {/* GMP Prediction vs AI Prediction */}
+          {(ipo.gmpPrediction != null || ipo.aiPrediction != null) && (
+            <section className="bg-gradient-to-br from-primary/5 via-background to-background border border-primary/20 rounded-2xl p-5">
+              <h2 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-3">
+                GMP Prediction vs IPOGyani AI Prediction
+              </h2>
+              <p className="text-[13px] text-ink2 mb-4 leading-relaxed">
+                Comparison between market-based GMP prediction and IPOGyani&apos;s AI-powered listing gain prediction.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Stat
+                  label="GMP Prediction Range"
+                  value={ipo.gmpPrediction || '-'}
+                />
+                <Stat
+                  label="IPOGyani AI Prediction"
+                  value={ipo.aiPrediction != null ? `${ipo.aiPrediction.toFixed(1)}%` : '-'}
+                />
+                <Stat
+                  label="Actual Listing Gain"
+                  value={fmtPct(ipo.listingGainPct, 1)}
+                  valueClass={tone(ipo.listingGainPct)}
+                />
+              </div>
+              {ipo.predictionAccuracy != null && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-[12px] text-ink3">
+                    <span className="font-semibold text-foreground">Prediction Accuracy:</span>{' '}
+                    {ipo.predictionAccuracy.toFixed(1)}%
+                    {Math.abs(ipo.predictionAccuracy) < 10
+                      ? ' (Highly accurate)'
+                      : Math.abs(ipo.predictionAccuracy) < 30
+                      ? ' (Reasonably accurate)'
+                      : ' (Variance observed)'}
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Financials + Market context */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-card border border-border rounded-2xl p-5">

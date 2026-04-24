@@ -50,6 +50,7 @@ import {
   ExternalLink,
   Loader2,
   RefreshCw,
+  CheckCircle,
 } from 'lucide-react'
 
 interface IPOData {
@@ -140,6 +141,10 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
   const [addingGmp, setAddingGmp] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [migrateDialogOpen, setMigrateDialogOpen] = useState(false)
+  const [migrateListingPrice, setMigrateListingPrice] = useState('')
+  const [migrateListingDate, setMigrateListingDate] = useState(new Date().toISOString().split('T')[0])
+  const [migrating, setMigrating] = useState(false)
 
   const latestGmp = gmpHistory[0]
 
@@ -246,6 +251,42 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
     }
   }
 
+  const handleMigrateToListed = async () => {
+    if (!migrateListingPrice || !migrateListingDate) {
+      toast.error('Please fill in all fields')
+      return
+    }
+
+    setMigrating(true)
+    try {
+      const response = await fetch('/api/admin/migrate-to-listed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ipoId: ipo.id,
+          listingPrice: parseFloat(migrateListingPrice),
+          listingDate: migrateListingDate,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to migrate IPO')
+      }
+
+      const result = await response.json()
+      toast.success(`Successfully migrated ${ipo.name} to listed IPOs`)
+      setMigrateDialogOpen(false)
+      setMigrateListingPrice('')
+      router.refresh()
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to migrate IPO')
+      console.error(error)
+    } finally {
+      setMigrating(false)
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -298,6 +339,71 @@ export function IPODetailClient({ ipo, gmpHistory }: IPODetailClientProps) {
             {refreshing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Refresh Data
           </Button>
+          {ipo.status === 'listing' || ipo.status === 'listed' ? (
+            <Dialog open={migrateDialogOpen} onOpenChange={setMigrateDialogOpen}>
+              <Button
+                variant="outline"
+                className="border-emerald-600/50 text-emerald-300 hover:bg-emerald-600/20"
+                onClick={() => setMigrateDialogOpen(true)}
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Migrate to Listed
+              </Button>
+              <DialogContent className="bg-slate-800 border-slate-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Migrate to Listed IPO</DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    Fill in the listing details to create the historical entry.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div>
+                    <Label htmlFor="listing-date" className="text-slate-200">
+                      Listing Date
+                    </Label>
+                    <Input
+                      id="listing-date"
+                      type="date"
+                      value={migrateListingDate}
+                      onChange={(e) => setMigrateListingDate(e.target.value)}
+                      className="bg-slate-700 border-slate-600 text-white mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="listing-price" className="text-slate-200">
+                      Listing Price (Rs)
+                    </Label>
+                    <Input
+                      id="listing-price"
+                      type="number"
+                      placeholder={`e.g., ${ipo.price_max}`}
+                      value={migrateListingPrice}
+                      onChange={(e) => setMigrateListingPrice(e.target.value)}
+                      step="0.01"
+                      className="bg-slate-700 border-slate-600 text-white mt-1"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setMigrateDialogOpen(false)}
+                    className="border-slate-600 text-slate-300 hover:bg-slate-700"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleMigrateToListed}
+                    disabled={migrating}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {migrating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Migrate
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          ) : null}
           <Link href={`/admin/ipos/${ipo.id}/edit`}>
             <Button variant="outline" className="border-indigo-600/50 text-indigo-300 hover:bg-indigo-600/20">
               <Pencil className="h-4 w-4 mr-2" />
