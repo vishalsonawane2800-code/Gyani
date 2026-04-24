@@ -207,6 +207,27 @@ Ask the user before applying — they may not want this either.
 - Consider automation: fetch Nifty returns via API on listing date
 - GMP peak calculation could be enhanced with weighted prediction confidence
 
+## Session-4 addendum — Mehul Telecom Listed Data Population
+
+**Status**: Mehul Telecom Limited has been added to `data/listed-ipos/2026/2026.csv` with initial data:
+- Name, listing date (2026-04-24), sector, issue price (98), listing price (108), listing gain (+10.2%) ✓
+- Day 3 subscription (44.91x) ✓
+
+**Remaining Fields**: Most fields are empty ("-") and need population from your production Supabase:
+1. **GMP History**: All D1-D5 values (both Rs and %)
+2. **Financial Metrics**: Peer PE, Debt/Equity, IPO PE, EBITDA, PE vs Sector ratio
+3. **Issue Details**: Total/Fresh/OFS amounts, Retail quota
+4. **Market Context**: Nifty returns, closing price, day changes
+5. **Prediction Fields**: GMP prediction range, AI prediction %, accuracy
+
+**Solution**:
+- Created `/ai_ref/MEHUL_COMPLETION_GUIDE.md` with data sources, SQL queries, and step-by-step instructions
+- Two options:
+  1. **Manual**: Use SQL queries in guide to extract from production Supabase, paste values in CSV
+  2. **Automated**: Get Mehul's IPO ID from database, run `npx ts-node scripts/migrate-ipo-to-listed.ts <id> 2026-04-24 108`
+
+The migration script (built in Session 4) will automatically extract and calculate all values if the IPO record exists in the production database.
+
 ## Anything else
 
 - Previous sessions have already investigated the `investorgain_sub_url` column — it exists (per `scripts/012_add_gmp_source_urls.sql`), no migration needed.
