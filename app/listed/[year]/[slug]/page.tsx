@@ -576,44 +576,84 @@ export default async function ListedIpoDetail({
           </section>
 
           {/* GMP Prediction vs AI Prediction */}
-          {(ipo.gmpPrediction != null || ipo.aiPrediction != null) && (
-            <section className="bg-gradient-to-br from-primary/5 via-background to-background border border-primary/20 rounded-2xl p-5">
-              <h2 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-3">
-                GMP Prediction vs IPOGyani AI Prediction
-              </h2>
-              <p className="text-[13px] text-ink2 mb-4 leading-relaxed">
-                Comparison between market-based GMP prediction and IPOGyani&apos;s AI-powered listing gain prediction.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Stat
-                  label="GMP Prediction Range"
-                  value={ipo.gmpPrediction || '-'}
-                />
-                <Stat
-                  label="IPOGyani AI Prediction"
-                  value={ipo.aiPrediction != null ? `${ipo.aiPrediction.toFixed(1)}%` : '-'}
-                />
-                <Stat
-                  label="Actual Listing Gain"
-                  value={fmtPct(ipo.listingGainPct, 1)}
-                  valueClass={tone(ipo.listingGainPct)}
-                />
-              </div>
-              {ipo.predictionAccuracy != null && (
-                <div className="mt-3 pt-3 border-t border-border">
-                  <p className="text-[12px] text-ink3">
-                    <span className="font-semibold text-foreground">Prediction Accuracy:</span>{' '}
-                    {ipo.predictionAccuracy.toFixed(1)}%
-                    {Math.abs(ipo.predictionAccuracy) < 10
-                      ? ' (Highly accurate)'
-                      : Math.abs(ipo.predictionAccuracy) < 30
-                      ? ' (Reasonably accurate)'
-                      : ' (Variance observed)'}
-                  </p>
+          {(() => {
+            // Derive the GMP prediction range from the five daily GMP-percent
+            // readings when the CSV doesn't ship an explicit "GMP Prediction"
+            // column. Pre-2026 archives have it, newer year files don't.
+            const gmpPcts = [
+              ipo.gmpPctD1,
+              ipo.gmpPctD2,
+              ipo.gmpPctD3,
+              ipo.gmpPctD4,
+              ipo.gmpPctD5,
+            ].filter((v): v is number => v != null);
+            let gmpRangeDisplay = ipo.gmpPrediction;
+            if (!gmpRangeDisplay && gmpPcts.length > 0) {
+              const min = Math.min(...gmpPcts);
+              const max = Math.max(...gmpPcts);
+              gmpRangeDisplay =
+                Math.abs(max - min) < 0.05
+                  ? `${min.toFixed(1)}%`
+                  : `${min.toFixed(1)}%-${max.toFixed(1)}%`;
+            }
+
+            // Derive prediction accuracy (absolute pp error) when not stored.
+            const accuracy =
+              ipo.predictionAccuracy != null
+                ? ipo.predictionAccuracy
+                : ipo.aiPrediction != null && ipo.listingGainPct != null
+                  ? Math.round(
+                      Math.abs(ipo.listingGainPct - ipo.aiPrediction) * 100
+                    ) / 100
+                  : null;
+
+            if (gmpRangeDisplay == null && ipo.aiPrediction == null) {
+              return null;
+            }
+
+            return (
+              <section className="bg-gradient-to-br from-primary/5 via-background to-background border border-primary/20 rounded-2xl p-5">
+                <h2 className="font-[family-name:var(--font-sora)] text-lg font-bold mb-3">
+                  GMP Prediction vs IPOGyani AI Prediction
+                </h2>
+                <p className="text-[13px] text-ink2 mb-4 leading-relaxed">
+                  Comparison between market-based GMP prediction and IPOGyani&apos;s AI-powered listing gain prediction.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Stat
+                    label="GMP Prediction Range"
+                    value={gmpRangeDisplay || '-'}
+                  />
+                  <Stat
+                    label="IPOGyani AI Prediction"
+                    value={
+                      ipo.aiPrediction != null
+                        ? `${ipo.aiPrediction.toFixed(1)}%`
+                        : '-'
+                    }
+                  />
+                  <Stat
+                    label="Actual Listing Gain"
+                    value={fmtPct(ipo.listingGainPct, 1)}
+                    valueClass={tone(ipo.listingGainPct)}
+                  />
                 </div>
-              )}
-            </section>
-          )}
+                {accuracy != null && (
+                  <div className="mt-3 pt-3 border-t border-border">
+                    <p className="text-[12px] text-ink3">
+                      <span className="font-semibold text-foreground">Prediction Accuracy:</span>{' '}
+                      {accuracy.toFixed(1)} pp
+                      {Math.abs(accuracy) < 3
+                        ? ' (Highly accurate)'
+                        : Math.abs(accuracy) < 10
+                          ? ' (Reasonably accurate)'
+                          : ' (Variance observed)'}
+                    </p>
+                  </div>
+                )}
+              </section>
+            );
+          })()}
 
           {/* Financials + Market context */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
