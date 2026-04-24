@@ -83,7 +83,7 @@ export default async function GMPPage() {
         <div className="flex items-center gap-2 text-sm text-ink3 mb-4">
           <Clock className="w-4 h-4" />
           <span>
-            Last server render:{' '}
+            GMP data updated every 15 minutes. Last updated:{' '}
             {new Date().toLocaleString('en-IN', {
               day: 'numeric',
               month: 'short',
