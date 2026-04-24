@@ -76,7 +76,7 @@ export type ListedIpoRecord = {
  * Within quoted headers we collapse internal newlines to spaces so that
  * headers like  "Nifty 3D\nReturn (%)"  become  "Nifty 3D Return (%)" .
  */
-function parseCsvRows(text: string): string[][] {
+export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cur = '';
@@ -205,8 +205,13 @@ function rowToRecord(
   const listingDateRaw = (getCol(row, 'Listing Date') || '').trim();
   const listingDate = normalizeDate(listingDateRaw);
 
+  // Optional explicit slug override. Useful when the display name does not
+  // slugify to the public URL (e.g. a URL that historically included "-ipo"
+  // but the display name does not). Falls back to slugify(name) when empty.
+  const slugOverride = (getCol(row, 'Slug') || '').trim();
+
   return {
-    slug: slugify(name),
+    slug: slugOverride || slugify(name),
     year,
     name,
     listingDate,
