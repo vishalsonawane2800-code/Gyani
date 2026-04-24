@@ -61,6 +61,7 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
                 <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">Issue Price</th>
                 <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">List Price</th>
                 <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">Listing Gain</th>
+                <th className="text-right text-[11px] font-semibold text-ink3 py-3 px-4">AI Prediction</th>
                 <th className="text-center text-[11px] font-semibold text-ink3 py-3 px-4">Subscription</th>
               </tr>
             </thead>
@@ -131,6 +132,11 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
                          <Minus className="w-3 h-3" />}
                         {isPositive ? '+' : ''}{ipo.gainPct.toFixed(1)}%
                       </div>
+                    </td>
+                    <td className="text-right py-3 px-4">
+                      <span className="text-[12px] font-medium text-ink">
+                        {ipo.aiPred !== '-' ? `${ipo.aiPred}%` : '-'}
+                      </span>
                     </td>
                     <td className="text-center py-3 px-4">
                       <span className="text-[12px] font-medium text-ink">

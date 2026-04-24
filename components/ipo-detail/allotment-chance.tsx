@@ -139,9 +139,7 @@ export function AllotmentChance({ ipo }: AllotmentChanceProps) {
               </span>
             </div>
           </div>
-          <p className="text-xs md:text-sm text-ink2 mt-3 leading-relaxed">
-            The allotment chance is calculated as <code className="bg-slate-900/50 px-1.5 py-0.5 rounded text-[0.85em] font-mono">100 ÷ retail subscription</code>, capped at 100%. Lower subscription = higher allotment odds for retail investors.
-          </p>
+
         </div>
       </div>
     </section>
