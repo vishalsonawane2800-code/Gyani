@@ -120,7 +120,13 @@ export default async function IPODetailPage({ params }: PageProps) {
             <IssueDetails ipo={ipo} />
             
             {/* KPI Section */}
-            {ipo.kpi && <KPITable kpi={ipo.kpi} ipoSlug={ipo.slug} />}
+            {ipo.kpi && (
+              <KPITable
+                kpi={ipo.kpi}
+                ipoSlug={ipo.slug}
+                textOverrides={ipo.textOverrides}
+              />
+            )}
             
             {/* Company Financials Section - only show if admin provided financials */}
             {ipo.financials && <CompanyFinancials ipo={ipo} />}

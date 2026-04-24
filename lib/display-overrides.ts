@@ -33,6 +33,8 @@ export interface FormatNumericOptions {
   format: (n: number) => string
   /** Returned when both the override and value are missing/invalid. */
   fallback?: string
+  /** Alias of `fallback` — accepted for readability at call sites. */
+  emptyFallback?: string
   /**
    * When true (default), numeric `0` / `NaN` is treated as "missing"
    * and the fallback is shown instead. Set to false for fields where 0
@@ -50,7 +52,7 @@ export function formatNumeric(
 ): string {
   const override = getOverride(ipo, key)
   if (override) return override
-  const fallback = opts.fallback ?? 'NA'
+  const fallback = opts.fallback ?? opts.emptyFallback ?? 'NA'
   const treatZero = opts.treatZeroAsMissing ?? true
   if (value === null || value === undefined) return fallback
   if (!Number.isFinite(value)) return fallback
