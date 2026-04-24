@@ -168,10 +168,8 @@ function toAccuracyRow(rec: ListedIpoRecord, idx: number): ListedIPO | null {
       ? `${gmpAbsolute > 0 ? '+' : ''}${gmpAbsolute}`
       : `${lastDayGmpPct >= 0 ? '+' : ''}${r1(lastDayGmpPct)}%`;
 
-  const subTimes =
-    (rec.qibDay3 ?? 0) + (rec.hniDay3 ?? 0) + (rec.retailDay3 ?? 0) ||
-    rec.day3Sub ??
-    0;
+  const summedDay3 = (rec.qibDay3 ?? 0) + (rec.hniDay3 ?? 0) + (rec.retailDay3 ?? 0);
+  const subTimes = summedDay3 > 0 ? summedDay3 : (rec.day3Sub ?? 0);
 
   const chip = chipFor(rec.slug);
   const year = String(rec.year);
