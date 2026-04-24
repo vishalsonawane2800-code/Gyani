@@ -103,18 +103,21 @@ export function IPOCard({ ipo }: IPOCardProps) {
   };
 
   const isSme = ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+  const isMainboard = ipo.exchange === 'Mainboard';
 
   const getExchangeBadge = () => {
     switch (ipo.exchange) {
       case 'Mainboard':
-        return 'bg-cobalt-bg text-cobalt';
+        // Mainboard IPOs now carry the highlighted gold/amber badge so
+        // they stand out visually from SME issues at a glance.
+        return 'bg-gold-bg text-gold border border-gold/30';
       case 'BSE SME':
       case 'NSE SME':
-        // SME IPOs get a distinct gold/amber badge so they stand out
-        // visually from Mainboard issues at a glance.
-        return 'bg-gold-bg text-gold border border-gold/30';
+        // SME IPOs are marked with a prominent red badge to flag the
+        // higher-risk category up-front.
+        return 'bg-destructive-bg text-destructive border border-destructive/40';
       case 'REIT':
-        return 'bg-gold-bg text-gold';
+        return 'bg-cobalt-bg text-cobalt';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -126,7 +129,7 @@ export function IPOCard({ ipo }: IPOCardProps) {
     <Link
       href={`/ipo/${ipo.slug}`}
       className={`block bg-card border rounded-2xl p-4 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 ${
-        isSme
+        isMainboard
           ? 'border-gold/40 bg-gold-bg/30 hover:border-gold/60'
           : 'border-border hover:border-border-secondary'
       }`}
@@ -166,9 +169,17 @@ export function IPOCard({ ipo }: IPOCardProps) {
             </span>
             <span
               className={`text-xs px-2 py-0.5 rounded-lg ${getExchangeBadge()} ${
-                isSme ? 'font-extrabold uppercase tracking-wide' : 'font-bold'
+                isSme
+                  ? 'font-extrabold uppercase tracking-wide inline-flex items-center gap-1'
+                  : 'font-bold'
               }`}
             >
+              {isSme && (
+                <span
+                  aria-hidden
+                  className="w-1.5 h-1.5 rounded-full bg-destructive"
+                />
+              )}
               {isSme ? `SME IPO (${ipo.exchange === 'BSE SME' ? 'BSE' : 'NSE'})` : ipo.exchange}
             </span>
           </div>

@@ -61,15 +61,24 @@ export function LiveSubscriptionDetails({ ipos }: Props) {
         const isExpanded = expandedSlug === ipo.slug;
         const total = ipo.subscription?.total ?? 0;
         const day = ipo.subscription?.day ?? 0;
+        const isSme =
+          ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+        const isMainboard = ipo.exchange === 'Mainboard';
         return (
           <div
             key={ipo.slug}
-            className="bg-card border border-border rounded-2xl overflow-hidden"
+            className={`border rounded-2xl overflow-hidden ${
+              isMainboard
+                ? 'bg-gold-bg/40 border-gold/40'
+                : 'bg-card border-border'
+            }`}
           >
             <button
               type="button"
               onClick={() => setExpandedSlug(isExpanded ? null : ipo.slug)}
-              className="w-full flex items-center gap-3 p-4 md:p-5 text-left hover:bg-secondary/40 transition-colors"
+              className={`w-full flex items-center gap-3 p-4 md:p-5 text-left transition-colors ${
+                isMainboard ? 'hover:bg-gold-bg/60' : 'hover:bg-secondary/40'
+              }`}
               aria-expanded={isExpanded}
             >
               {isExpanded ? (
@@ -78,7 +87,15 @@ export function LiveSubscriptionDetails({ ipos }: Props) {
                 <ChevronRight className="w-4 h-4 text-ink3 shrink-0" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink truncate">{ipo.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-ink truncate">{ipo.name}</p>
+                  {isSme && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                      <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                      SME IPO
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-ink3 mt-0.5">
                   {ipo.exchange}
                   {day > 0 ? ` | Day ${day}` : ''}

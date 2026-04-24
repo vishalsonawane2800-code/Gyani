@@ -17,8 +17,14 @@ interface MarketSentimentProps {
 // intentionally leaving it out of the emptiness check — otherwise a
 // single upcoming IPO in a fresh DB would block the static fallback
 // from firing and the entire panel would render as zeros.
+//
+// We also treat implausibly small 2026 counts (< 5 listed for the
+// whole year) as "empty" so that partial / stale Supabase data does
+// not show up as e.g. "1 SME Listed, 44.9x Avg Subscription" — we
+// prefer the curated fallback in that case.
 function isEmptyStats(stats: IPOCategoryStats | undefined): boolean {
   if (!stats) return true;
+  if (stats.total < 5) return true;
   return (
     stats.total === 0 &&
     stats.inGainOnListing === 0 &&
@@ -36,9 +42,9 @@ const fallbackStats = {
     avgListingGain: -1.43, medianListingGain: -1.27, avgSubscription: 2.66,
   },
   sme: {
-    total: 44, upcoming: 3, inGainOnListing: 20, inLossOnListing: 21,
-    currentlyInGain: 22, currentlyInLoss: 19, totalRaisedCr: 4120,
-    avgListingGain: 18.7, medianListingGain: 12.6, avgSubscription: 112.4,
+    total: 45, upcoming: 0, inGainOnListing: 25, inLossOnListing: 20,
+    currentlyInGain: 25, currentlyInLoss: 20, totalRaisedCr: 4120,
+    avgListingGain: 3.56, medianListingGain: 3.56, avgSubscription: 6.54,
   },
 };
 
