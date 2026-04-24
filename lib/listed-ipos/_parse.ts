@@ -145,9 +145,10 @@ function normalizeDate(raw: string): string {
   const s = raw.trim();
   if (!s) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Try M/D/YYYY or MM/DD/YYYY format first
   const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if (m) {
-    const [, d, mo, y] = m;
+    const [, mo, d, y] = m; // month, day, year
     return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
   const t = Date.parse(s);
@@ -264,7 +265,7 @@ function rowToRecord(
     gmpD5: toNumber(getCol(row, 'GMP Day-5', 'GMP Day 5')),
 
     gmpPrediction: (getCol(row, 'GMP Prediction') || '').trim() || null,
-    aiPrediction: toNumber(getCol(row, 'IPOGyani AI Prediction')),
+    aiPrediction: toNumber(getCol(row, 'Ai predicted %', 'IPOGyani AI Prediction')),
     predictionAccuracy: toNumber(getCol(row, 'Prediction Accuracy (%)', 'Prediction Accuracy %')),
   };
 }
