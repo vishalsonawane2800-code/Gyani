@@ -50,6 +50,9 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
     .slice(0, 2)
     .toUpperCase() || 'IP';
 
+  const aiPredVal = row.aiPrediction;
+  const aiPredStr = aiPredVal != null ? (aiPredVal > 0 ? '+' : '') + aiPredVal.toFixed(1) + '%' : '-';
+  
   return {
     id: index + 1,
     name: row.name,
@@ -65,7 +68,7 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
     gainPct: row.listingGainPct ?? 0,
     subTimes: row.day3Sub ?? 0,
     gmpPeak: '-',
-    aiPred: '-',
+    aiPred: aiPredStr,
     aiErr: 0,
     year: String(row.year),
   };
