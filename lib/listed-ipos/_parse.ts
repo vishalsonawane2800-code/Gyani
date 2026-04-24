@@ -60,6 +60,10 @@ export type ListedIpoRecord = {
   gmpD3: number | null;
   gmpD4: number | null;
   gmpD5: number | null;
+
+  gmpPrediction: string | null; // e.g., "50-60%"
+  aiPrediction: number | null; // percentage
+  predictionAccuracy: number | null; // percentage
 };
 
 /**
@@ -258,6 +262,10 @@ function rowToRecord(
     gmpD3: toNumber(getCol(row, 'GMP Day-3', 'GMP Day 3')),
     gmpD4: toNumber(getCol(row, 'GMP Day-4', 'GMP Day 4')),
     gmpD5: toNumber(getCol(row, 'GMP Day-5', 'GMP Day 5')),
+
+    gmpPrediction: (getCol(row, 'GMP Prediction') || '').trim() || null,
+    aiPrediction: toNumber(getCol(row, 'IPOGyani AI Prediction')),
+    predictionAccuracy: toNumber(getCol(row, 'Prediction Accuracy (%)', 'Prediction Accuracy %')),
   };
 }
 

@@ -134,21 +134,78 @@ Ask the user before applying — they may not want this either.
 
 **The next agent's FIRST action should be:** ask the user to run the SQL in Priority 1 above, wait for output, then walk them through pasting the correct Adisoft URL in admin.
 
-## Session-4 progress — THIS SESSION
+## Session-4 progress — Subscription cache fix + Listed IPO data migration system (COMPLETE)
 
-1. **Issue identified:** Adisoft URLs in database are correct (`adisoft-technologies-ipo/2788/` for Chittorgarh). The problem is **stale cached data** from when the URL was wrong. Cache is stored in **Upstash Redis** with key `subscription:{ipoId}`.
+### Part A: Subscription Scraper Cache Fix (For future reference)
+1. **Root cause identified:** Adisoft URLs in database were correct (`adisoft-technologies-ipo/2788/` for Chittorgarh). Problem was **stale cached data** in **Upstash Redis** (key: `subscription:{ipoId}`).
 
-2. **Fixed env var config:** The old scripts `clear-subscription-cache.js` and created `fix-adisoft-subscription.js` had incorrect env vars:
+2. **Fixed env var config:** Scripts had incorrect Upstash env var names:
    - Old: `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` (don't exist)
-   - Actual Vercel integration provides: `KV_REST_API_URL` and `KV_REST_API_TOKEN`
-   - Updated both scripts with correct variable names and Redis initialization.
+   - Correct: `KV_REST_API_URL` and `KV_REST_API_TOKEN`
+   - Updated `clear-subscription-cache.js` and `fix-adisoft-subscription.js`
 
-3. **About to execute:** Running the fix-adisoft-subscription.js script which will:
+3. **Cleanup script:** Created `fix-adisoft-subscription.js` to:
    - Fetch Adisoft IPO ID from Supabase
-   - Clear the stale subscription cache from Redis for that IPO
-   - Clear database subscription columns and subscription_live rows
-   - Trigger a fresh manual scrape via the scrape-subscription endpoint
-   - Return the new data so we can verify Adisoft's correct numbers loaded
+   - Clear Redis cache for that IPO
+   - Clear database subscription columns and `subscription_live` rows
+   - Trigger fresh scrape
+
+### Part B: Listed IPO Data Migration System (NEW FEATURE — IMPLEMENTED)
+**Problem:** When an IPO transitions from "current" to "listed", all historical data (GMP, financials, subscription, market context) was not being populated in the CSV file, leaving displayed fields empty on the detail page.
+
+**Solution — 6 components implemented:**
+
+1. **Updated CSV template** (`data/listed-ipos/_template.csv`):
+   - Added 3 new columns for prediction comparison: `GMP Prediction`, `IPOGyani AI Prediction`, `Prediction Accuracy (%)`
+
+2. **Updated CSV parser** (`lib/listed-ipos/_parse.ts`):
+   - Extended `ListedIpoRecord` type with `gmpPrediction`, `aiPrediction`, `predictionAccuracy` fields
+   - Parser now extracts these columns from CSV data
+
+3. **Created migration script** (`scripts/migrate-ipo-to-listed.ts`):
+   - Command-line tool: `npx ts-node scripts/migrate-ipo-to-listed.ts <ipo-id> <listing-date> <listing-price>`
+   - Extracts data from: `ipo_financials`, `ipo_issue_details`, `gmp_history`, `subscription_history`
+   - Calculates: listing gain %, GMP prediction range (min-max from history), prediction accuracy (actual vs AI prediction)
+   - Appends fully populated row to year-specific CSV file
+
+4. **Created admin API endpoint** (`app/api/admin/migrate-to-listed/route.ts`):
+   - `POST /api/admin/migrate-to-listed`
+   - Accepts: `ipoId`, `listingDate`, `listingPrice`
+   - Auth: Validates `ADMIN_JWT_TOKEN` via Authorization header
+   - Returns: Success confirmation with all calculated values
+
+5. **Added admin UI button** (`app/admin/ipos/[id]/detail-client.tsx`):
+   - "Migrate to Listed" button visible when IPO status is `listing` or `listed`
+   - Dialog collects listing date and price (with today's date as default)
+   - Calls migration endpoint, shows success/error toast
+   - Auto-refreshes page on success
+
+6. **Added prediction display** (`app/listed/[year]/[slug]/page.tsx`):
+   - New "GMP Prediction vs IPOGyani AI Prediction" section after GMP history table
+   - 3-stat display: GMP prediction range, AI prediction %, actual listing gain (with color coding)
+   - Shows prediction accuracy % with human-readable assessment ("Highly accurate" if < 10%, etc.)
+   - Conditional render — only shows if prediction data exists in CSV
+
+**User Workflow:**
+1. IPO reaches listing date → Admin updates status to `listing`
+2. Admin goes to IPO detail → Clicks "Migrate to Listed"
+3. Enters actual listing date and price → Clicks "Migrate"
+4. System extracts all historical data from Supabase tables
+5. Appends complete row to CSV with: subscriptions (RETAIL/NII/QIB), GMP history (Day 1-5), financials, market context, prediction metrics
+6. Listed IPO detail page now shows complete historical breakdown including prediction accuracy comparison
+
+**Fields populated from Supabase on migration:**
+- Subscriptions: QIB/NII/Retail Day 3 (final), Day 1-3 trend
+- GMP history: All available day-wise GMP values (Rs and %)
+- Financials: ROCE, Debt/Equity, EBITDA, IPO PE
+- Issue details: Retail quota %, total/fresh/OFS amounts
+- Predictions: Peak GMP as prediction range, AI prediction %, accuracy calculation
+- Market context: Fields set to "-" (user fills post-listing: Nifty returns, closing prices, etc.)
+
+**For next session on this feature:**
+- If user wants to pre-populate market context fields (Nifty returns, closing price), add a post-migration form
+- Consider automation: fetch Nifty returns via API on listing date
+- GMP peak calculation could be enhanced with weighted prediction confidence
 
 ## Anything else
 
