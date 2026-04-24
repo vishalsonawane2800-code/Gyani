@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { IPO } from '@/lib/data';
-import { Users, TrendingUp } from 'lucide-react';
+import { Users } from 'lucide-react';
 
 interface AllotmentData {
   retailSubscription: number;
@@ -15,37 +15,88 @@ interface AllotmentChanceProps {
 
 export function AllotmentChance({ ipo }: AllotmentChanceProps) {
   const [allotmentData, setAllotmentData] = useState<AllotmentData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Calculate allotment chance from subscription data
-    const calculateAllotment = () => {
-      let retailSub = 0;
+    // Fetch live subscription data for the IPO
+    const fetchLiveSubscription = async () => {
+      try {
+        const response = await fetch(`/api/public/ipo-subscription/${ipo.id}`);
+        if (!response.ok) throw new Error('Failed to fetch subscription');
+        
+        const data = await response.json() as {
+          retail?: number | string;
+          retailSubscription?: number;
+        };
 
-      // Try to get retail subscription from latest subscription_live data
-      if (ipo.subscription?.retail) {
-        const retailStr = String(ipo.subscription.retail).toLowerCase();
-        const num = parseFloat(retailStr.replace(/x/g, '').trim());
-        if (Number.isFinite(num) && num > 0) {
-          retailSub = num;
+        let retailSub = 0;
+
+        // Parse retail subscription
+        if (data.retail) {
+          const retailStr = String(data.retail).toLowerCase();
+          const num = parseFloat(retailStr.replace(/x/g, '').trim());
+          if (Number.isFinite(num) && num > 0) {
+            retailSub = num;
+          }
+        } else if (data.retailSubscription && Number.isFinite(data.retailSubscription) && data.retailSubscription > 0) {
+          retailSub = data.retailSubscription;
         }
+
+        // If API fails, try static data
+        if (retailSub === 0 && ipo.subscription?.retail) {
+          const retailStr = String(ipo.subscription.retail).toLowerCase();
+          const num = parseFloat(retailStr.replace(/x/g, '').trim());
+          if (Number.isFinite(num) && num > 0) {
+            retailSub = num;
+          }
+        }
+
+        if (retailSub === 0) {
+          setAllotmentData(null);
+          setIsLoading(false);
+          return;
+        }
+
+        // Calculate allotment chance: 100 / retail subscription, capped at 100%
+        const allotmentChance = Math.min(100 / retailSub, 100);
+
+        setAllotmentData({
+          retailSubscription: retailSub,
+          allotmentChance: Math.round(allotmentChance * 100) / 100,
+        });
+      } catch (error) {
+        console.error('[v0] Failed to fetch live subscription:', error);
+        // Fallback to static data
+        let retailSub = 0;
+        if (ipo.subscription?.retail) {
+          const retailStr = String(ipo.subscription.retail).toLowerCase();
+          const num = parseFloat(retailStr.replace(/x/g, '').trim());
+          if (Number.isFinite(num) && num > 0) {
+            retailSub = num;
+          }
+        }
+
+        if (retailSub > 0) {
+          const allotmentChance = Math.min(100 / retailSub, 100);
+          setAllotmentData({
+            retailSubscription: retailSub,
+            allotmentChance: Math.round(allotmentChance * 100) / 100,
+          });
+        } else {
+          setAllotmentData(null);
+        }
+      } finally {
+        setIsLoading(false);
       }
-
-      if (retailSub === 0) {
-        setAllotmentData(null);
-        return;
-      }
-
-      // Calculate allotment chance: 100 / retail subscription, capped at 100%
-      const allotmentChance = Math.min(100 / retailSub, 100);
-
-      setAllotmentData({
-        retailSubscription: retailSub,
-        allotmentChance: Math.round(allotmentChance * 100) / 100,
-      });
     };
 
-    calculateAllotment();
-  }, [ipo.subscription?.retail]);
+    fetchLiveSubscription();
+
+    // Poll for updates every 15 seconds to stay in sync with subscription updates
+    const interval = setInterval(fetchLiveSubscription, 15000);
+
+    return () => clearInterval(interval);
+  }, [ipo.id, ipo.subscription?.retail]);
 
   if (!allotmentData) return null;
 
