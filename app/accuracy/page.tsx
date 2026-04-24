@@ -3,7 +3,7 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { listedIPOs as fallbackListedIPOs } from '@/lib/data';
-import { getListedIPOs } from '@/lib/supabase/queries';
+import { buildAccuracyDataset } from '@/lib/accuracy/build';
 import type { ListedIPO } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -30,22 +30,22 @@ function hydrate(ipo: ListedIPO): Required<Pick<ListedIPO, 'gmpPredGain' | 'gmpE
 }
 
 export default async function AccuracyPage() {
-  // Pull the latest listed IPOs from Supabase. Newly-scraped listings with
-  // status='listed' show up automatically (ORDER BY listing_date DESC), and the
-  // hourly revalidate above keeps this page fresh without a manual deploy.
-  // If the DB feed is empty / unavailable, we fall back to the curated
-  // real-IPO benchmark set so the dashboard is never blank.
-  const fromDb = await getListedIPOs({ limit: 60 });
-  const source = fromDb.length >= 10 ? fromDb : fallbackListedIPOs;
-  const dataSourceLabel = fromDb.length >= 10 ? 'live' : 'curated';
+  // Build the dataset from the codebase's Mainboard listed-IPO CSVs. Any new
+  // IPO appended to /data/listed-ipos/<year>/<year>.csv automatically flows
+  // into this dashboard on the next request -- no accuracy-specific data
+  // entry needed. The curated fallback kicks in only if the CSV archive is
+  // empty (e.g. during a partial deploy) so the page is never blank.
+  const fromCsv = await buildAccuracyDataset();
+  const source = fromCsv.length >= 10 ? fromCsv : fallbackListedIPOs;
+  const dataSourceLabel = fromCsv.length >= 10 ? 'live' : 'curated';
 
   const ipos = source
     .map(hydrate)
     .sort((a, b) => (a.listDate < b.listDate ? 1 : -1));
 
-  // Recent head-to-head = most-recent Mainboard listings. This is what retail
-  // investors actually track (SMEs move on subscription hype alone), so it's
-  // the fairest head-to-head against last-day GMP.
+  // Recent head-to-head = 12 most-recent Mainboard listings. This is what
+  // retail investors actually track (SMEs move on subscription hype alone),
+  // so it's the fairest head-to-head against last-day GMP.
   const mainboardOnly = ipos.filter(i => i.exchange === 'Mainboard');
   const recentSource = mainboardOnly.length >= 8 ? mainboardOnly : ipos;
   const recent = recentSource.slice(0, Math.min(12, recentSource.length));
@@ -194,8 +194,9 @@ export default async function AccuracyPage() {
                 Recent Mainboard Listings &mdash; Head to Head
               </h2>
               <p className="text-[12px] text-ink3 mt-0.5">
-                Last {recent.length} mainboard IPOs. Winner = whichever prediction was closer to the actual listing-day gain.
-                Last-Day GMP = the GMP quoted on the IPO close date.
+                Last {recent.length} Mainboard IPOs. &quot;AI Err&quot; and &quot;GMP Err&quot; are the absolute gap
+                vs the actual listing-day gain &mdash; lower is better. Last-Day GMP is the grey-market premium
+                quoted on the IPO close date.
               </p>
             </div>
           </div>
@@ -210,14 +211,11 @@ export default async function AccuracyPage() {
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">AI Err</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Last-Day GMP %</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">GMP Err</th>
-                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Winner</th>
                 </tr>
               </thead>
               <tbody>
                 {recent.map(ipo => {
                   const pred = parseFloat(ipo.aiPred) || 0;
-                  const aiWon = ipo.aiErr < ipo.gmpErr;
-                  const tie = Math.abs(ipo.aiErr - ipo.gmpErr) < 0.05;
                   return (
                     <tr key={`recent-${ipo.id}`} className="border-b border-border last:border-b-0 hover:bg-secondary/50 group/row">
                       <td className="py-3 px-4 sticky left-0 bg-card group-hover/row:bg-secondary/50 z-10 min-w-[200px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
@@ -249,15 +247,6 @@ export default async function AccuracyPage() {
                       </td>
                       <td className={`py-3 px-4 text-right font-bold tabular-nums ${ipo.gmpErr < 2 ? 'text-emerald' : ipo.gmpErr < 5 ? 'text-gold-mid' : 'text-destructive'}`}>
                         {ipo.gmpErr.toFixed(1)}%
-                      </td>
-                      <td className="py-3 px-4">
-                        {tie ? (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-secondary text-ink3">Tie</span>
-                        ) : aiWon ? (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-bg text-emerald">AI Won</span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gold-bg text-gold">GMP Won</span>
-                        )}
                       </td>
                     </tr>
                   );
