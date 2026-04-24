@@ -3,18 +3,18 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { listedIPOs as fallbackListedIPOs } from '@/lib/data';
-import { getListedIPOs } from '@/lib/supabase/queries';
+import { buildAccuracyDataset } from '@/lib/accuracy/build';
 import type { ListedIPO } from '@/lib/data';
 
 export const metadata: Metadata = {
   title: 'AI Prediction Accuracy Dashboard | IPOGyani',
   description:
-    'See how IPOGyani&apos;s AI outperforms Grey Market Premium on real IPO listings. 95% hit rate within 5%, ~4x lower average error than GMP.',
+    'See how IPOGyani\u2019s AI stacks up against Last-Day Grey Market Premium on real Mainboard IPO listings. Honest scorecard: we beat GMP on average, we don\u2019t claim 100%.',
   keywords:
-    'IPO prediction accuracy, AI vs GMP, listing gain prediction, IPO forecasting, IPOGyani accuracy, grey market premium vs AI',
+    'IPO prediction accuracy, AI vs GMP, listing gain prediction, IPO forecasting, IPOGyani accuracy, last day grey market premium vs AI, mainboard IPO accuracy',
 };
 
-export const revalidate = 3600; // refresh hourly
+export const revalidate = 3600; // refresh hourly so newly-listed IPOs flow in automatically
 
 // Derive GMP-implied gain + GMP error for any ListedIPO row that doesn't
 // already carry them (older rows / external sources). Keeps the rest of
@@ -30,22 +30,28 @@ function hydrate(ipo: ListedIPO): Required<Pick<ListedIPO, 'gmpPredGain' | 'gmpE
 }
 
 export default async function AccuracyPage() {
-  // Fetch real listed IPOs from Supabase. If the DB is empty / unavailable,
-  // fall back to the curated mock set so the dashboard is never blank.
-  const fromDb = await getListedIPOs({ limit: 50 });
-  const source = fromDb.length >= 10 ? fromDb : fallbackListedIPOs;
-  const dataSourceLabel = fromDb.length >= 10 ? 'live' : 'curated';
+  // Build the dataset from the codebase's Mainboard listed-IPO CSVs. Any new
+  // IPO appended to /data/listed-ipos/<year>/<year>.csv automatically flows
+  // into this dashboard on the next request -- no accuracy-specific data
+  // entry needed. The curated fallback kicks in only if the CSV archive is
+  // empty (e.g. during a partial deploy) so the page is never blank.
+  const fromCsv = await buildAccuracyDataset();
+  const source = fromCsv.length >= 10 ? fromCsv : fallbackListedIPOs;
+  const dataSourceLabel = fromCsv.length >= 10 ? 'live' : 'curated';
 
   const ipos = source
     .map(hydrate)
     .sort((a, b) => (a.listDate < b.listDate ? 1 : -1));
 
-  // Recent = top 10 by list date. Full history = everything, newest first.
-  const recent = ipos.slice(0, Math.max(10, Math.min(12, ipos.length)));
-  const total = ipos.length;
+  // Recent head-to-head = 12 most-recent Mainboard listings. This is what
+  // retail investors actually track (SMEs move on subscription hype alone),
+  // so it's the fairest head-to-head against last-day GMP.
+  const mainboardOnly = ipos.filter(i => i.exchange === 'Mainboard');
+  const recentSource = mainboardOnly.length >= 8 ? mainboardOnly : ipos;
+  const recent = recentSource.slice(0, Math.min(12, recentSource.length));
 
+  const total = ipos.length;
   const aiWithin5 = ipos.filter(i => i.aiErr <= 5).length;
-  const gmpWithin5 = ipos.filter(i => i.gmpErr <= 5).length;
   const aiAvgErr = ipos.reduce((s, i) => s + i.aiErr, 0) / total;
   const gmpAvgErr = ipos.reduce((s, i) => s + i.gmpErr, 0) / total;
   const aiBeatsGmp = ipos.filter(i => i.aiErr < i.gmpErr).length;
@@ -55,7 +61,12 @@ export default async function AccuracyPage() {
   }).length;
 
   const hitRate = Math.round((aiWithin5 / total) * 100);
-  const errRatio = aiAvgErr > 0 ? (gmpAvgErr / aiAvgErr).toFixed(1) : '—';
+
+  // Accuracy scores: 100 - avg absolute error, clamped at 0. This is a more
+  // intuitive read than raw error and gives us a single axis to compare
+  // AI vs Last-Day GMP on the bar chart below.
+  const aiAccuracy = Math.max(0, Math.round((100 - aiAvgErr) * 10) / 10);
+  const gmpAccuracy = Math.max(0, Math.round((100 - gmpAvgErr) * 10) / 10);
 
   const years = [...new Set(ipos.map(i => i.year))].sort((a, b) => b.localeCompare(a));
 
@@ -73,12 +84,13 @@ export default async function AccuracyPage() {
               {dataSourceLabel === 'live' ? 'Live accuracy feed' : 'Calibrated benchmark'}
             </div>
             <h1 className="font-[family-name:var(--font-sora)] text-2xl md:text-3xl font-extrabold mb-2 text-balance">
-              AI vs GMP &mdash; How Accurate Are Our Listing-Gain Predictions?
+              AI vs Last-Day GMP &mdash; How Accurate Are Our Listing-Gain Calls?
             </h1>
             <p className="text-[14px] text-ink3 max-w-2xl leading-relaxed">
-              Every listing below compares our AI-predicted gain with the peak Grey Market Premium (GMP) that was doing the rounds
-              before the IPO closed. We track the absolute error against the actual listing day close, so you can judge for
-              yourself whether GMP-chasing or data-driven forecasts win more often.
+              Every listing below compares our AI-predicted listing gain with the <strong>last-day Grey Market Premium</strong> (the
+              GMP quoted on the IPO close date, which is what most retail investors actually see). We track the absolute error
+              against the real listing-day close. The AI doesn&apos;t claim to be perfect &mdash; it misses on euphoric hype IPOs
+              too &mdash; but on average it lands much closer to reality than last-day GMP.
             </p>
           </div>
           <div className="text-right text-[12px] text-ink3 shrink-0">
@@ -91,7 +103,7 @@ export default async function AccuracyPage() {
         {/* Headline Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-card border border-border rounded-xl p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">Hit Rate (&plusmn;5%)</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">AI Hit Rate (&plusmn;5%)</div>
             <div className="font-[family-name:var(--font-sora)] text-4xl font-black text-emerald leading-none">
               {hitRate}%
             </div>
@@ -100,21 +112,21 @@ export default async function AccuracyPage() {
             </div>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">Average AI Error</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">Avg AI Error</div>
             <div className="font-[family-name:var(--font-sora)] text-4xl font-black text-cobalt leading-none">
               {aiAvgErr.toFixed(1)}%
             </div>
             <div className="text-[12px] text-ink3 mt-2">
-              vs GMP&apos;s <span className="font-bold text-foreground">{gmpAvgErr.toFixed(1)}%</span> avg error
+              Across every listed IPO in our dataset
             </div>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
-            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">Better Than GMP</div>
+            <div className="text-[11px] font-bold uppercase tracking-wide text-ink3 mb-2">Avg Last-Day GMP Error</div>
             <div className="font-[family-name:var(--font-sora)] text-4xl font-black text-gold-mid leading-none">
-              {errRatio}&times;
+              {gmpAvgErr.toFixed(1)}%
             </div>
             <div className="text-[12px] text-ink3 mt-2">
-              AI beat peak GMP in {aiBeatsGmp}/{total} listings
+              AI beat last-day GMP in <span className="font-bold text-foreground">{aiBeatsGmp}/{total}</span> listings
             </div>
           </div>
           <div className="bg-card border border-border rounded-xl p-5">
@@ -128,47 +140,63 @@ export default async function AccuracyPage() {
           </div>
         </div>
 
-        {/* AI vs GMP quick bar */}
+        {/* AI vs Last-Day GMP accuracy bars */}
         <div className="bg-card border border-border rounded-2xl p-5 mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">AI vs GMP &mdash; Hits within &plusmn;5% error</h2>
-            <span className="text-[11px] text-ink3">Lower error = closer to actual listing gain</span>
+            <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">
+              Average Prediction Accuracy &mdash; AI vs Last-Day GMP
+            </h2>
+            <span className="text-[11px] text-ink3">Higher = closer to actual listing gain</span>
           </div>
           <div className="space-y-3">
             <div>
               <div className="flex justify-between text-[12px] mb-1">
                 <span className="font-semibold">IPOGyani AI</span>
-                <span className="font-bold text-emerald">{Math.round((aiWithin5 / total) * 100)}% hit rate</span>
+                <span className="font-bold text-emerald">
+                  {aiAccuracy.toFixed(1)}% accuracy <span className="text-ink3 font-semibold">({aiAvgErr.toFixed(1)}% avg err)</span>
+                </span>
               </div>
               <div className="h-3 bg-secondary rounded-full overflow-hidden">
                 <div
                   className="h-full bg-emerald rounded-full"
-                  style={{ width: `${(aiWithin5 / total) * 100}%` }}
+                  style={{ width: `${aiAccuracy}%` }}
                 />
               </div>
             </div>
             <div>
               <div className="flex justify-between text-[12px] mb-1">
-                <span className="font-semibold">Peak GMP</span>
-                <span className="font-bold text-gold-mid">{Math.round((gmpWithin5 / total) * 100)}% hit rate</span>
+                <span className="font-semibold">Last-Day GMP</span>
+                <span className="font-bold text-gold-mid">
+                  {gmpAccuracy.toFixed(1)}% accuracy <span className="text-ink3 font-semibold">({gmpAvgErr.toFixed(1)}% avg err)</span>
+                </span>
               </div>
               <div className="h-3 bg-secondary rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gold-mid rounded-full"
-                  style={{ width: `${(gmpWithin5 / total) * 100}%` }}
+                  style={{ width: `${gmpAccuracy}%` }}
                 />
               </div>
             </div>
           </div>
+          <p className="text-[11.5px] text-ink3 mt-4 leading-relaxed">
+            Accuracy = 100% minus the average absolute error vs the actual listing-day gain. Last-day GMP tends to overshoot
+            on euphoric IPOs (Denta Water, Standard Glass, Waaree) and undershoot on quiet mainboards (Hyundai, Ola Electric),
+            which drags its average. Our AI isn&apos;t immune &mdash; it famously under-called Bajaj Housing and Premier Energies
+            &mdash; but it stays much closer to the listing-day truth on average.
+          </p>
         </div>
 
-        {/* Recent Listings head-to-head */}
+        {/* Recent Listings head-to-head (Mainboard) */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden mb-8">
           <div className="p-4 border-b border-border flex items-center justify-between">
             <div>
-              <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">Recent Listings &mdash; Head to Head</h2>
+              <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">
+                Recent Mainboard Listings &mdash; Head to Head
+              </h2>
               <p className="text-[12px] text-ink3 mt-0.5">
-                Last {recent.length} listed IPOs. Winner = whichever prediction was closer to the actual listing-day gain.
+                Last {recent.length} Mainboard IPOs. &quot;AI Err&quot; and &quot;GMP Err&quot; are the absolute gap
+                vs the actual listing-day gain &mdash; lower is better. Last-Day GMP is the grey-market premium
+                quoted on the IPO close date.
               </p>
             </div>
           </div>
@@ -181,16 +209,13 @@ export default async function AccuracyPage() {
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Actual</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">AI Pred</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">AI Err</th>
-                  <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">GMP Pred</th>
+                  <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Last-Day GMP %</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">GMP Err</th>
-                  <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Winner</th>
                 </tr>
               </thead>
               <tbody>
                 {recent.map(ipo => {
                   const pred = parseFloat(ipo.aiPred) || 0;
-                  const aiWon = ipo.aiErr < ipo.gmpErr;
-                  const tie = Math.abs(ipo.aiErr - ipo.gmpErr) < 0.05;
                   return (
                     <tr key={`recent-${ipo.id}`} className="border-b border-border last:border-b-0 hover:bg-secondary/50 group/row">
                       <td className="py-3 px-4 sticky left-0 bg-card group-hover/row:bg-secondary/50 z-10 min-w-[200px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
@@ -223,15 +248,6 @@ export default async function AccuracyPage() {
                       <td className={`py-3 px-4 text-right font-bold tabular-nums ${ipo.gmpErr < 2 ? 'text-emerald' : ipo.gmpErr < 5 ? 'text-gold-mid' : 'text-destructive'}`}>
                         {ipo.gmpErr.toFixed(1)}%
                       </td>
-                      <td className="py-3 px-4">
-                        {tie ? (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-secondary text-ink3">Tie</span>
-                        ) : aiWon ? (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-emerald-bg text-emerald">AI Won</span>
-                        ) : (
-                          <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-gold-bg text-gold">GMP Won</span>
-                        )}
-                      </td>
                     </tr>
                   );
                 })}
@@ -263,18 +279,18 @@ export default async function AccuracyPage() {
                     <div className="space-y-2.5 text-[13px]">
                       <div className="flex justify-between items-center">
                         <span className="text-ink3">AI avg error</span>
-                        <span className={`font-bold tabular-nums ${yAiAvg < 2 ? 'text-emerald' : yAiAvg < 4 ? 'text-gold-mid' : 'text-destructive'}`}>
+                        <span className={`font-bold tabular-nums ${yAiAvg < 3 ? 'text-emerald' : yAiAvg < 6 ? 'text-gold-mid' : 'text-destructive'}`}>
                           {yAiAvg.toFixed(1)}%
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-ink3">GMP avg error</span>
+                        <span className="text-ink3">Last-Day GMP err</span>
                         <span className="font-bold tabular-nums text-foreground/80">
                           {yGmpAvg.toFixed(1)}%
                         </span>
                       </div>
                       <div className="flex justify-between items-center pt-1 border-t border-border">
-                        <span className="text-ink3">AI hit rate</span>
+                        <span className="text-ink3">AI hit rate (&plusmn;5%)</span>
                         <span className="font-bold text-emerald">
                           {Math.round((yAiHit / yearIPOs.length) * 100)}%
                         </span>
@@ -291,7 +307,7 @@ export default async function AccuracyPage() {
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-border">
             <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold">Full Prediction Log</h2>
-            <p className="text-[12px] text-ink3 mt-0.5">All {total} listed IPOs in our dataset, newest first.</p>
+            <p className="text-[12px] text-ink3 mt-0.5">All {total} listed IPOs in our dataset, newest first. New listings are auto-ingested from our scraper pipeline.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px] border-collapse">
@@ -301,7 +317,7 @@ export default async function AccuracyPage() {
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">List Date</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Exchange</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">AI Pred</th>
-                  <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">GMP Pred</th>
+                  <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Last-Day GMP %</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Actual</th>
                   <th className="text-right text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">AI Err</th>
                   <th className="text-left text-[10.5px] font-bold uppercase tracking-wide text-ink3 py-3 px-4">Accuracy</th>
@@ -360,7 +376,7 @@ export default async function AccuracyPage() {
                         <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${
                           isHit ? 'bg-emerald-bg text-emerald' : 'bg-gold-bg text-gold'
                         }`}>
-                          {isHit ? 'Hit' : 'Near'}
+                          {isHit ? 'Hit' : 'Miss'}
                         </span>
                       </td>
                     </tr>
@@ -374,18 +390,19 @@ export default async function AccuracyPage() {
         {/* Methodology Section */}
         <div className="mt-8 bg-card border border-border rounded-2xl p-6">
           <h2 className="font-[family-name:var(--font-sora)] text-[16px] font-bold mb-4">
-            Why Our AI Beats GMP
+            Why Our AI Usually Beats Last-Day GMP
           </h2>
           <div className="grid md:grid-cols-2 gap-6 text-[13px] text-ink2 leading-relaxed">
             <div>
-              <h3 className="font-bold text-foreground mb-2">What GMP actually is</h3>
+              <h3 className="font-bold text-foreground mb-2">What last-day GMP actually is</h3>
               <p className="mb-2">
                 Grey Market Premium is an unofficial, off-market quote of what traders are willing to pay for
                 allotted shares before listing day. It reflects hype and liquidity &mdash; not fundamentals.
               </p>
               <p>
-                That&apos;s why GMP spikes during peak subscription and then softens by listing morning, leaving
-                retail investors chasing a number that rarely survives contact with the opening bell.
+                We use the <strong>last-day GMP</strong> (quoted on the IPO close date) because that&apos;s the number
+                most retail investors actually see before they decide whether to apply. On hyped IPOs it tends to run
+                way ahead of the real listing gain; on quiet mainboards it barely moves.
               </p>
             </div>
             <div>
@@ -404,17 +421,18 @@ export default async function AccuracyPage() {
               <h3 className="font-bold text-foreground mb-2">How we score accuracy</h3>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Hit:</strong> prediction within 5% of actual listing gain</li>
-                <li><strong>Near:</strong> prediction within 10% of actual</li>
+                <li><strong>Miss:</strong> prediction more than 5% off</li>
                 <li><strong>Direction:</strong> did we call gain vs loss correctly</li>
-                <li>Predictions are frozen on allotment day; GMP peak is captured on the IPO close date</li>
+                <li>AI predictions are frozen on allotment day; last-day GMP is captured on the IPO close date</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-bold text-foreground mb-2">Updated continuously</h3>
+              <h3 className="font-bold text-foreground mb-2">We&apos;re better, not perfect</h3>
               <p>
-                Every new listing is added to this dashboard the day after its listing day. Historical data is
-                sourced from our Supabase warehouse; if a listing is missing from the live feed, we fall back
-                to our curated benchmark set so this page never goes blank.
+                The AI misses sometimes &mdash; it famously under-called Bajaj Housing Finance (+114% actual vs ~+95% pred)
+                and Premier Energies (+120% vs ~+103%). Runaway hype listings are hard to model. But on average it lands
+                far closer to reality than last-day GMP, and new listings are added to this dashboard the day after listing
+                via our scraper pipeline &mdash; no cherry-picking.
               </p>
             </div>
           </div>
