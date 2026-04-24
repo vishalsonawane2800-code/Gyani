@@ -222,6 +222,11 @@ function IpoSubscriptionPanel({ ipo }: { ipo: IPO }) {
         </div>
       ) : (
         <>
+          {/* Allotment Chance Percentage */}
+          {ipo.subscription?.retail && (
+            <AllotmentChanceWidget retail={ipo.subscription.retail} />
+          )}
+
           {/* Category-wise live table (+ day columns if history exists) */}
           {subscriptionLive.length > 0 && (
             <div>
@@ -431,6 +436,62 @@ function SubscriptionSummaryGrid({ ipo }: { ipo: IPO }) {
           {sub.qib || '-'}
         </div>
         <div className="text-[11px] text-ink3 mt-1">QIB</div>
+      </div>
+    </div>
+  );
+}
+
+function AllotmentChanceWidget({ retail }: { retail: number | string }) {
+  const retailSub = typeof retail === 'string' 
+    ? parseFloat(String(retail).toLowerCase().replace(/x/g, '').trim())
+    : retail;
+
+  if (!Number.isFinite(retailSub) || retailSub <= 0) {
+    return null;
+  }
+
+  const allotmentChance = Math.min(100 / retailSub, 100);
+  const roundedChance = Math.round(allotmentChance * 100) / 100;
+
+  // Color coding
+  let bgColor = 'bg-red-bg';
+  let borderColor = 'border-red/20';
+  let textColor = 'text-red';
+  let label = 'Low';
+
+  if (roundedChance >= 50) {
+    bgColor = 'bg-emerald-bg';
+    borderColor = 'border-emerald/20';
+    textColor = 'text-emerald';
+    label = 'High';
+  } else if (roundedChance >= 20) {
+    bgColor = 'bg-gold-bg';
+    borderColor = 'border-gold/20';
+    textColor = 'text-gold';
+    label = 'Moderate';
+  }
+
+  return (
+    <div className={`${bgColor} border ${borderColor} rounded-xl p-4 md:p-5`}>
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Retail Subscription</p>
+          <p className={`text-lg md:text-xl font-bold ${textColor}`}>
+            {retailSub.toFixed(2)}x
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Allotment Chance</p>
+          <p className={`text-lg md:text-xl font-bold ${textColor}`}>
+            {roundedChance.toFixed(2)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Probability</p>
+          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold ${bgColor} border ${borderColor} ${textColor}`}>
+            {label}
+          </span>
+        </div>
       </div>
     </div>
   );
