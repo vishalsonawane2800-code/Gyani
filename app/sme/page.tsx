@@ -3,7 +3,8 @@ import { Header } from "@/components/header"
 import { Ticker } from "@/components/ticker"
 import { Footer } from "@/components/footer"
 import { IPOCard } from "@/components/ipo-card"
-import { currentIPOs, upcomingIPOs, listedIPOs } from "@/lib/data"
+import { getCurrentIPOs, getListedIPOs } from "@/lib/supabase/queries"
+import type { ExchangeType } from "@/lib/data"
 import { Building2, TrendingUp, AlertTriangle, Info } from "lucide-react"
 import Link from "next/link"
 
@@ -12,14 +13,39 @@ export const metadata: Metadata = {
   description: "Complete SME IPO tracker with live GMP, subscription data, and listing gain predictions. Track NSE SME and BSE SME IPOs with real-time updates.",
 }
 
-export default function SMEPage() {
-  const smeCurrentIPOs = currentIPOs.filter(ipo => ipo.type === "SME")
-  const smeUpcomingIPOs = upcomingIPOs.filter(ipo => ipo.type === "SME")
-  const smeListedIPOs = listedIPOs.filter(ipo => ipo.type === "SME").slice(0, 6)
-  
-  const avgListingGain = smeListedIPOs.length > 0 
-    ? Math.round(smeListedIPOs.reduce((sum, ipo) => sum + ipo.listingGain, 0) / smeListedIPOs.length)
-    : 0
+// Force dynamic so newly-migrated IPOs (e.g. SME listings promoted via the
+// admin migrate-listed route) appear immediately instead of waiting for the
+// ISR window.
+export const dynamic = "force-dynamic"
+
+const SME_EXCHANGES: ExchangeType[] = ["BSE SME", "NSE SME"]
+const isSme = (exchange: string | null | undefined): boolean =>
+  !!exchange && SME_EXCHANGES.includes(exchange as ExchangeType)
+
+export default async function SMEPage() {
+  const [liveIpos, listed] = await Promise.all([
+    getCurrentIPOs(),
+    getListedIPOs(),
+  ])
+
+  // Split live (non-listed) SME IPOs into Open (currently subscribing) and
+  // Upcoming buckets so we match the existing section headers.
+  const smeLive = liveIpos.filter((ipo) => isSme(ipo.exchange))
+  const smeCurrentIPOs = smeLive.filter((ipo) =>
+    ["open", "lastday", "closed", "allot", "listing"].includes(ipo.status)
+  )
+  const smeUpcomingIPOs = smeLive.filter((ipo) => ipo.status === "upcoming")
+  const smeListedIPOs = listed.filter((ipo) => isSme(ipo.exchange)).slice(0, 6)
+
+  const smeListedTotal = listed.filter((ipo) => isSme(ipo.exchange)).length
+
+  const avgListingGain =
+    smeListedIPOs.length > 0
+      ? Math.round(
+          smeListedIPOs.reduce((sum, ipo) => sum + (ipo.gainPct ?? 0), 0) /
+            smeListedIPOs.length
+        )
+      : 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,8 +89,8 @@ export default function SMEPage() {
             <p className="text-2xl font-bold text-cobalt">{smeUpcomingIPOs.length}</p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
-            <p className="text-ink3 text-sm">Listed (2026)</p>
-            <p className="text-2xl font-bold text-ink">{smeListedIPOs.length}+</p>
+            <p className="text-ink3 text-sm">Listed</p>
+            <p className="text-2xl font-bold text-ink">{smeListedTotal}</p>
           </div>
           <div className="bg-card rounded-xl p-4 border border-border">
             <p className="text-ink3 text-sm">Avg Listing Gain</p>
@@ -125,29 +151,51 @@ export default function SMEPage() {
                 </tr>
               </thead>
               <tbody>
-                {smeListedIPOs.map((ipo, idx) => (
-                  <tr key={ipo.slug} className={`${idx !== smeListedIPOs.length - 1 ? "border-b border-border" : ""} group/row`}>
-                    <td className="p-4 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[160px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
-                      <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
-                        {ipo.name}
-                      </Link>
-                      <p className="text-sm text-ink3">{ipo.listingDate}</p>
-                    </td>
-                    <td className="text-center p-4 hidden md:table-cell">
-                      <span className="px-2 py-1 bg-secondary rounded text-xs font-medium text-ink2">
-                        {ipo.exchange}
-                      </span>
-                    </td>
-                    <td className="text-right p-4 font-medium text-ink">
-                      ₹{ipo.issuePrice}
-                    </td>
-                    <td className="text-right p-4">
-                      <span className={`font-bold ${ipo.listingGain >= 0 ? "text-emerald" : "text-destructive"}`}>
-                        {ipo.listingGain >= 0 ? "+" : ""}{ipo.listingGain}%
-                      </span>
+                {smeListedIPOs.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={4}
+                      className="p-6 text-center text-sm text-ink3"
+                    >
+                      No SME IPOs listed yet. Newly migrated listings appear here automatically.
                     </td>
                   </tr>
-                ))}
+                )}
+                {smeListedIPOs.map((ipo, idx) => {
+                  const gain = ipo.gainPct ?? 0
+                  return (
+                    <tr
+                      key={ipo.slug}
+                      className={`${idx !== smeListedIPOs.length - 1 ? "border-b border-border" : ""} group/row`}
+                    >
+                      <td className="p-4 sticky left-0 bg-card group-hover/row:bg-secondary/30 z-10 min-w-[160px] after:absolute after:right-0 after:top-0 after:h-full after:w-px after:bg-border transition-colors">
+                        <Link
+                          href={`/ipo/${ipo.slug}`}
+                          className="font-medium text-ink hover:text-primary transition-colors"
+                        >
+                          {ipo.name}
+                        </Link>
+                        <p className="text-sm text-ink3">{ipo.listDate}</p>
+                      </td>
+                      <td className="text-center p-4 hidden md:table-cell">
+                        <span className="px-2 py-1 bg-secondary rounded text-xs font-medium text-ink2">
+                          {ipo.exchange}
+                        </span>
+                      </td>
+                      <td className="text-right p-4 font-medium text-ink">
+                        ₹{ipo.issuePrice}
+                      </td>
+                      <td className="text-right p-4">
+                        <span
+                          className={`font-bold ${gain >= 0 ? "text-emerald" : "text-destructive"}`}
+                        >
+                          {gain >= 0 ? "+" : ""}
+                          {gain.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
