@@ -93,7 +93,7 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
   );
 
   const totalFiltered = hasCurrent
-    ? filteredLive.length + filteredAwaiting.length
+    ? filteredLive.length + filteredAwaiting.length + filteredUpcoming.length
     : filteredUpcoming.length;
 
   const activeCount = hasCurrent ? currentIPOs.length : upcomingIPOs.length;
@@ -185,6 +185,26 @@ export function CurrentIPOs({ ipos }: CurrentIPOsProps) {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {filteredAwaiting.map((ipo) => (
+                    <IPOCard key={ipo.id} ipo={ipo} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upcoming IPOs — shown below the active cycle so investors
+                can still see what's coming next without leaving the home
+                page. */}
+            {filteredUpcoming.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="w-2 h-2 rounded-full bg-gold" />
+                  <h3 className="text-sm font-bold text-ink">Upcoming IPOs</h3>
+                  <span className="text-xs font-extrabold py-0.5 px-2 rounded-full bg-gold-bg text-gold">
+                    {filteredUpcoming.length}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {filteredUpcoming.map((ipo) => (
                     <IPOCard key={ipo.id} ipo={ipo} />
                   ))}
                 </div>
