@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import { Database, LineChart, Brain, BarChart3, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Database, LineChart, Brain, BarChart3, CheckCircle, AlertTriangle, TrendingUp, Zap, Users, PieChart, History, MessageSquare } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Methodology - How IPOGyani AI Predictions Work',
@@ -17,12 +17,12 @@ const dataSources = [
 ];
 
 const modelFactors = [
-  { factor: 'Subscription Ratio', weight: '25%', description: 'Overall, QIB, NII, and Retail subscription levels' },
-  { factor: 'GMP Trend', weight: '20%', description: 'Grey market premium trajectory in the days before listing' },
-  { factor: 'Market Conditions', weight: '15%', description: 'Nifty/Sensex trend, sector performance, and volatility' },
-  { factor: 'Issue Quality', weight: '15%', description: 'Company financials, valuations, and peer comparison' },
-  { factor: 'Historical Patterns', weight: '15%', description: 'Similar IPO performance in comparable market conditions' },
-  { factor: 'Sentiment Score', weight: '10%', description: 'Expert reviews, news sentiment, and social media analysis' },
+  { factor: 'Subscription Ratio', icon: Users, color: 'emerald', description: 'Overall, QIB, NII, and Retail subscription levels' },
+  { factor: 'GMP Trend', icon: TrendingUp, color: 'cobalt', description: 'Grey market premium trajectory in the days before listing' },
+  { factor: 'Market Conditions', icon: BarChart3, color: 'gold', description: 'Nifty/Sensex trend, sector performance, and volatility' },
+  { factor: 'Issue Quality', icon: PieChart, color: 'primary', description: 'Company financials, valuations, and peer comparison' },
+  { factor: 'Historical Patterns', icon: History, color: 'emerald', description: 'Similar IPO performance in comparable market conditions' },
+  { factor: 'Sentiment Score', icon: MessageSquare, color: 'cobalt', description: 'Expert reviews, news sentiment, and social media analysis' },
 ];
 
 export default function MethodologyPage() {
@@ -75,24 +75,33 @@ export default function MethodologyPage() {
             Our machine learning model is trained on 5+ years of historical IPO data, analyzing patterns across 500+ IPOs to predict listing gains. The model uses an ensemble approach combining gradient boosting and neural networks.
           </p>
           
-          {/* Factor Weights */}
-          <h3 className="font-semibold text-ink mb-4">Prediction Factors & Weights</h3>
-          <div className="space-y-3">
-            {modelFactors.map((item) => (
-              <div key={item.factor} className="flex items-center gap-4">
-                <div className="w-20 flex-shrink-0">
-                  <div className="bg-primary-bg rounded-lg px-2 py-1 text-center">
-                    <span className="text-primary font-bold text-sm">{item.weight}</span>
+          {/* Prediction Factors */}
+          <h3 className="font-semibold text-ink mb-6">Prediction Factors</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {modelFactors.map((item) => {
+              const IconComponent = item.icon;
+              const colorMap: Record<string, { bg: string; text: string }> = {
+                emerald: { bg: 'bg-emerald-bg', text: 'text-emerald-mid' },
+                cobalt: { bg: 'bg-cobalt-bg', text: 'text-cobalt-mid' },
+                gold: { bg: 'bg-gold-bg', text: 'text-gold-mid' },
+                primary: { bg: 'bg-primary-bg', text: 'text-primary-mid' },
+              };
+              const colors = colorMap[item.color as keyof typeof colorMap];
+              
+              return (
+                <div key={item.factor} className="bg-background rounded-xl p-4 border border-border hover:border-border-hover transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className={`${colors.bg} rounded-lg p-2 flex-shrink-0`}>
+                      <IconComponent className={`w-5 h-5 ${colors.text}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-ink mb-1">{item.factor}</div>
+                      <p className="text-ink3 text-sm">{item.description}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-ink">{item.factor}</span>
-                  </div>
-                  <p className="text-ink3 text-sm">{item.description}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
