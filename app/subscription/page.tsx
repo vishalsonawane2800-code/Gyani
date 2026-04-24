@@ -163,7 +163,7 @@ export default async function SubscriptionPage() {
               </h2>
               <div className="ml-auto flex items-center gap-1 text-xs text-ink3">
                 <Clock className="w-3.5 h-3.5" />
-                Updated hourly
+                Updated every 15 minutes
               </div>
             </div>
 
