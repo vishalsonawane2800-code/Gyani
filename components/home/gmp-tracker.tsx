@@ -51,13 +51,27 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
 
   const getExchangeBadge = (exchange: string) => {
     switch (exchange) {
-      case 'Mainboard': return 'bg-cobalt-bg text-cobalt';
-      case 'BSE SME': return 'bg-secondary text-ink3';
-      case 'NSE SME': return 'bg-[#fff0f6] text-[#9d174d]';
-      case 'REIT': return 'bg-gold-bg text-gold';
+      case 'Mainboard':
+        // Mainboard highlighted in gold/amber to stand out from SME issues.
+        return 'bg-gold-bg text-gold border border-gold/30';
+      case 'BSE SME':
+      case 'NSE SME':
+        // SME IPOs get a bold red badge so users immediately notice the
+        // higher-risk category.
+        return 'bg-destructive-bg text-destructive border border-destructive/40 font-extrabold uppercase tracking-wide';
+      case 'REIT':
+        return 'bg-cobalt-bg text-cobalt';
       default: return 'bg-secondary text-ink3';
     }
   };
+
+  const isSmeExchange = (exchange: string) =>
+    exchange === 'BSE SME' || exchange === 'NSE SME';
+  const isMainboardExchange = (exchange: string) => exchange === 'Mainboard';
+  const formatExchangeLabel = (exchange: string) =>
+    isSmeExchange(exchange)
+      ? `SME IPO (${exchange === 'BSE SME' ? 'BSE' : 'NSE'})`
+      : exchange;
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,7 +137,14 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                   const isZero = ipo.gmp === 0;
                   const statusBadge = getStatusBadge(ipo.status);
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors">
+                    <tr
+                      key={ipo.id}
+                      className={`border-b border-border last:border-b-0 transition-colors ${
+                        isMainboardExchange(ipo.exchange)
+                          ? 'bg-gold-bg/40 hover:bg-gold-bg/60'
+                          : 'hover:bg-secondary/50'
+                      }`}
+                    >
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           <div
@@ -141,8 +162,13 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge(ipo.exchange)}`}>
-                          {ipo.exchange}
+                        <span
+                          className={`inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge(ipo.exchange)}`}
+                        >
+                          {isSmeExchange(ipo.exchange) && (
+                            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                          )}
+                          {formatExchangeLabel(ipo.exchange)}
                         </span>
                       </td>
                       <td className="py-3 px-3">
@@ -210,7 +236,14 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                   const isPositive = ipo.gmp > 0;
                   const isZero = ipo.gmp === 0;
                   return (
-                    <tr key={ipo.id} className="border-b border-border last:border-b-0 hover:bg-secondary/50 transition-colors">
+                    <tr
+                      key={ipo.id}
+                      className={`border-b border-border last:border-b-0 transition-colors ${
+                        isMainboardExchange(ipo.exchange)
+                          ? 'bg-gold-bg/40 hover:bg-gold-bg/60'
+                          : 'hover:bg-secondary/50'
+                      }`}
+                    >
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           <div
@@ -228,8 +261,13 @@ export function GMPTracker({ ipos }: GMPTrackerProps) {
                         </div>
                       </td>
                       <td className="py-3 px-3">
-                        <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge(ipo.exchange)}`}>
-                          {ipo.exchange}
+                        <span
+                          className={`inline-flex items-center gap-1 text-[9.5px] font-bold px-2 py-0.5 rounded-xl ${getExchangeBadge(ipo.exchange)}`}
+                        >
+                          {isSmeExchange(ipo.exchange) && (
+                            <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                          )}
+                          {formatExchangeLabel(ipo.exchange)}
                         </span>
                       </td>
                       <td className="py-3 px-3 font-semibold">

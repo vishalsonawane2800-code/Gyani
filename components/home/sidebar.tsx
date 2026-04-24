@@ -17,12 +17,17 @@ export function Sidebar() {
     <aside className="hidden lg:flex flex-col gap-4 sticky top-20">
       {/* AI Accuracy Quick */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-3 border-b border-border bg-secondary">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <Brain className="w-4 h-4 text-primary" />
-            AI Accuracy
+        <div className="flex items-center justify-between p-3 border-b border-border bg-secondary gap-2">
+          <h3 className="text-sm font-bold flex items-center gap-2 min-w-0">
+            <Brain className="w-4 h-4 text-primary shrink-0" />
+            <span className="truncate">
+              AI Accuracy &amp; Error
+              <span className="ml-1 text-[11px] font-semibold text-ink3">
+                (6.8% avg err)
+              </span>
+            </span>
           </h3>
-          <Link href="/accuracy" className="text-xs font-semibold text-primary">
+          <Link href="/accuracy" className="text-xs font-semibold text-primary shrink-0">
             Full Dashboard
           </Link>
         </div>

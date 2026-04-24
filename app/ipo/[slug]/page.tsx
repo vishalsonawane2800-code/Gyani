@@ -6,6 +6,7 @@ import { Footer } from '@/components/footer';
 import { IPOHero } from '@/components/ipo-detail/ipo-hero';
 import { AIPrediction } from '@/components/ipo-detail/ai-prediction';
 import { LiveSubscriptionTracker } from '@/components/ipo-detail/live-subscription-tracker';
+import { AllotmentChance } from '@/components/ipo-detail/allotment-chance';
 import { IssueDetails } from '@/components/ipo-detail/issue-details';
 import { KPITable } from '@/components/ipo-detail/kpi-table';
 import { CompanyFinancials } from '@/components/ipo-detail/company-financials';
@@ -109,6 +110,9 @@ export default async function IPODetailPage({ params }: PageProps) {
             {/* Live Subscription Tracker */}
             <LiveSubscriptionTracker ipo={ipo} />
             
+            {/* Allotment Chance Percentage */}
+            <AllotmentChance ipo={ipo} />
+            
             {/* About Company + About IPO (long-form, read-more) */}
             <IPOAbout ipo={ipo} />
 
@@ -116,7 +120,13 @@ export default async function IPODetailPage({ params }: PageProps) {
             <IssueDetails ipo={ipo} />
             
             {/* KPI Section */}
-            {ipo.kpi && <KPITable kpi={ipo.kpi} ipoSlug={ipo.slug} />}
+            {ipo.kpi && (
+              <KPITable
+                kpi={ipo.kpi}
+                ipoSlug={ipo.slug}
+                textOverrides={ipo.textOverrides}
+              />
+            )}
             
             {/* Company Financials Section - only show if admin provided financials */}
             {ipo.financials && <CompanyFinancials ipo={ipo} />}

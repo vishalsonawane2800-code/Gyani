@@ -585,12 +585,91 @@ export async function getIPOBySlug(slug: string): Promise<IPO | null> {
     ? `Rs ${marketCapFromKPI >= 100 ? marketCapFromKPI.toFixed(0) : marketCapFromKPI.toFixed(2)} Cr`
     : transformedIPO.marketCap
 
+  // Build the text_overrides map that preserves admin-typed "NA" / "-"
+  // markers for numeric fields (migration 032). Keys are canonical so
+  // UI components can look them up with lib/display-overrides.ts. We
+  // merge three sources: the ipos row, every ipo_financials row, and
+  // every ipo_kpi row.
+  const textOverrides: Record<string, string> = {}
+
+  // 1) ipos.text_overrides — currently used for pe_ratio, extensible.
+  const ipoRowOverrides = (ipo as { text_overrides?: Record<string, string> }).text_overrides
+  if (ipoRowOverrides && typeof ipoRowOverrides === 'object') {
+    for (const [k, v] of Object.entries(ipoRowOverrides)) {
+      if (typeof v === 'string' && v.trim()) textOverrides[k] = v.trim()
+    }
+  }
+
+  // 2) ipo_financials rows — each row has its own text_overrides JSON
+  //    keyed by snake_case field name. We prefix with
+  //    "financials.fyXX." and also mirror common-ratio keys to the
+  //    "financials." root so components that display a single (latest)
+  //    ROE/ROCE/Debt-Equity card can look them up without knowing which
+  //    FY the override came from.
+  for (const row of financialsData as Array<{
+    fiscal_year?: string
+    text_overrides?: Record<string, string> | null
+  }>) {
+    const ro = row?.text_overrides
+    if (!ro || typeof ro !== 'object') continue
+    const fyRaw = (row.fiscal_year || '').toUpperCase().replace('FY', '')
+    const fyKey = fyRaw.length === 4 ? `fy${fyRaw.slice(-2)}` : `fy${fyRaw}`
+    for (const [field, text] of Object.entries(ro)) {
+      if (typeof text !== 'string' || !text.trim()) continue
+      textOverrides[`financials.${fyKey}.${field}`] = text.trim()
+      // Mirror common ratios to the "latest" slot so a single
+      // component can read `financials.roe` without caring about FY.
+      if (['roe', 'roce', 'debt_equity', 'eps', 'book_value'].includes(field)) {
+        textOverrides[`financials.${field}`] = text.trim()
+      }
+    }
+  }
+
+  // 3) ipo_kpi rows — text_override holds the admin literal for a
+  //    numeric KPI. Shape the key as "kpi.<metric>.<slot>" where slot
+  //    is "pre" / "post" for pre_post KPIs or the zero-based date-label
+  //    index for dated KPIs, matching the arrays built by parseKPIData.
+  const datedKpiRows = (kpiData as Array<{
+    kpi_type?: string
+    metric?: string
+    date_label?: string
+    text_override?: string | null
+  }>).filter(k => k.kpi_type === 'dated')
+  const datedLabels = [...new Set(datedKpiRows.map(k => k.date_label))].slice(0, 2)
+  for (const k of kpiData as Array<{
+    kpi_type?: string
+    metric?: string
+    date_label?: string
+    text_override?: string | null
+  }>) {
+    const t = k.text_override
+    if (typeof t !== 'string' || !t.trim()) continue
+    const metric = (k.metric || '').toLowerCase()
+    if (!metric) continue
+    if (k.kpi_type === 'pre_post') {
+      const slot = k.date_label ? k.date_label : 'value'
+      textOverrides[`kpi.${metric}.${slot}`] = t.trim()
+    } else if (k.kpi_type === 'dated') {
+      const idx = datedLabels.indexOf(k.date_label)
+      if (idx >= 0) textOverrides[`kpi.${metric}.${idx}`] = t.trim()
+    }
+  }
+
+  // Also expose the top-level PE override under "pe_ratio" (matching
+  // ipos.text_overrides convention) when KPI has a pre/post override.
+  // Post wins over pre because that's the post-IPO PE used in headers.
+  if (!textOverrides.pe_ratio) {
+    const peOverride = textOverrides['kpi.pe.post'] || textOverrides['kpi.pe.pre']
+    if (peOverride) textOverrides.pe_ratio = peOverride
+  }
+
   // Add GMP history data for charts - match GMPHistoryEntry interface
   const priceMax = ipo.price_max || 0
   return {
     ...transformedIPO,
     peRatio: peRatioFromKPI || transformedIPO.peRatio,
     marketCap: marketCapStr,
+    textOverrides: Object.keys(textOverrides).length > 0 ? textOverrides : undefined,
     financials: financials || undefined,
     expertReviews: expertReviews.length > 0 ? expertReviews : undefined,
     peerCompanies: peerCompanies.length > 0 ? peerCompanies : undefined,

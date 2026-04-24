@@ -41,7 +41,7 @@ function scrollToCurrent(e: React.MouseEvent<HTMLAnchorElement>) {
 }
 
 const stats = [
-  { value: '95%+', label: 'AI Accuracy', color: 'text-emerald-400' },
+  { value: '93.5%', label: 'AI Accuracy', color: 'text-emerald-400' },
   { value: '500+', label: 'IPOs Tracked', color: 'text-violet-400' },
   { value: '25+', label: 'AI Signals', color: 'text-amber-400' },
   { value: 'Live', label: 'GMP Data', color: 'text-white' },

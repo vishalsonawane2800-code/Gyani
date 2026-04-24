@@ -60,6 +60,10 @@ export type ListedIpoRecord = {
   gmpD3: number | null;
   gmpD4: number | null;
   gmpD5: number | null;
+
+  gmpPrediction: string | null; // e.g., "50-60%"
+  aiPrediction: number | null; // percentage
+  predictionAccuracy: number | null; // percentage
 };
 
 /**
@@ -72,7 +76,7 @@ export type ListedIpoRecord = {
  * Within quoted headers we collapse internal newlines to spaces so that
  * headers like  "Nifty 3D\nReturn (%)"  become  "Nifty 3D Return (%)" .
  */
-function parseCsvRows(text: string): string[][] {
+export function parseCsvRows(text: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let cur = '';
@@ -141,9 +145,10 @@ function normalizeDate(raw: string): string {
   const s = raw.trim();
   if (!s) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Try M/D/YYYY or MM/DD/YYYY format first
   const m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
   if (m) {
-    const [, d, mo, y] = m;
+    const [, mo, d, y] = m; // month, day, year
     return `${y}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
   }
   const t = Date.parse(s);
@@ -200,8 +205,13 @@ function rowToRecord(
   const listingDateRaw = (getCol(row, 'Listing Date') || '').trim();
   const listingDate = normalizeDate(listingDateRaw);
 
+  // Optional explicit slug override. Useful when the display name does not
+  // slugify to the public URL (e.g. a URL that historically included "-ipo"
+  // but the display name does not). Falls back to slugify(name) when empty.
+  const slugOverride = (getCol(row, 'Slug') || '').trim();
+
   return {
-    slug: slugify(name),
+    slug: slugOverride || slugify(name),
     year,
     name,
     listingDate,
@@ -258,6 +268,10 @@ function rowToRecord(
     gmpD3: toNumber(getCol(row, 'GMP Day-3', 'GMP Day 3')),
     gmpD4: toNumber(getCol(row, 'GMP Day-4', 'GMP Day 4')),
     gmpD5: toNumber(getCol(row, 'GMP Day-5', 'GMP Day 5')),
+
+    gmpPrediction: (getCol(row, 'GMP Prediction') || '').trim() || null,
+    aiPrediction: toNumber(getCol(row, 'Ai predicted %', 'IPOGyani AI Prediction')),
+    predictionAccuracy: toNumber(getCol(row, 'Prediction Accuracy (%)', 'Prediction Accuracy %')),
   };
 }
 

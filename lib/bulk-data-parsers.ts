@@ -33,6 +33,11 @@ export interface FinancialData {
   debt_equity: number | null
   eps: number | null
   book_value: number | null
+  // Preserves the admin's literal text when they typed "NA" / "-" /
+  // "N/A" for a field that is otherwise numeric. Keyed by lower_snake
+  // field name (e.g. "revenue", "pat", "roe"). Consumed by the IPO
+  // detail page so the UI can render the exact string instead of "0".
+  text_overrides: Record<string, string>
   }
 
 export interface PeerCompany {
@@ -62,6 +67,11 @@ export interface KPIEntry {
   date_label?: string
   value?: number
   text_value?: string
+  // Admin-typed non-numeric marker (e.g. "NA", "-") for a numeric KPI.
+  // Stored in the `ipo_kpi.text_override` column (migration 032). The
+  // IPO detail page prefers this over the numeric `value` so the UI
+  // can render the exact string the admin typed.
+  text_override?: string
 }
 
 export interface IssueDetailsData {
@@ -181,6 +191,10 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
   // Parse key-value pairs
   const lines = cleanText.split('\n')
   const values: Record<string, number | null> = {}
+  // Parallel map of text overrides (e.g. admin typed "NA" instead of a
+  // number). Keys match `values` (FY-prefixed for per-year fields) so
+  // the downstream grouping logic can route them by fiscal year.
+  const textOverrides: Record<string, string> = {}
   
   // Common ratios that apply to all years
   let commonRoe: number | null = null
@@ -188,6 +202,14 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
   let commonDebtEquity: number | null = null
   let commonEps: number | null = null
   let commonBookValue: number | null = null
+  // Parallel common-ratio overrides (apply to all years when no FY-
+  // specific override is present).
+  const commonOverrides: Record<string, string> = {}
+
+  // Tokens an admin might type to mean "not applicable / not available".
+  // We preserve the exact text the admin typed so the UI can render
+  // "NA" as "NA" and "-" as "-" (not silently coerce both to 0).
+  const NON_NUMERIC_RE = /^(na|n\/a|n\.a\.?|-|—|–)$/i
   
   for (const line of lines) {
     // Skip section markers and empty lines
@@ -195,26 +217,39 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
     
     const match = line.match(/^([A-Z0-9_]+)\s*:\s*(.+)$/i)
     if (match) {
-      const [, key, valueStr] = match
-      const value = parseFloat(valueStr.replace(/[₹,\s]/g, ''))
-      
-      if (!isNaN(value)) {
-        const upperKey = key.toUpperCase()
-        
-        // Handle common ratios (not FY-specific)
-        if (upperKey === 'ROE') {
-          commonRoe = value
-        } else if (upperKey === 'ROCE') {
-          commonRoce = value
-        } else if (upperKey === 'DEBT_EQUITY' || upperKey === 'DEBTEQUITY') {
-          commonDebtEquity = value
-        } else if (upperKey === 'EPS') {
-          commonEps = value
-        } else if (upperKey === 'BOOK_VALUE' || upperKey === 'BOOKVALUE') {
-          commonBookValue = value
-        } else {
-          values[upperKey] = value
-        }
+      const [, key, rawValueStr] = match
+      const trimmedRaw = rawValueStr.trim()
+      const value = parseFloat(trimmedRaw.replace(/[₹,\s]/g, ''))
+      const upperKey = key.toUpperCase()
+      const isNonNumericMarker = NON_NUMERIC_RE.test(trimmedRaw)
+
+      // Helper: route a parsed value or text marker into the right bucket
+      // (common ratio vs FY-prefixed).
+      const assignNumeric = (num: number) => {
+        if (upperKey === 'ROE') commonRoe = num
+        else if (upperKey === 'ROCE') commonRoce = num
+        else if (upperKey === 'DEBT_EQUITY' || upperKey === 'DEBTEQUITY') commonDebtEquity = num
+        else if (upperKey === 'EPS') commonEps = num
+        else if (upperKey === 'BOOK_VALUE' || upperKey === 'BOOKVALUE') commonBookValue = num
+        else values[upperKey] = num
+      }
+      const assignOverride = (text: string) => {
+        if (upperKey === 'ROE') commonOverrides.roe = text
+        else if (upperKey === 'ROCE') commonOverrides.roce = text
+        else if (upperKey === 'DEBT_EQUITY' || upperKey === 'DEBTEQUITY') commonOverrides.debt_equity = text
+        else if (upperKey === 'EPS') commonOverrides.eps = text
+        else if (upperKey === 'BOOK_VALUE' || upperKey === 'BOOKVALUE') commonOverrides.book_value = text
+        else textOverrides[upperKey] = text
+      }
+
+      if (!isNaN(value) && !isNonNumericMarker) {
+        assignNumeric(value)
+      } else if (isNonNumericMarker) {
+        // Preserve the exact admin text so the UI can show "NA" / "-" /
+        // "N/A" verbatim. We do NOT also set a numeric value — the DB
+        // column stays NULL and the override is what the display layer
+        // consults first.
+        assignOverride(trimmedRaw)
       }
     }
   }
@@ -222,77 +257,80 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
   // Group by fiscal year
   const fyPattern = /^FY(\d{2,4})_(.+)$/
   const yearData: Record<string, Partial<FinancialData>> = {}
-  
-  for (const [key, value] of Object.entries(values)) {
-    const fyMatch = key.match(fyPattern)
-    if (fyMatch) {
-      let year = fyMatch[1]
-      // Normalize year to 2-digit format
-      if (year.length === 4) {
-        year = year.slice(-2)
-      }
-      const field = fyMatch[2]
-      
-      if (!yearData[year]) {
-        yearData[year] = { fiscal_year: `FY${year}` }
-      }
-      
-      switch (field.toUpperCase()) {
-        case 'REVENUE':
-          yearData[year].revenue = value
-          break
-        case 'PAT':
-        case 'PROFIT':
-          yearData[year].pat = value
-          break
-        case 'EBITDA':
-          yearData[year].ebitda = value
-          break
-        case 'NET_WORTH':
-        case 'NETWORTH':
-          yearData[year].net_worth = value
-          break
-        case 'ASSETS':
-          yearData[year].assets = value
-          break
-        case 'LIABILITIES':
-  yearData[year].liabilities = value
-  break
-  case 'BORROWING':
-  case 'BORROWINGS':
-  case 'TOTAL_BORROWING':
-  case 'TOTAL_BORROWINGS':
-  case 'DEBT':
-  yearData[year].borrowing = value
-  break
-  case 'VALUATION':
-  case 'ENTERPRISE_VALUE':
-  case 'EV':
-  yearData[year].valuation = value
-  break
-  case 'ROE':
-          yearData[year].roe = value
-          break
-        case 'ROCE':
-          yearData[year].roce = value
-          break
-        case 'DEBT_EQUITY':
-        case 'DEBTEQUITY':
-          yearData[year].debt_equity = value
-          break
-        case 'EPS':
-          yearData[year].eps = value
-          break
-        case 'BOOK_VALUE':
-        case 'BOOKVALUE':
-          yearData[year].book_value = value
-          break
-      }
+
+  // Canonicalise the FY-suffix token (e.g. "REVENUE", "PAT") into the
+  // snake_case field name we store on the row / text_overrides map.
+  const canonicalField = (field: string): string | null => {
+    switch (field.toUpperCase()) {
+      case 'REVENUE': return 'revenue'
+      case 'PAT':
+      case 'PROFIT': return 'pat'
+      case 'EBITDA': return 'ebitda'
+      case 'NET_WORTH':
+      case 'NETWORTH': return 'net_worth'
+      case 'ASSETS': return 'assets'
+      case 'LIABILITIES': return 'liabilities'
+      case 'BORROWING':
+      case 'BORROWINGS':
+      case 'TOTAL_BORROWING':
+      case 'TOTAL_BORROWINGS':
+      case 'DEBT': return 'borrowing'
+      case 'VALUATION':
+      case 'ENTERPRISE_VALUE':
+      case 'EV': return 'valuation'
+      case 'ROE': return 'roe'
+      case 'ROCE': return 'roce'
+      case 'DEBT_EQUITY':
+      case 'DEBTEQUITY': return 'debt_equity'
+      case 'EPS': return 'eps'
+      case 'BOOK_VALUE':
+      case 'BOOKVALUE': return 'book_value'
+      default: return null
     }
   }
+
+  // Track per-year text overrides (keyed by snake_case field). Built in
+  // parallel with numeric yearData so we can attach them on output.
+  const yearOverrides: Record<string, Record<string, string>> = {}
+  const ensureYear = (year: string) => {
+    if (!yearData[year]) yearData[year] = { fiscal_year: `FY${year}` }
+    if (!yearOverrides[year]) yearOverrides[year] = {}
+  }
+
+  for (const [key, value] of Object.entries(values)) {
+    const fyMatch = key.match(fyPattern)
+    if (!fyMatch) continue
+    let year = fyMatch[1]
+    if (year.length === 4) year = year.slice(-2)
+    const col = canonicalField(fyMatch[2])
+    if (!col) continue
+    ensureYear(year)
+    ;(yearData[year] as Record<string, unknown>)[col] = value
+  }
+
+  // Route FY-prefixed text overrides (e.g. FY25_REVENUE: NA) into the
+  // per-year override map.
+  for (const [key, text] of Object.entries(textOverrides)) {
+    const fyMatch = key.match(fyPattern)
+    if (!fyMatch) continue
+    let year = fyMatch[1]
+    if (year.length === 4) year = year.slice(-2)
+    const col = canonicalField(fyMatch[2])
+    if (!col) continue
+    ensureYear(year)
+    yearOverrides[year][col] = text
+  }
   
-  // Convert to array and apply common ratios
+  // Convert to array and apply common ratios. For each year we merge
+  // FY-specific overrides with the common-ratio overrides so admin
+  // intent is preserved on every row that lacks a numeric value.
   for (const year of Object.keys(yearData).sort()) {
+    const perYearOverrides = yearOverrides[year] || {}
+    const mergedOverrides: Record<string, string> = { ...commonOverrides }
+    // Per-year override wins over common override.
+    for (const [k, v] of Object.entries(perYearOverrides)) {
+      mergedOverrides[k] = v
+    }
     const data: FinancialData = {
       fiscal_year: yearData[year].fiscal_year || `FY${year}`,
       revenue: yearData[year].revenue ?? null,
@@ -308,10 +346,34 @@ export function parseFinancials(text: string): ParseResult<FinancialData> {
       debt_equity: yearData[year].debt_equity ?? commonDebtEquity,
       eps: yearData[year].eps ?? commonEps,
       book_value: yearData[year].book_value ?? commonBookValue,
+      text_overrides: mergedOverrides,
     }
     result.data.push(data)
   }
-  
+
+  // If the admin only typed common-ratio overrides (e.g. `ROE: NA`) but
+  // no FY rows, emit a single synthetic row so the overrides still reach
+  // the DB and surface in the UI.
+  if (result.data.length === 0 && Object.keys(commonOverrides).length > 0) {
+    result.data.push({
+      fiscal_year: 'FY25',
+      revenue: null,
+      pat: null,
+      ebitda: null,
+      net_worth: null,
+      assets: null,
+      liabilities: null,
+      borrowing: null,
+      valuation: null,
+      roe: null,
+      roce: null,
+      debt_equity: null,
+      eps: null,
+      book_value: null,
+      text_overrides: { ...commonOverrides },
+    })
+  }
+
   if (result.data.length === 0) {
     result.errors.push('No valid financial data found. Use format: FY23_REVENUE: 5.38')
   } else {
@@ -628,91 +690,51 @@ export function parseKPI(text: string): ParseResult<KPIEntry> {
   // Extract date labels
   const dateLabels = [values.DATE_LABEL_1, values.DATE_LABEL_2].filter(Boolean)
 
+  // Tokens an admin might type to signal "not available". Same set used
+  // by parseFinancials — keep them in sync if you extend either list.
+  const NON_NUMERIC_RE = /^(na|n\/a|n\.a\.?|-|—|–)$/i
+
+  // Helper: push either a numeric value or a text override (preserving
+  // the admin's literal string for UI display).
+  const pushMetric = (
+    kpi_type: 'dated' | 'pre_post',
+    metric: string,
+    date_label: string | undefined,
+    raw: string | undefined,
+  ) => {
+    if (!raw) return
+    const trimmed = raw.trim()
+    if (NON_NUMERIC_RE.test(trimmed)) {
+      result.data.push({ kpi_type, metric, date_label, text_override: trimmed })
+      return
+    }
+    const value = parseFloat(trimmed)
+    if (!isNaN(value)) {
+      result.data.push({ kpi_type, metric, date_label, value })
+    }
+  }
+
   // Dated KPIs (with _1 and _2 suffixes)
   const datedMetrics = ['ROE', 'ROCE', 'DEBT_EQUITY', 'RONW', 'PAT_MARGIN', 'EBITDA_MARGIN']
-  
+
   for (const metric of datedMetrics) {
-    const val1 = values[`${metric}_1`]
-    const val2 = values[`${metric}_2`]
-    
-    if (val1 && dateLabels[0]) {
-      const value = parseFloat(val1)
-      if (!isNaN(value)) {
-        result.data.push({
-          kpi_type: 'dated',
-          metric: metric.toLowerCase(),
-          date_label: dateLabels[0],
-          value,
-        })
-      }
-    }
-    if (val2 && dateLabels[1]) {
-      const value = parseFloat(val2)
-      if (!isNaN(value)) {
-        result.data.push({
-          kpi_type: 'dated',
-          metric: metric.toLowerCase(),
-          date_label: dateLabels[1],
-          value,
-        })
-      }
-    }
+    if (dateLabels[0]) pushMetric('dated', metric.toLowerCase(), dateLabels[0], values[`${metric}_1`])
+    if (dateLabels[1]) pushMetric('dated', metric.toLowerCase(), dateLabels[1], values[`${metric}_2`])
   }
 
   // Price to book (single value)
-  if (values.PRICE_TO_BOOK) {
-    const value = parseFloat(values.PRICE_TO_BOOK)
-    if (!isNaN(value)) {
-      result.data.push({
-        kpi_type: 'dated',
-        metric: 'price_to_book',
-        value,
-      })
-    }
-  }
+  pushMetric('dated', 'price_to_book', undefined, values.PRICE_TO_BOOK)
 
   // Pre/Post IPO metrics
   const prePostMetrics = ['EPS', 'PE', 'PROMOTER_HOLDING']
-  
+
   for (const metric of prePostMetrics) {
-    const preVal = values[`${metric}_PRE`]
-    const postVal = values[`${metric}_POST`]
-    
-    if (preVal) {
-      const value = parseFloat(preVal)
-      if (!isNaN(value)) {
-        result.data.push({
-          kpi_type: 'pre_post',
-          metric: metric.toLowerCase(),
-          date_label: 'pre',
-          value,
-        })
-      }
-    }
-    if (postVal) {
-      const value = parseFloat(postVal)
-      if (!isNaN(value)) {
-        result.data.push({
-          kpi_type: 'pre_post',
-          metric: metric.toLowerCase(),
-          date_label: 'post',
-          value,
-        })
-      }
-    }
+    pushMetric('pre_post', metric.toLowerCase(), 'pre', values[`${metric}_PRE`])
+    pushMetric('pre_post', metric.toLowerCase(), 'post', values[`${metric}_POST`])
   }
 
   // Market Cap
-  if (values.MARKET_CAP) {
-    const value = parseFloat(values.MARKET_CAP)
-    if (!isNaN(value)) {
-      result.data.push({
-        kpi_type: 'pre_post',
-        metric: 'market_cap',
-        value,
-      })
-    }
-  }
+  pushMetric('pre_post', 'market_cap', undefined, values.MARKET_CAP)
 
   // Text fields
   if (values.PROMOTERS) {

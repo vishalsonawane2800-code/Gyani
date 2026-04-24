@@ -61,15 +61,24 @@ export function LiveSubscriptionDetails({ ipos }: Props) {
         const isExpanded = expandedSlug === ipo.slug;
         const total = ipo.subscription?.total ?? 0;
         const day = ipo.subscription?.day ?? 0;
+        const isSme =
+          ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME';
+        const isMainboard = ipo.exchange === 'Mainboard';
         return (
           <div
             key={ipo.slug}
-            className="bg-card border border-border rounded-2xl overflow-hidden"
+            className={`border rounded-2xl overflow-hidden ${
+              isMainboard
+                ? 'bg-gold-bg/40 border-gold/40'
+                : 'bg-card border-border'
+            }`}
           >
             <button
               type="button"
               onClick={() => setExpandedSlug(isExpanded ? null : ipo.slug)}
-              className="w-full flex items-center gap-3 p-4 md:p-5 text-left hover:bg-secondary/40 transition-colors"
+              className={`w-full flex items-center gap-3 p-4 md:p-5 text-left transition-colors ${
+                isMainboard ? 'hover:bg-gold-bg/60' : 'hover:bg-secondary/40'
+              }`}
               aria-expanded={isExpanded}
             >
               {isExpanded ? (
@@ -78,7 +87,15 @@ export function LiveSubscriptionDetails({ ipos }: Props) {
                 <ChevronRight className="w-4 h-4 text-ink3 shrink-0" />
               )}
               <div className="min-w-0 flex-1">
-                <p className="font-semibold text-ink truncate">{ipo.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-ink truncate">{ipo.name}</p>
+                  {isSme && (
+                    <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-destructive-bg text-destructive border border-destructive/40">
+                      <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                      SME IPO
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-ink3 mt-0.5">
                   {ipo.exchange}
                   {day > 0 ? ` | Day ${day}` : ''}
@@ -205,6 +222,11 @@ function IpoSubscriptionPanel({ ipo }: { ipo: IPO }) {
         </div>
       ) : (
         <>
+          {/* Allotment Chance Percentage */}
+          {ipo.subscription?.retail && (
+            <AllotmentChanceWidget retail={ipo.subscription.retail} />
+          )}
+
           {/* Category-wise live table (+ day columns if history exists) */}
           {subscriptionLive.length > 0 && (
             <div>
@@ -414,6 +436,62 @@ function SubscriptionSummaryGrid({ ipo }: { ipo: IPO }) {
           {sub.qib || '-'}
         </div>
         <div className="text-[11px] text-ink3 mt-1">QIB</div>
+      </div>
+    </div>
+  );
+}
+
+function AllotmentChanceWidget({ retail }: { retail: number | string }) {
+  const retailSub = typeof retail === 'string' 
+    ? parseFloat(String(retail).toLowerCase().replace(/x/g, '').trim())
+    : retail;
+
+  if (!Number.isFinite(retailSub) || retailSub <= 0) {
+    return null;
+  }
+
+  const allotmentChance = Math.min(100 / retailSub, 100);
+  const roundedChance = Math.round(allotmentChance * 100) / 100;
+
+  // Color coding
+  let bgColor = 'bg-red-bg';
+  let borderColor = 'border-red/20';
+  let textColor = 'text-red';
+  let label = 'Low';
+
+  if (roundedChance >= 50) {
+    bgColor = 'bg-emerald-bg';
+    borderColor = 'border-emerald/20';
+    textColor = 'text-emerald';
+    label = 'High';
+  } else if (roundedChance >= 20) {
+    bgColor = 'bg-gold-bg';
+    borderColor = 'border-gold/20';
+    textColor = 'text-gold';
+    label = 'Moderate';
+  }
+
+  return (
+    <div className={`${bgColor} border ${borderColor} rounded-xl p-4 md:p-5`}>
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Retail Subscription</p>
+          <p className={`text-lg md:text-xl font-bold ${textColor}`}>
+            {retailSub.toFixed(2)}x
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Allotment Chance</p>
+          <p className={`text-lg md:text-xl font-bold ${textColor}`}>
+            {roundedChance.toFixed(2)}%
+          </p>
+        </div>
+        <div>
+          <p className="text-[11px] md:text-xs text-ink3 mb-1.5">Probability</p>
+          <span className={`inline-block px-2 py-1 rounded text-[10px] font-bold ${bgColor} border ${borderColor} ${textColor}`}>
+            {label}
+          </span>
+        </div>
       </div>
     </div>
   );
