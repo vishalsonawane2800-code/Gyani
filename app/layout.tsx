@@ -16,17 +16,8 @@ export const metadata: Metadata = {
   keywords: 'IPO GMP today 2026, upcoming IPO India, IPO listing gain prediction, IPO subscription live, IPO allotment status, SME IPO GMP, grey market premium',
   generator: 'IPOGyani',
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.jpg',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.jpg',
-        media: '(prefers-color-scheme: dark)',
-      },
-    ],
-    apple: '/apple-icon.jpg',
+    icon: '/favicon.png',
+    apple: '/favicon.png',
   },
   openGraph: {
     type: 'website',
