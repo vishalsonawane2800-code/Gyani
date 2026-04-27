@@ -242,7 +242,7 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                       )}
                     </div>
                     <div className={`text-xs mt-0.5 ${isSme ? 'text-amber-300/90 font-semibold' : 'text-white/40'}`}>
-                      {ipo.sector} {isSme ? `· ${smeExchangeShort} SME Platform` : `· ${ipo.exchange}`}
+                      {isSme ? `${smeExchangeShort} SME Platform` : ipo.exchange}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
