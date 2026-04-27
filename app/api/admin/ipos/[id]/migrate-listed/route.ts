@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { appendToListedCsv, type ListedIPORow } from '@/lib/csv-append'
 
 /**
  * Migrate an IPO row from `ipos` to `listed_ipos`.
@@ -23,6 +24,7 @@ export type MigrateResult =
       ok: true
       alreadyListed: boolean
       data: unknown
+      csvAppend?: { success: boolean; message: string; filePath?: string } | null
     }
   | {
       ok: false
@@ -134,6 +136,8 @@ export async function migrateIpoToListed(
   // the row around (not deleted) to preserve GMP / subscription history
   // for per-slug detail pages.
   const alreadyListed = ipo.status === 'listed'
+  let csvAppendResult = null
+  
   if (!alreadyListed) {
     const { error: updateError } = await supabase
       .from('ipos')
@@ -142,6 +146,71 @@ export async function migrateIpoToListed(
     if (updateError) {
       console.error('[migrate-listed] status update error:', updateError)
       // Not fatal — the listed_ipos row exists; a later run will retry.
+    }
+    
+    // Append to CSV file (mainboard or SME based on exchange)
+    try {
+      const year = listedIpoData.year ? parseInt(listedIpoData.year, 10) : new Date().getFullYear()
+      const isSme = (ipo.exchange || '').toLowerCase().includes('sme')
+      
+      const csvRow: ListedIPORow = {
+        ipoName: ipo.company_name,
+        listingDate: ipo.listing_date || '',
+        sector: ipo.sector ?? null,
+        retailQuotaPct: ipo.retail_quota_pct ?? null,
+        issuePriceUpper: issuePrice ?? null,
+        listingPrice: listPrice,
+        closingPrice: closePrice ?? null,
+        listingGainPct: gainPct ?? null,
+        listingGainClosingPct: null, // To be filled manually
+        dayChangeAfterListingPct: ipo.list_day_change_pct ?? null,
+        qibDay3Sub: ipo.subscription_qib ?? null,
+        niiDay3Sub: ipo.subscription_nii ?? null,
+        retailDay3Sub: ipo.subscription_retail ?? null,
+        day1Sub: null, // Historical data not available
+        day2Sub: null,
+        day3Sub: ipo.subscription_total ?? null,
+        gmpPctD1: null, // GMP historical data
+        gmpPctD2: null,
+        gmpPctD3: null,
+        gmpPctD4: null,
+        gmpPctD5: null,
+        peerPE: null,
+        debtEquity: null,
+        ipoPE: ipo.pe_ratio ?? null,
+        latestEbitda: null,
+        peVsSectorRatio: null,
+        nifty3DReturn: null,
+        nifty1WReturn: null,
+        nifty1MReturn: null,
+        niftyDuringIpoWindow: null,
+        marketSentimentScore: ipo.sentiment_score ?? null,
+        issueSize: ipo.issue_size_cr ?? null,
+        freshIssue: ipo.fresh_issue_cr ?? null,
+        ofs: ipo.ofs_cr ?? null,
+        gmpDay1: ipo.gmp ?? null,
+        gmpDay2: null,
+        gmpDay3: null,
+        gmpDay4: null,
+        gmpDay5: null,
+        gmpPrediction: ipo.gmp != null ? `${Math.round(ipo.gmp * 0.95)}-${Math.round(ipo.gmp * 1.05)}` : null,
+        aiPrediction: ipo.ai_prediction ?? null,
+        predictionAccuracy: gainPct != null && ipo.ai_prediction != null
+          ? Math.round(Math.abs(gainPct - ipo.ai_prediction) * 100) / 100
+          : null,
+      }
+      
+      csvAppendResult = await appendToListedCsv(year, isSme, csvRow)
+      
+      if (!csvAppendResult.success) {
+        console.warn('[migrate-listed] CSV append warning:', csvAppendResult.message)
+        // Don't fail the migration if CSV append fails — the Supabase data is what matters
+      } else {
+        console.log('[migrate-listed] CSV append success:', csvAppendResult.message)
+      }
+    } catch (csvError) {
+      console.error('[migrate-listed] CSV append error:', csvError)
+      // Not fatal — don't fail the entire migration over CSV issues
     }
   }
 
@@ -165,6 +234,7 @@ export async function migrateIpoToListed(
     ok: true,
     alreadyListed,
     data: listedIpo,
+    csvAppend: csvAppendResult,
   }
 }
 
