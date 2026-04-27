@@ -10,7 +10,7 @@ import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
 import { CommunityReviews } from '@/components/home/community-reviews';
 import { getCurrentIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
-import { getMergedAvailableYears, getMergedListedIposByYear } from '@/lib/listed-ipos/loader';
+import { getMergedAvailableYearsWithSme, getMergedListedIposByYearWithSme } from '@/lib/listed-ipos/loader';
 import type { ListedIPO } from '@/lib/data';
 import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
@@ -42,7 +42,7 @@ const allPages = [
   { href: '/disclaimer', label: 'Disclaimer' },
 ];
 
-function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYear>>[number], index: number): ListedIPO {
+function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYearWithSme>>[number], index: number): ListedIPO {
   const abbr = row.name
     .split(' ')
     .map((w) => w[0])
@@ -75,8 +75,8 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
 }
 
 async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
-  const years = await getMergedAvailableYears();
-  const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYear(y)));
+  const years = await getMergedAvailableYearsWithSme();
+  const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYearWithSme(y)));
   const merged = rowsByYear
     .flat()
     .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())

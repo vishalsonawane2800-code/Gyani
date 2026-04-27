@@ -4,7 +4,7 @@ import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
 import { ListedHero } from '@/components/listed/listed-hero';
-import { getAvailableYears, getListedIposByYear } from '@/lib/listed-ipos/loader';
+import { getAllMergedAvailableYears, getMergedListedIposCsv } from '@/lib/listed-ipos/loader';
 
 export const metadata: Metadata = {
   title: 'Listed IPO 2024-2026 - Complete Database | IPOGyani',
@@ -13,9 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default function ListedPage() {
-  const archiveYears = getAvailableYears();
+  const archiveYears = getAllMergedAvailableYears();
   const archiveYearStats = archiveYears.map((y) => {
-    const rows = getListedIposByYear(y);
+    const rows = getMergedListedIposCsv(y);
     const total = rows.length;
     const positive = rows.filter((r) => (r.listingGainPct ?? 0) > 0).length;
     const avgGain =
