@@ -110,7 +110,7 @@ export function AllotmentChance({ ipo }: AllotmentChanceProps) {
   const colorConfig = getColor(allotmentData.allotmentChance);
 
   return (
-    <section className={`${colorConfig.bg} border ${colorConfig.border} rounded-2xl p-5 md:p-6`}>
+    <section className={`${colorConfig.bg} border ${colorConfig.border} rounded-2xl p-5 md:p-6 mb-8`}>
       <div className="flex items-start gap-3 md:gap-4">
         <div className={`w-10 h-10 md:w-12 md:h-12 rounded-lg ${colorConfig.bg} border ${colorConfig.border} flex items-center justify-center flex-shrink-0`}>
           <Users className={`w-5 h-5 md:w-6 md:h-6 ${colorConfig.text}`} />
