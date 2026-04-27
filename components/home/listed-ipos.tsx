@@ -47,10 +47,6 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
     setFilteredIPOs(filtered);
   }, [activeTab, listedIpos]);
 
-  if (recentListedIPOs.length === 0) {
-    return null;
-  }
-
   return (
     <section className="mb-7">
       {/* Header */}
@@ -94,6 +90,15 @@ export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
           ))}
         </div>
       </div>
+
+      {/* Empty state */}
+      {recentListedIPOs.length === 0 && (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <p className="text-ink3 text-sm">
+            {activeTab === 'sme' ? 'No SME IPOs listed yet.' : 'No recent listed IPOs available.'}
+          </p>
+        </div>
+      )}
 
       {/* Listed IPOs Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
