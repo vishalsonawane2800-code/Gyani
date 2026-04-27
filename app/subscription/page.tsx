@@ -5,7 +5,6 @@ import { Ticker } from '@/components/ticker';
 import { Footer } from '@/components/footer';
 import { LiveSubscriptionDetails } from '@/components/subscription/live-subscription-details';
 import { ListingGainSummary } from '@/components/subscription/listing-gain-summary';
-import { ProbabilityCalculator } from '@/components/subscription/probability-calculator';
 import { getCurrentIPOs } from '@/lib/supabase/queries';
 import {
   getMergedAvailableYears,
@@ -20,9 +19,9 @@ import { Users, ChevronRight, BarChart3, Clock } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'IPO Subscription & Allotment Probability Calculator | IPOGyani',
+  title: 'IPO Subscription & Listing Gain Analytics | IPOGyani',
   description:
-    'Historical avg and median listing gains for Mainboard and SME IPOs, a retail allotment probability calculator (1 / retail subscription, capped at 100%), and live subscription tracking for current IPOs.',
+    'Historical avg and median listing gains for Mainboard and SME IPOs, and live subscription tracking for current IPOs. Allotment chances calculated on individual IPO pages.',
   alternates: { canonical: 'https://ipogyani.com/subscription' },
 };
 
@@ -145,12 +144,6 @@ export default async function SubscriptionPage() {
           yearsLabel={yearsLabel}
         />
 
-        {/* Retail allotment probability calculator: 1 / retail sub (capped
-            at 100%). Lets investors gauge their odds before applying. */}
-        <div className="mt-6">
-          <ProbabilityCalculator />
-        </div>
-
         {/* Live subscription per current IPO — day-wise + category-wise,
             fetched directly from the same subscription_live +
             subscription_history tables the IPO detail page uses. */}
@@ -191,14 +184,14 @@ export default async function SubscriptionPage() {
               sheet, bucketed by Mainboard and SME.
             </li>
             <li>
-              <strong>Allotment Probability</strong> uses the standard
-              retail-category formula <code>1 / retail subscription</code>,
-              capped at 100% when the category is undersubscribed.
-            </li>
-            <li>
               <strong>Live Subscription</strong> streams from the same
               subscription tables powering the IPO detail page and refreshes
               hourly on bidding days.
+            </li>
+            <li>
+              <strong>Allotment Chance (Retail Category)</strong> is shown
+              on individual IPO pages and dynamically updates using the formula
+              <code className="ml-1">100 / retail subscription</code>, capped at 100% when undersubscribed.
             </li>
           </ul>
         </div>
