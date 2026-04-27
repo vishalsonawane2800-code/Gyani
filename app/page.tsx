@@ -116,7 +116,15 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div className="min-w-0">
-            <MarketSentimentScore />
+            <MarketSentimentScore 
+              score={56}
+              description="Mixed market conditions with cautious investor sentiment. Recent IPO performance shows 2 out of 3 issues trading in negative territory. Retail applications showing -25% decline from historical average. Overall market indices stable with moderate volatility."
+              signals={[
+                { label: 'Recent Losses', value: '2 of 3', tone: 'negative' },
+                { label: 'Retail Trend', value: '-25%', tone: 'negative' },
+                { label: 'Market Volatility', value: 'Moderate', tone: 'neutral' },
+              ]}
+            />
             <MarketSentiment ipoStats={ipoStats} />
             <CurrentIPOs ipos={ipos} />
             <ListedIPOs listedIpos={listedIpos} />
