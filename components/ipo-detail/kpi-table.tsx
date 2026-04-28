@@ -8,30 +8,40 @@ import Link from 'next/link';
 interface KPITableProps {
   kpi: KPIData;
   ipoSlug: string;
+  // Admin-typed overrides (e.g. "NA", "-") keyed as
+  // "kpi.<metric>.<slot>" — e.g. "kpi.roe.0", "kpi.pe.post". When
+  // present for a given cell, the literal string is rendered instead of
+  // coercing a missing numeric value to "-" or "0".
+  textOverrides?: Record<string, string>;
 }
 
-function formatPercent(value: number | undefined): string {
+function formatPercent(value: number | undefined, override?: string): string {
+  if (override) return override;
   if (value === undefined || value === null) return '-';
   return `${value.toFixed(2)}%`;
 }
 
-function formatNumber(value: number | undefined, suffix = ''): string {
+function formatNumber(value: number | undefined, suffix = '', override?: string): string {
+  if (override) return override;
   if (value === undefined || value === null) return '-';
   return `${value.toFixed(2)}${suffix}`;
 }
 
-function formatCurrency(value: number | undefined): string {
+function formatCurrency(value: number | undefined, override?: string): string {
+  if (override) return override;
   if (value === undefined || value === null) return '-';
   return `Rs ${value.toFixed(2)} Cr.`;
 }
 
-export function KPITable({ kpi, ipoSlug }: KPITableProps) {
+export function KPITable({ kpi, ipoSlug, textOverrides }: KPITableProps) {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
   const { dated, prePost, promoters, disclaimer } = kpi;
 
   // Get values at index positions
   const getVal = (arr: number[] | undefined, idx: number) => arr?.[idx];
+  // Resolve a "kpi.<metric>.<slot>" override if present.
+  const ov = (key: string) => textOverrides?.[key];
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6 mb-6">
@@ -57,50 +67,50 @@ export function KPITable({ kpi, ipoSlug }: KPITableProps) {
             <tbody>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">ROE</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roe, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roe, 0), ov('kpi.roe.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roe, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roe, 1), ov('kpi.roe.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">ROCE</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roce, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roce, 0), ov('kpi.roce.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roce, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.roce, 1), ov('kpi.roce.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">Debt/Equity</td>
-                <td className="text-right py-2.5 px-4">{formatNumber(getVal(dated.debtEquity, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatNumber(getVal(dated.debtEquity, 0), '', ov('kpi.debt_equity.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatNumber(getVal(dated.debtEquity, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatNumber(getVal(dated.debtEquity, 1), '', ov('kpi.debt_equity.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">RoNW</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ronw, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ronw, 0), ov('kpi.ronw.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ronw, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ronw, 1), ov('kpi.ronw.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">PAT Margin</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.patMargin, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.patMargin, 0), ov('kpi.pat_margin.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.patMargin, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.patMargin, 1), ov('kpi.pat_margin.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">EBITDA Margin</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ebitdaMargin, 0))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ebitdaMargin, 0), ov('kpi.ebitda_margin.0'))}</td>
                 {dated.dateLabels.length > 1 && (
-                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ebitdaMargin, 1))}</td>
+                  <td className="text-right py-2.5 px-4">{formatPercent(getVal(dated.ebitdaMargin, 1), ov('kpi.ebitda_margin.1'))}</td>
                 )}
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">Price to Book Value</td>
                 <td className="text-right py-2.5 px-4" colSpan={dated.dateLabels.length}>
-                  {formatNumber(dated.priceToBook)}
+                  {formatNumber(dated.priceToBook, '', ov('kpi.price_to_book.value'))}
                 </td>
               </tr>
             </tbody>
@@ -130,23 +140,23 @@ export function KPITable({ kpi, ipoSlug }: KPITableProps) {
             <tbody>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">EPS (Rs)</td>
-                <td className="text-right py-2.5 px-4">{formatNumber(prePost.eps.pre)}</td>
-                <td className="text-right py-2.5 px-4">{formatNumber(prePost.eps.post)}</td>
+                <td className="text-right py-2.5 px-4">{formatNumber(prePost.eps.pre, '', ov('kpi.eps.pre'))}</td>
+                <td className="text-right py-2.5 px-4">{formatNumber(prePost.eps.post, '', ov('kpi.eps.post'))}</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">P/E (x)</td>
-                <td className="text-right py-2.5 px-4">{formatNumber(prePost.pe.pre)}</td>
-                <td className="text-right py-2.5 px-4">{formatNumber(prePost.pe.post)}</td>
+                <td className="text-right py-2.5 px-4">{formatNumber(prePost.pe.pre, '', ov('kpi.pe.pre'))}</td>
+                <td className="text-right py-2.5 px-4">{formatNumber(prePost.pe.post, '', ov('kpi.pe.post'))}</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">Promoter Holding</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(prePost.promoterHolding.pre)}</td>
-                <td className="text-right py-2.5 px-4">{formatPercent(prePost.promoterHolding.post)}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(prePost.promoterHolding.pre, ov('kpi.promoter_holding.pre'))}</td>
+                <td className="text-right py-2.5 px-4">{formatPercent(prePost.promoterHolding.post, ov('kpi.promoter_holding.post'))}</td>
               </tr>
               <tr className="border-t border-border">
                 <td className="py-2.5 px-4 text-primary-mid font-medium">Market Cap</td>
                 <td className="text-right py-2.5 px-4" colSpan={2}>
-                  {formatCurrency(prePost.marketCap)}
+                  {formatCurrency(prePost.marketCap, ov('kpi.market_cap.value'))}
                 </td>
               </tr>
             </tbody>

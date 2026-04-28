@@ -177,3 +177,69 @@ export async function getMergedAvailableYears(): Promise<number[]> {
   const all = new Set([...csvYears, ...dbYears]);
   return Array.from(all).sort((a, b) => b - a);
 }
+
+// ============================================================================
+// SME IPO integration - merge SME IPOs with mainboard results
+// ============================================================================
+
+import {
+  getListedSmeIposByYear,
+  getSmeAvailableYears,
+} from '@/lib/listed-sme-ipos/loader';
+
+/**
+ * Get merged listed IPOs (mainboard + SME) for a year from CSVs.
+ * Merges both archives and sorts by listing date descending.
+ */
+export function getMergedListedIposCsv(year: number): ListedIpoRecord[] {
+  const mainboard = getListedIposByYear(year);
+  const sme = getListedSmeIposByYear(year);
+  const merged = [...mainboard, ...sme];
+  merged.sort((a, b) => (a.listingDate > b.listingDate ? -1 : 1));
+  return merged;
+}
+
+/**
+ * Get all available years that have either mainboard or SME listed IPO data.
+ */
+export function getAllMergedAvailableYears(): number[] {
+  const mainboardYears = getAvailableYears();
+  const smeYears = getSmeAvailableYears();
+  const all = new Set([...mainboardYears, ...smeYears]);
+  return Array.from(all).sort((a, b) => b - a);
+}
+
+/**
+ * Get merged listed IPOs from both CSV and DB sources (mainboard + SME).
+ * CSV records take precedence over DB on slug conflict.
+ */
+export async function getMergedListedIposByYearWithSme(
+  year: number
+): Promise<ListedIpoRecord[]> {
+  const csvRows = getMergedListedIposCsv(year);
+  const dbRows = await getListedIposFromDbByYear(year);
+
+  const bySlug = new Map<string, ListedIpoRecord>();
+  for (const r of csvRows) {
+    bySlug.set(r.slug, r);
+  }
+  for (const r of dbRows) {
+    if (!bySlug.has(r.slug)) {
+      bySlug.set(r.slug, r);
+    }
+  }
+
+  const merged = Array.from(bySlug.values());
+  merged.sort((a, b) => (a.listingDate < b.listingDate ? 1 : -1));
+  return merged;
+}
+
+/**
+ * Get all available years from mainboard CSV, SME CSV, and DB.
+ */
+export async function getMergedAvailableYearsWithSme(): Promise<number[]> {
+  const csvYears = getAllMergedAvailableYears();
+  const dbYears = await getAvailableYearsFromDb();
+  const all = new Set([...csvYears, ...dbYears]);
+  return Array.from(all).sort((a, b) => b - a);
+}

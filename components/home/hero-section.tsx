@@ -41,7 +41,7 @@ function scrollToCurrent(e: React.MouseEvent<HTMLAnchorElement>) {
 }
 
 const stats = [
-  { value: '95%+', label: 'AI Accuracy', color: 'text-emerald-400' },
+  { value: '93.5%', label: 'AI Accuracy', color: 'text-emerald-400' },
   { value: '500+', label: 'IPOs Tracked', color: 'text-violet-400' },
   { value: '25+', label: 'AI Signals', color: 'text-amber-400' },
   { value: 'Live', label: 'GMP Data', color: 'text-white' },
@@ -222,27 +222,27 @@ export function HeroSection({ ipos }: HeroSectionProps) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div
-                        className={`text-white text-sm sm:text-base font-semibold truncate transition-colors ${
-                          hasLive ? 'group-hover:text-sky-400' : 'group-hover:text-violet-400'
-                        }`}
-                      >
-                        {ipo.name}
-                      </div>
+                    {/* IPO Name - Full width, no truncation */}
+                    <div
+                      className={`text-white text-sm sm:text-base font-semibold transition-colors ${
+                        hasLive ? 'group-hover:text-sky-400' : 'group-hover:text-violet-400'
+                      }`}
+                    >
+                      {ipo.name}
+                    </div>
+                    {/* Badge and Exchange - Second line */}
+                    <div className="flex items-center gap-2 mt-1">
                       {isSme && (
-                        // Solid gold pill with a tiny dot — much more
-                        // prominent than the previous translucent badge
-                        // and aligned with how SME is flagged on the
-                        // main IPO cards.
                         <span className="shrink-0 inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.08em] px-2 py-0.5 rounded-md bg-amber-400 text-[#1a0f3c] shadow-[0_0_0_1px_rgba(0,0,0,0.15)]">
                           <span className="w-1 h-1 rounded-full bg-[#1a0f3c]" />
                           SME IPO
                         </span>
                       )}
-                    </div>
-                    <div className={`text-xs mt-0.5 ${isSme ? 'text-amber-300/90 font-semibold' : 'text-white/40'}`}>
-                      {ipo.sector} {isSme ? `· ${smeExchangeShort} SME Platform` : `· ${ipo.exchange}`}
+                      {!isSme && (
+                        <span className="text-xs font-semibold text-white/60">
+                          {ipo.exchange}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right shrink-0">

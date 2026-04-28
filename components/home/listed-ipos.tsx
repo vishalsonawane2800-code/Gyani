@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { ListedIPO } from '@/lib/data';
+import { useState, useEffect } from 'react';
 
 // Generate abbreviation from company name
 function generateAbbr(name: string | undefined | null): string {
@@ -19,36 +20,85 @@ interface ListedIPOsProps {
   listedIpos: ListedIPO[];
 }
 
+type TabType = 'all' | 'mainboard' | 'sme';
+
 export function ListedIPOs({ listedIpos }: ListedIPOsProps) {
-  // Take the most recent 6 listed IPOs
-  const recentListedIPOs = listedIpos
+  const [activeTab, setActiveTab] = useState<TabType>('all');
+  const [filteredIPOs, setFilteredIPOs] = useState<ListedIPO[]>([]);
+
+  // Take the most recent 6 listed IPOs based on active tab
+  const recentListedIPOs = filteredIPOs
     .sort((a, b) => new Date(b.listDate).getTime() - new Date(a.listDate).getTime())
     .slice(0, 6);
 
-  if (recentListedIPOs.length === 0) {
-    return null;
-  }
+  useEffect(() => {
+    let filtered = listedIpos;
+
+    if (activeTab === 'mainboard') {
+      filtered = listedIpos.filter(
+        (ipo) => ipo.exchange !== 'BSE SME' && ipo.exchange !== 'NSE SME'
+      );
+    } else if (activeTab === 'sme') {
+      filtered = listedIpos.filter(
+        (ipo) => ipo.exchange === 'BSE SME' || ipo.exchange === 'NSE SME'
+      );
+    }
+
+    setFilteredIPOs(filtered);
+  }, [activeTab, listedIpos]);
 
   return (
     <section className="mb-7">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <h2 className="font-[family-name:var(--font-sora)] text-[17px] font-bold">
-            Recently Listed IPOs
-          </h2>
-          <span className="text-[10.5px] font-extrabold py-0.5 px-2.5 rounded-full bg-primary-bg text-primary">
-            {recentListedIPOs.length} Recent
-          </span>
+      <div className="flex flex-col gap-4 mb-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-[family-name:var(--font-sora)] text-[17px] font-bold">
+              Recently Listed IPOs
+            </h2>
+            <span className="text-[10.5px] font-extrabold py-0.5 px-2.5 rounded-full bg-primary-bg text-primary">
+              {recentListedIPOs.length} Recent
+            </span>
+          </div>
+          <Link 
+            href="/listed" 
+            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity"
+          >
+            View All
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-        <Link 
-          href="/listed" 
-          className="flex items-center gap-1.5 text-[12.5px] font-semibold text-primary hover:opacity-75 transition-opacity"
-        >
-          View All
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
+
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-border">
+          {[
+            { id: 'all' as TabType, label: 'All IPOs' },
+            { id: 'mainboard' as TabType, label: 'Mainboard' },
+            { id: 'sme' as TabType, label: 'SME IPOs' },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-3 py-2 text-sm font-semibold border-b-2 transition-colors ${
+                activeTab === tab.id
+                  ? 'text-primary border-primary'
+                  : 'text-ink3 border-transparent hover:text-ink2'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Empty state */}
+      {recentListedIPOs.length === 0 && (
+        <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <p className="text-ink3 text-sm">
+            {activeTab === 'sme' ? 'No SME IPOs listed yet.' : 'No recent listed IPOs available.'}
+          </p>
+        </div>
+      )}
 
       {/* Listed IPOs Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">

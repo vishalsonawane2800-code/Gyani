@@ -5,6 +5,7 @@ import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import type { IPO } from '@/lib/data';
 import { formatDate } from '@/lib/data';
+import { formatNumeric, getOverride } from '@/lib/display-overrides';
 
 interface IPOTabsProps {
   ipo: IPO;
@@ -86,7 +87,13 @@ function OverviewTab({ ipo }: { ipo: IPO }) {
     ['Registrar', ipo.registrar ?? 'N/A'],
     ['Lead Manager', ipo.leadManager ?? 'N/A'],
     ['Market Cap (Upper)', ipo.marketCap ?? 'N/A'],
-    ['P/E (Upper Band)', peRatio > 0 ? `${peRatio}x` : 'N/A'],
+    [
+      'P/E (Upper Band)',
+      formatNumeric(ipo, 'pe_ratio', peRatio, {
+        format: (n) => (n > 0 ? `${n}x` : 'N/A'),
+        emptyFallback: 'N/A',
+      }),
+    ],
   ];
 
   return (
@@ -134,7 +141,20 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
     );
   }
 
-  const { revenue, pat, ebitda, roe, roce, debtEquity } = ipo.financials;
+  const { revenue, pat, ebitda, roe, debtEquity } = ipo.financials;
+
+  // Helper: render a "Rs X Cr" cell with admin override fallback.
+  const cellCr = (field: 'revenue' | 'ebitda' | 'pat', fy: 'fy23' | 'fy24' | 'fy25', n: number) =>
+    formatNumeric(ipo, `financials.${fy}.${field}`, n, {
+      format: (v) => `Rs ${v} Cr`,
+      emptyFallback: 'NA',
+    });
+
+  // P/Sales uses FY25 revenue in its denominator — suppress if override exists.
+  const revFy25Override = getOverride(ipo, 'financials.fy25.revenue');
+  const pSalesDisplay = revFy25Override || revenue.fy25 <= 0
+    ? 'NA'
+    : `${(ipo.issueSizeCr / revenue.fy25).toFixed(1)}x`;
 
   return (
     <div>
@@ -152,21 +172,21 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
           <tbody>
             <tr className="border-b border-border">
               <td className="py-2 px-3">Revenue</td>
-              <td className="py-2 px-3 text-right">Rs {revenue.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {revenue.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {revenue.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('revenue', 'fy23', revenue.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('revenue', 'fy24', revenue.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('revenue', 'fy25', revenue.fy25)}</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2 px-3">EBITDA</td>
-              <td className="py-2 px-3 text-right">Rs {ebitda.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {ebitda.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {ebitda.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('ebitda', 'fy23', ebitda.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('ebitda', 'fy24', ebitda.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('ebitda', 'fy25', ebitda.fy25)}</td>
             </tr>
             <tr className="border-b border-border">
               <td className="py-2 px-3">PAT (Net Profit)</td>
-              <td className="py-2 px-3 text-right">Rs {pat.fy23} Cr</td>
-              <td className="py-2 px-3 text-right">Rs {pat.fy24} Cr</td>
-              <td className="py-2 px-3 text-right font-medium text-emerald-mid">Rs {pat.fy25} Cr</td>
+              <td className="py-2 px-3 text-right">{cellCr('pat', 'fy23', pat.fy23)}</td>
+              <td className="py-2 px-3 text-right">{cellCr('pat', 'fy24', pat.fy24)}</td>
+              <td className="py-2 px-3 text-right font-medium text-emerald-mid">{cellCr('pat', 'fy25', pat.fy25)}</td>
             </tr>
           </tbody>
         </table>
@@ -175,19 +195,34 @@ function FinancialsTab({ ipo }: { ipo: IPO }) {
       <h3 className="text-base font-bold mt-6 mb-4">Key Valuation Metrics</h3>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-gold-mid">{ipo.peRatio}x</div>
+          <div className="text-2xl font-extrabold text-gold-mid">
+            {formatNumeric(ipo, 'pe_ratio', ipo.peRatio, {
+              format: (n) => `${n}x`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">P/E (Upper Band)</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-foreground">{(ipo.issueSizeCr / revenue.fy25).toFixed(1)}x</div>
+          <div className="text-2xl font-extrabold text-foreground">{pSalesDisplay}</div>
           <div className="text-xs text-ink3 mt-1">P/Sales</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-emerald-mid">{roe}%</div>
+          <div className="text-2xl font-extrabold text-emerald-mid">
+            {formatNumeric(ipo, 'financials.roe', roe, {
+              format: (n) => `${n}%`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">ROE (FY25)</div>
         </div>
         <div className="bg-secondary rounded-lg p-4 text-center">
-          <div className="text-2xl font-extrabold text-emerald-mid">{debtEquity}</div>
+          <div className="text-2xl font-extrabold text-emerald-mid">
+            {formatNumeric(ipo, 'financials.debt_equity', debtEquity, {
+              format: (n) => `${n}`,
+              emptyFallback: 'NA',
+            })}
+          </div>
           <div className="text-xs text-ink3 mt-1">Debt/Equity</div>
         </div>
       </div>
@@ -306,6 +341,20 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
   const subscriptionLive = ipo.subscriptionLive || [];
   const subHistory = ipo.subscriptionHistory || [];
   const subscription = ipo.subscription ?? { total: 0, retail: 0, nii: 0, qib: 0, isFinal: false, day: 0 };
+
+  // Build chart data from subscription history
+  const chartData = subHistory.map((entry, idx) => {
+    const dayNum = entry.dayNumber || (idx + 1);
+    return {
+      day: `Day ${dayNum}`,
+      total: entry.total || 0,
+      retail: entry.retail || 0,
+      qib: entry.qib || 0,
+      nii: entry.nii || 0,
+      snii: entry.snii || 0,
+      bnii: entry.bnii || 0,
+    };
+  });
 
   // Get last updated time
   const lastUpdated = ipo.subscriptionLastUpdated 
@@ -481,7 +530,42 @@ function SubscriptionTab({ ipo }: { ipo: IPO }) {
         )}
       </div>
 
-      {/* Section 2: Day-wise Subscription Details */}
+      {/* Section 2: Subscription Graph */}
+      {chartData.length > 0 && (
+        <div>
+          <h3 className="font-[family-name:var(--font-sora)] text-[16px] font-bold mb-4">
+            Subscription Trend
+          </h3>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradient-total" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--emerald-mid)" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="var(--emerald-mid)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--ink3)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: 'var(--ink3)' }} axisLine={{ stroke: 'var(--border)' }} tickLine={false} tickFormatter={(v) => `${v}x`} />
+                  <Tooltip 
+                    contentStyle={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                    formatter={(value: number) => [`${value.toFixed(2)}x`, '']}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="total" stroke="var(--emerald-mid)" strokeWidth={2.5} dot={{ fill: 'var(--emerald-mid)', r: 4 }} name="Total" />
+                  <Line type="monotone" dataKey="retail" stroke="var(--cobalt-mid)" strokeWidth={2} dot={{ fill: 'var(--cobalt-mid)', r: 3 }} name="Retail" />
+                  <Line type="monotone" dataKey="qib" stroke="var(--gold-mid)" strokeWidth={2} dot={{ fill: 'var(--gold-mid)', r: 3 }} name="QIB" />
+                  <Line type="monotone" dataKey="nii" stroke="var(--destructive)" strokeWidth={2} dot={{ fill: 'var(--destructive)', r: 3 }} name="NII" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Section 3: Day-wise Subscription Details */}
       {subHistory.length > 0 && (
         <div>
           <h3 className="font-[family-name:var(--font-sora)] text-[16px] font-bold mb-4">

@@ -10,7 +10,7 @@ import { NewsSection } from '@/components/home/news-section';
 import { Sidebar } from '@/components/home/sidebar';
 import { CommunityReviews } from '@/components/home/community-reviews';
 import { getCurrentIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
-import { getMergedAvailableYears, getMergedListedIposByYear } from '@/lib/listed-ipos/loader';
+import { getMergedAvailableYearsWithSme, getMergedListedIposByYearWithSme } from '@/lib/listed-ipos/loader';
 import type { ListedIPO } from '@/lib/data';
 import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
@@ -42,7 +42,7 @@ const allPages = [
   { href: '/disclaimer', label: 'Disclaimer' },
 ];
 
-function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYear>>[number], index: number): ListedIPO {
+function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYearWithSme>>[number], index: number): ListedIPO {
   const abbr = row.name
     .split(' ')
     .map((w) => w[0])
@@ -75,8 +75,8 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
 }
 
 async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
-  const years = await getMergedAvailableYears();
-  const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYear(y)));
+  const years = await getMergedAvailableYearsWithSme();
+  const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYearWithSme(y)));
   const merged = rowsByYear
     .flat()
     .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
@@ -116,7 +116,15 @@ export default async function HomePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_312px] gap-6 items-start">
           {/* Main Column */}
           <div className="min-w-0">
-            <MarketSentimentScore />
+            <MarketSentimentScore 
+              score={56}
+              description="Mixed market conditions with cautious investor sentiment. Recent IPO performance shows 2 out of 3 issues trading in negative territory. Retail applications showing -25% decline from historical average. Overall market indices stable with moderate volatility."
+              signals={[
+                { label: 'Recent Losses', value: '2 of 3', tone: 'negative' },
+                { label: 'Retail Trend', value: '-25%', tone: 'negative' },
+                { label: 'Market Volatility', value: 'Moderate', tone: 'neutral' },
+              ]}
+            />
             <MarketSentiment ipoStats={ipoStats} />
             <CurrentIPOs ipos={ipos} />
             <ListedIPOs listedIpos={listedIpos} />

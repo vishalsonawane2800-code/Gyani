@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Ticker } from '@/components/ticker';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
-import { Database, LineChart, Brain, BarChart3, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Database, LineChart, Brain, BarChart3, CheckCircle, AlertTriangle, TrendingUp, Zap, Users, PieChart, History, MessageSquare } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Methodology - How IPOGyani AI Predictions Work',
@@ -17,12 +17,12 @@ const dataSources = [
 ];
 
 const modelFactors = [
-  { factor: 'Subscription Ratio', weight: '25%', description: 'Overall, QIB, NII, and Retail subscription levels' },
-  { factor: 'GMP Trend', weight: '20%', description: 'Grey market premium trajectory in the days before listing' },
-  { factor: 'Market Conditions', weight: '15%', description: 'Nifty/Sensex trend, sector performance, and volatility' },
-  { factor: 'Issue Quality', weight: '15%', description: 'Company financials, valuations, and peer comparison' },
-  { factor: 'Historical Patterns', weight: '15%', description: 'Similar IPO performance in comparable market conditions' },
-  { factor: 'Sentiment Score', weight: '10%', description: 'Expert reviews, news sentiment, and social media analysis' },
+  { factor: 'Subscription Ratio', icon: Users, color: 'emerald', description: 'Overall, QIB, NII, and Retail subscription levels' },
+  { factor: 'GMP Trend', icon: TrendingUp, color: 'cobalt', description: 'Grey market premium trajectory in the days before listing' },
+  { factor: 'Market Conditions', icon: BarChart3, color: 'gold', description: 'Nifty/Sensex trend, sector performance, and volatility' },
+  { factor: 'Issue Quality', icon: PieChart, color: 'primary', description: 'Company financials, valuations, and peer comparison' },
+  { factor: 'Historical Patterns', icon: History, color: 'emerald', description: 'Similar IPO performance in comparable market conditions' },
+  { factor: 'Sentiment Score', icon: MessageSquare, color: 'cobalt', description: 'Expert reviews, news sentiment, and social media analysis' },
 ];
 
 export default function MethodologyPage() {
@@ -75,24 +75,33 @@ export default function MethodologyPage() {
             Our machine learning model is trained on 5+ years of historical IPO data, analyzing patterns across 500+ IPOs to predict listing gains. The model uses an ensemble approach combining gradient boosting and neural networks.
           </p>
           
-          {/* Factor Weights */}
-          <h3 className="font-semibold text-ink mb-4">Prediction Factors & Weights</h3>
-          <div className="space-y-3">
-            {modelFactors.map((item) => (
-              <div key={item.factor} className="flex items-center gap-4">
-                <div className="w-20 flex-shrink-0">
-                  <div className="bg-primary-bg rounded-lg px-2 py-1 text-center">
-                    <span className="text-primary font-bold text-sm">{item.weight}</span>
+          {/* Prediction Factors */}
+          <h3 className="font-semibold text-ink mb-6">Prediction Factors</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {modelFactors.map((item) => {
+              const IconComponent = item.icon;
+              const colorMap: Record<string, { bg: string; text: string }> = {
+                emerald: { bg: 'bg-emerald-bg', text: 'text-emerald-mid' },
+                cobalt: { bg: 'bg-cobalt-bg', text: 'text-cobalt-mid' },
+                gold: { bg: 'bg-gold-bg', text: 'text-gold-mid' },
+                primary: { bg: 'bg-primary-bg', text: 'text-primary-mid' },
+              };
+              const colors = colorMap[item.color as keyof typeof colorMap];
+              
+              return (
+                <div key={item.factor} className="bg-background rounded-xl p-4 border border-border hover:border-border-hover transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className={`${colors.bg} rounded-lg p-2 flex-shrink-0`}>
+                      <IconComponent className={`w-5 h-5 ${colors.text}`} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-ink mb-1">{item.factor}</div>
+                      <p className="text-ink3 text-sm">{item.description}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="font-medium text-ink">{item.factor}</span>
-                  </div>
-                  <p className="text-ink3 text-sm">{item.description}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -133,27 +142,45 @@ export default function MethodologyPage() {
             <div className="w-10 h-10 rounded-lg bg-gold-bg flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-gold-mid" />
             </div>
-            <h2 className="font-[family-name:var(--font-sora)] text-xl font-bold text-ink">Accuracy Tracking</h2>
+            <h2 className="font-[family-name:var(--font-sora)] text-xl font-bold text-ink">Accuracy Tracking & Accountability</h2>
           </div>
-          <p className="text-ink2 leading-relaxed mb-4">
-            We believe in accountability. Our prediction accuracy is tracked and published on our Accuracy page. We measure:
+          <p className="text-ink2 leading-relaxed mb-6">
+            We believe in complete transparency. Unlike most prediction sites that hide behind vague claims, we track every prediction against actual listing-day gains and publish the full dataset on our <a href="/accuracy" className="text-cobalt hover:underline font-semibold">Accuracy page</a>. No cherry-picking, no survivor bias &mdash; just raw numbers.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-emerald-bg rounded-xl p-4 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-2xl font-bold text-emerald mb-1">87%</div>
-              <div className="text-emerald text-sm">Direction Accuracy</div>
-              <p className="text-emerald/70 text-xs mt-1">Correctly predicted gain vs loss</p>
+          <div className="space-y-4 text-ink2 leading-relaxed">
+            <div className="flex items-start gap-4">
+              <div className="w-5 h-5 rounded-lg bg-emerald-bg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-4 h-4 text-emerald-mid" />
+              </div>
+              <div>
+                <div className="font-semibold text-ink mb-1">Head-to-Head vs Last-Day GMP</div>
+                <p className="text-sm">Our AI is scored against the grey market premium quoted on the IPO close date &mdash; the number most retail investors actually see. This is the fairest comparison because it&apos;s what traders used to make their decisions before listing.</p>
+              </div>
             </div>
-            <div className="bg-cobalt-bg rounded-xl p-4 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-2xl font-bold text-cobalt mb-1">±8%</div>
-              <div className="text-cobalt text-sm">Avg. Deviation</div>
-              <p className="text-cobalt/70 text-xs mt-1">Mean absolute error from actual</p>
+            <div className="flex items-start gap-4">
+              <div className="w-5 h-5 rounded-lg bg-cobalt-bg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-4 h-4 text-cobalt-mid" />
+              </div>
+              <div>
+                <div className="font-semibold text-ink mb-1">Every Listing Tracked</div>
+                <p className="text-sm">We track mainboard and SME listings across the dataset. Error is measured as absolute deviation from the actual listing-day close. Hit rate is &plusmn;5% from actual gain. Direction accuracy measures whether we correctly called gain vs loss.</p>
+              </div>
             </div>
-            <div className="bg-primary-bg rounded-xl p-4 text-center">
-              <div className="font-[family-name:var(--font-sora)] text-2xl font-bold text-primary mb-1">500+</div>
-              <div className="text-primary text-sm">IPOs Analyzed</div>
-              <p className="text-primary/70 text-xs mt-1">Historical predictions tracked</p>
+            <div className="flex items-start gap-4">
+              <div className="w-5 h-5 rounded-lg bg-gold-bg flex items-center justify-center flex-shrink-0 mt-0.5">
+                <CheckCircle className="w-4 h-4 text-gold-mid" />
+              </div>
+              <div>
+                <div className="font-semibold text-ink mb-1">No Static Claims</div>
+                <p className="text-sm">Rather than claiming fixed accuracy percentages, we publish live dashboards showing year-over-year performance, recent head-to-head comparisons, and the full prediction log. Your investment decisions deserve better than marketing numbers.</p>
+              </div>
             </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-border">
+            <a href="/accuracy" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-bg text-primary font-semibold hover:bg-primary-bg/80 transition-colors">
+              View Full Accuracy Dashboard
+              <span className="text-sm">→</span>
+            </a>
           </div>
         </div>
 
