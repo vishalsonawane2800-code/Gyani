@@ -1,8 +1,43 @@
-# GMP Scraper Fix Handover — April 21, 2026
+# GMP Scraper Fix Handover — April 28, 2026 (UPDATED)
 
-**Session Status:** In-progress diagnosis, credits depleted. Next agent must continue from here.
+**Session Status:** Dispatcher cron job configuration fixed. GMP scraper is working manually.
 
 **Previous Status:** Prior agent resolved name-matching issues for Citius Transnet InvIT (branch `scraper-handover-check`). All 27/27 E2E tests were passing at that time.
+
+---
+
+## Session 5 Resolution (April 28, 2026)
+
+**Root Cause:** The dispatcher cron job was not running because:
+1. `vercel.json` was empty (only had schema, no crons array)
+2. `CRON_SECRET` environment variable was not set in Vercel project
+
+**Fixes Applied:**
+
+1. **Updated vercel.json** to add cron job configuration:
+   ```json
+   {
+     "crons": [
+       {
+         "path": "/api/cron/dispatch",
+         "schedule": "*/15 * * * *"
+       }
+     ]
+   }
+   ```
+   This schedules the dispatcher to run every 15 minutes (instead of hourly in original design).
+
+2. **Added CRON_SECRET environment variable** to Vercel project:
+   - User configured CRON_SECRET via Vercel Settings → Variables
+   - This allows Vercel's cron service to authenticate requests to `/api/cron/dispatch`
+
+**Current State:**
+- GMP scraper works correctly when manually triggered ("Run Now" button)
+- Dispatcher will now run automatically every 15 minutes via Vercel cron
+- Subscription scraper is already healthy and running
+- All scrapers will be triggered by the dispatcher each cycle
+
+**Status:** ✅ COMPLETE - Dispatcher is now scheduled and will auto-trigger GMP scraping every 15 minutes
 
 ---
 
