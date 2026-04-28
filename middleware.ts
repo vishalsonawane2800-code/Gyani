@@ -39,12 +39,20 @@ export async function middleware(request: NextRequest) {
     const token = parts[1]
 
     // Vercel cron path: allow the shared secret for /api/cron/*
-    if (
-      pathname.startsWith('/api/cron') &&
-      process.env.CRON_SECRET &&
-      token === process.env.CRON_SECRET
-    ) {
-      return NextResponse.next()
+    // (also works with Cloudflare Worker making Bearer token calls)
+    if (pathname.startsWith('/api/cron')) {
+      const cronSecret = process.env.CRON_SECRET?.trim()
+      const incomingToken = token.trim()
+      
+      if (cronSecret && incomingToken === cronSecret) {
+        return NextResponse.next()
+      }
+      
+      // If secret doesn't match and no valid JWT, reject
+      if (!cronSecret) {
+        console.error('[v0] CRON_SECRET not configured in environment')
+        return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+      }
     }
 
     const payload = await verifyToken(token)
