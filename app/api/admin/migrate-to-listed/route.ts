@@ -79,7 +79,14 @@ export async function POST(request: NextRequest) {
 
     // Prepare CSV row
     const year = new Date(listingDate).getFullYear()
-    const csvPath = path.join(process.cwd(), 'public', 'data', 'listed-ipos', String(year), `${year}.csv`)
+    
+    // Determine CSV file name based on exchange type
+    // SME exchanges: 'BSE SME', 'NSE SME'
+    // Mainboard: 'Mainboard', 'REIT'
+    const isSME = ipo.exchange?.includes('SME') ?? false
+    const csvFileName = isSME ? 'SME.csv' : 'Mainboard.csv'
+    
+    const csvPath = path.join(process.cwd(), 'public', 'data', 'listed-ipos', String(year), csvFileName)
     const csvDir = path.dirname(csvPath)
 
     // Create directory if needed
@@ -89,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     // Read existing CSV or template
     let csvContent = ''
-    const csvPublicPath = `/data/listed-ipos/${year}/${year}.csv`
+    const csvPublicPath = `/data/listed-ipos/${year}/${csvFileName}`
     
     if (fs.existsSync(csvPath)) {
       csvContent = fs.readFileSync(csvPath, 'utf-8')
@@ -161,6 +168,14 @@ export async function POST(request: NextRequest) {
     csvContent = csvContent.trim() + '\n' + rowValues.join(',') + '\n'
     fs.writeFileSync(csvPath, csvContent)
 
+    // Update IPO status to 'listed' if it's not already
+    if (ipo.status !== 'listed') {
+      await supabase
+        .from('ipos')
+        .update({ status: 'listed' })
+        .eq('id', ipoId)
+    }
+
     return NextResponse.json({
       success: true,
       message: `Successfully migrated ${ipo.name} to listed IPOs`,
@@ -171,6 +186,8 @@ export async function POST(request: NextRequest) {
         listingGain: listingGain.toFixed(2),
         totalSubscription: totalSub ? totalSub.toFixed(2) : 'N/A',
         csvPath: csvPublicPath,
+        exchange: ipo.exchange,
+        isSME,
       },
     })
   } catch (error) {
