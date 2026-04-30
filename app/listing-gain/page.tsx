@@ -296,7 +296,7 @@ export default function ListingGainPage() {
               </div>
               <div>
                 <h3 className="font-heading text-lg font-bold text-ink">SME IPOs</h3>
-                <p className="text-sm text-ink3">{smeIPOs.length} IPOs analyzed</p>
+                <p className="text-sm text-ink3">{smeIPOs2026.length} IPOs analyzed</p>
               </div>
             </div>
             <div className="space-y-3">
@@ -309,13 +309,13 @@ export default function ListingGainPage() {
               <div className="flex items-center justify-between">
                 <span className="text-ink2">Success Rate</span>
                 <span className="font-semibold text-ink">
-                  {smeIPOs.length > 0 ? ((smeIPOs.filter(i => i.gainPct > 0).length / smeIPOs.length) * 100).toFixed(0) : 0}%
+                  {smeIPOs2026.length > 0 ? ((smeIPOs2026.filter(i => i.gainPct > 0).length / smeIPOs2026.length) * 100).toFixed(0) : 0}%
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-ink2">Best Performer</span>
                 <span className="text-emerald font-semibold">
-                  +{smeIPOs.length > 0 ? Math.max(...smeIPOs.map(i => i.gainPct)).toFixed(1) : 0}%
+                  +{smeIPOs2026.length > 0 ? Math.max(...smeIPOs2026.map(i => i.gainPct)).toFixed(1) : 0}%
                 </span>
               </div>
             </div>
