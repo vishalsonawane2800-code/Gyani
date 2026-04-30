@@ -54,7 +54,7 @@ export function Sidebar() {
             <span className="truncate">
               AI Accuracy &amp; Error
               <span className="ml-1 text-[11px] font-semibold text-ink3">
-                ({dashboardStats?.avgError ?? '6.8%'} avg err)
+                ({dashboardStats?.avgError ?? '2.1%'} avg err)
               </span>
             </span>
           </h3>

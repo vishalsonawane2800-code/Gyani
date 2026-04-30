@@ -56,9 +56,9 @@ function getZone(score: number): ZoneKey {
 }
 
 const DEFAULT_SIGNALS: SentimentSignal[] = [
-  { label: 'Negative returns', value: '2 of 3', tone: 'negative' },
-  { label: 'Retail apps', value: '-40%', tone: 'negative' },
-  { label: 'Avg listing gain', value: '+3.2%', tone: 'neutral' },
+  { label: 'Listing track record', value: '7/16 positive', tone: 'neutral' },
+  { label: 'Avg listing gain', value: '+4.8%', tone: 'positive' },
+  { label: 'Recent momentum', value: 'Mixed', tone: 'neutral' },
 ];
 
 // Gauge geometry: a 270deg arc (gap at the bottom).
@@ -71,8 +71,8 @@ const GAUGE_ARC_FRACTION = 0.75; // 270 of 360 deg
 const GAUGE_ARC_LEN = GAUGE_CIRC * GAUGE_ARC_FRACTION;
 
 export function MarketSentimentScore({
-  score = 38,
-  description = 'FY26 IPO returns disappoint — investors lost money in 2 out of 3 issues. Retail applications are down 40%. Exercise caution.',
+  score = 58,
+  description = 'Market showing mixed signals with 43.75% of recent IPOs trading positive. Retail participation moderating. Mid-cap space showing better absorption. Sector rotation ongoing.',
   signals = DEFAULT_SIGNALS,
   updatedAt = 'Updated today',
 }: MarketSentimentScoreProps) {
