@@ -88,7 +88,7 @@ async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
     .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
     .slice(0, limit);
 
-  return merged.map(toListedIpoCard);
+  return merged.map((row, idx) => toListedIpoCard(row, idx));
 }
 
 export default async function HomePage() {
