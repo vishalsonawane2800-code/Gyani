@@ -81,8 +81,22 @@ function toListedIpoCard(
 async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
   const years = await getMergedAvailableYearsWithSme();
   const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYearWithSme(y)));
-  const merged = rowsByYear
-    .flat()
+  
+  // Also fetch SME IPOs separately to include in recent listing data
+  const smeRowsByYear = await Promise.all(
+    years.map((y) => {
+      const smeIpos = getListedSmeIposByYear(y);
+      return smeIpos.map((ipo) => ({
+        ...ipo,
+        year: y,
+      }));
+    })
+  );
+
+  const merged = [
+    ...rowsByYear.flat(),
+    ...smeRowsByYear.flat(),
+  ]
     .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
     .slice(0, limit);
 
