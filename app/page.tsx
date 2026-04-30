@@ -53,14 +53,20 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
   const aiPredVal = row.aiPrediction;
   const aiPredStr = aiPredVal != null ? (aiPredVal > 0 ? '+' : '') + aiPredVal.toFixed(1) + '%' : '-';
   
+  // Check if this is an SME IPO using the __isSme flag set by the loader
+  const isSme = (row as any).__isSme === true;
+  const exchange = isSme ? ('NSE SME' as const) : ('Mainboard' as const);
+  const bgColor = isSme ? '#fdf2f8' : '#f0f9ff';
+  const fgColor = isSme ? '#7c2d5f' : '#0369a1';
+  
   return {
     id: index + 1,
     name: row.name,
     slug: row.slug,
     abbr,
-    bgColor: '#f0f9ff',
-    fgColor: '#0369a1',
-    exchange: 'NSE',
+    bgColor,
+    fgColor,
+    exchange,
     sector: row.sector || 'General',
     listDate: row.listingDate,
     issuePrice: row.issuePriceUpper ?? 0,

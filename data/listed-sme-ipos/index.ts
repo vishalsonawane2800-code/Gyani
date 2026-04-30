@@ -132,7 +132,7 @@ export function toListedIpoCard(record: ListedIpoRecord, year: number): ListedIP
     name: ipoName,
     slug,
     abbr,
-    exchange: 'NSE SME',
+    exchange: ('NSE SME' as const),
     sector,
     bgColor: '#fdf2f8', // Light pink for SME
     fgColor: '#7c2d5f', // Dark magenta for SME

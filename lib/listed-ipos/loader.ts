@@ -190,10 +190,13 @@ import {
 /**
  * Get merged listed IPOs (mainboard + SME) for a year from CSVs.
  * Merges both archives and sorts by listing date descending.
+ * 
+ * Marks SME records with an '__isSme: true' property so they can be
+ * identified downstream (e.g. in toListedIpoCard).
  */
-export function getMergedListedIposCsv(year: number): ListedIpoRecord[] {
+export function getMergedListedIposCsv(year: number): (ListedIpoRecord & { __isSme?: boolean })[] {
   const mainboard = getListedIposByYear(year);
-  const sme = getListedSmeIposByYear(year);
+  const sme = getListedSmeIposByYear(year).map(r => ({ ...r, __isSme: true }));
   const merged = [...mainboard, ...sme];
   merged.sort((a, b) => (a.listingDate > b.listingDate ? -1 : 1));
   return merged;
@@ -212,14 +215,17 @@ export function getAllMergedAvailableYears(): number[] {
 /**
  * Get merged listed IPOs from both CSV and DB sources (mainboard + SME).
  * CSV records take precedence over DB on slug conflict.
+ * 
+ * Preserves the '__isSme' flag from CSV records so downstream code
+ * (e.g. toListedIpoCard) can properly identify SME IPOs.
  */
 export async function getMergedListedIposByYearWithSme(
   year: number
-): Promise<ListedIpoRecord[]> {
+): Promise<(ListedIpoRecord & { __isSme?: boolean })[]> {
   const csvRows = getMergedListedIposCsv(year);
   const dbRows = await getListedIposFromDbByYear(year);
 
-  const bySlug = new Map<string, ListedIpoRecord>();
+  const bySlug = new Map<string, ListedIpoRecord & { __isSme?: boolean }>();
   for (const r of csvRows) {
     bySlug.set(r.slug, r);
   }
