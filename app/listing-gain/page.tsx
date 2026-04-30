@@ -2,7 +2,8 @@ import { Metadata } from "next"
 import { Header } from "@/components/header"
 import { Ticker } from "@/components/ticker"
 import { Footer } from "@/components/footer"
-import { listedIPOs, currentIPOs } from "@/lib/data"
+import { getAllMergedAvailableYears, getMergedListedIposCsv } from "@/lib/listed-ipos/loader"
+import { currentIPOs } from "@/lib/data"
 import { TrendingUp, TrendingDown, BarChart3, Calculator, ChevronRight, Target, Award, AlertCircle, ArrowUpRight, ArrowDownRight } from "lucide-react"
 import Link from "next/link"
 
@@ -62,20 +63,52 @@ const faqSchema = {
 }
 
 export default function ListingGainPage() {
+  // Fetch all listed IPOs from CSV (both mainboard and SME)
+  const years = getAllMergedAvailableYears();
+  const allListedIPOs = years.flatMap(y => getMergedListedIposCsv(y));
+  
+  // Convert CSV records to the shape we need (with exchange field set)
+  const listedIPOs = allListedIPOs.map((ipo, idx) => ({
+    id: idx + 1,
+    name: ipo.name,
+    abbr: ipo.name
+      .split(' ')
+      .map(w => w[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || 'IP',
+    bgColor: '#f0f9ff',
+    fgColor: '#0369a1',
+    exchange: 'NSE', // Default, will be overridden below
+    sector: ipo.sector || 'General',
+    listDate: ipo.listingDate,
+    issuePrice: ipo.issuePriceUpper ?? 0,
+    listPrice: ipo.listingPrice ?? 0,
+    gainPct: ipo.listingGainPct ?? 0,
+    subTimes: ipo.day3Sub ?? 0,
+    gmpPeak: '-',
+    gmpPredGain: null as any,
+    gmpErr: 0,
+    aiPred: ipo.aiPrediction ? `${ipo.aiPrediction.toFixed(1)}%` : '-',
+    aiErr: 0,
+    year: String(ipo.year),
+    slug: ipo.slug,
+  }));
+  
   // Calculate statistics from listed IPOs
   const positiveListings = listedIPOs.filter(ipo => ipo.gainPct > 0)
   const negativeListings = listedIPOs.filter(ipo => ipo.gainPct < 0)
-  const avgGain = listedIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / listedIPOs.length
-  const maxGain = Math.max(...listedIPOs.map(ipo => ipo.gainPct))
-  const maxLoss = Math.min(...listedIPOs.map(ipo => ipo.gainPct))
-  const successRate = (positiveListings.length / listedIPOs.length * 100).toFixed(0)
+  const avgGain = listedIPOs.length > 0 ? listedIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / listedIPOs.length : 0
+  const maxGain = listedIPOs.length > 0 ? Math.max(...listedIPOs.map(ipo => ipo.gainPct)) : 0
+  const maxLoss = listedIPOs.length > 0 ? Math.min(...listedIPOs.map(ipo => ipo.gainPct)) : 0
+  const successRate = listedIPOs.length > 0 ? (positiveListings.length / listedIPOs.length * 100).toFixed(0) : '0'
   
   // Top gainers and losers
   const topGainers = [...listedIPOs].sort((a, b) => b.gainPct - a.gainPct).slice(0, 5)
   const topLosers = [...listedIPOs].sort((a, b) => a.gainPct - b.gainPct).slice(0, 5)
   
   // Mainboard vs SME stats
-  const mainboardIPOs = listedIPOs.filter(ipo => ipo.exchange === "Mainboard")
+  const mainboardIPOs = listedIPOs.filter(ipo => !ipo.exchange.includes("SME"))
   const smeIPOs = listedIPOs.filter(ipo => ipo.exchange.includes("SME"))
   const mainboardAvg = mainboardIPOs.length > 0 ? mainboardIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / mainboardIPOs.length : 0
   const smeAvg = smeIPOs.length > 0 ? smeIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / smeIPOs.length : 0
