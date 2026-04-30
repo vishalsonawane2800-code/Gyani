@@ -137,81 +137,89 @@ export async function migrateIpoToListed(
   // for per-slug detail pages.
   const alreadyListed = ipo.status === 'listed'
   let csvAppendResult = null
-  
-  if (!alreadyListed) {
-    const { error: updateError } = await supabase
-      .from('ipos')
-      .update({ status: 'listed' })
-      .eq('id', id)
-    if (updateError) {
-      console.error('[migrate-listed] status update error:', updateError)
-      // Not fatal — the listed_ipos row exists; a later run will retry.
+ 
+  const { error: updateError } = await supabase
+    .from('ipos')
+    .update({ status: 'listed' })
+    .eq('id', id)
+  if (updateError) {
+    console.error('[migrate-listed] status update error:', updateError)
+  }
+
+  // Always upsert CSV row as well, including when already listed.
+  try {
+    const [{ data: financials }, { data: issueDetails }, { data: gmpHistory }, { data: subscriptionHistory }] =
+      await Promise.all([
+        supabase.from('ipo_financials').select('*').eq('ipo_id', id).maybeSingle(),
+        supabase.from('ipo_issue_details').select('*').eq('ipo_id', id).maybeSingle(),
+        supabase.from('gmp_history').select('*').eq('ipo_id', id).order('date', { ascending: false }),
+        supabase.from('subscription_history').select('*').eq('ipo_id', id).order('date', { ascending: false }).limit(1),
+      ])
+
+    const year = listedIpoData.year ? parseInt(listedIpoData.year, 10) : new Date().getFullYear()
+    const isSme = (ipo.exchange || '').toLowerCase().includes('sme')
+    const latestSub = subscriptionHistory?.[0] || null
+    const gmpPctSeries = (gmpHistory || []).map((g) => g.gmp_percent).filter((v) => typeof v === 'number')
+    const gmpSeries = (gmpHistory || []).map((g) => g.gmp).filter((v) => typeof v === 'number')
+    const gmpPrediction =
+      gmpPctSeries.length > 0
+        ? `${Math.round(Math.min(...gmpPctSeries))}-${Math.round(Math.max(...gmpPctSeries))}%`
+        : null
+
+    const csvRow: ListedIPORow = {
+      ipoName: ipo.company_name,
+      listingDate: ipo.listing_date || '',
+      sector: ipo.sector ?? null,
+      retailQuotaPct: issueDetails?.retail_quota_percent ?? ipo.retail_quota_pct ?? null,
+      issuePriceUpper: issuePrice ?? null,
+      listingPrice: listPrice,
+      closingPrice: closePrice ?? null,
+      listingGainPct: gainPct ?? null,
+      listingGainClosingPct: null,
+      dayChangeAfterListingPct: ipo.list_day_change_pct ?? null,
+      qibDay3Sub: latestSub?.qib ?? ipo.subscription_qib ?? null,
+      niiDay3Sub: latestSub?.nii ?? ipo.subscription_nii ?? null,
+      retailDay3Sub: latestSub?.retail ?? ipo.subscription_retail ?? null,
+      day1Sub: null,
+      day2Sub: null,
+      day3Sub: latestSub?.total ?? ipo.subscription_total ?? null,
+      gmpPctD1: gmpPctSeries[0] ?? null,
+      gmpPctD2: gmpPctSeries[1] ?? null,
+      gmpPctD3: gmpPctSeries[2] ?? null,
+      gmpPctD4: gmpPctSeries[3] ?? null,
+      gmpPctD5: gmpPctSeries[4] ?? null,
+      peerPE: financials?.roce ?? null,
+      debtEquity: financials?.debt_equity ?? null,
+      ipoPE: ipo.pe_ratio ?? null,
+      latestEbitda: financials?.ebitda_fy25 ?? null,
+      peVsSectorRatio: null,
+      nifty3DReturn: null,
+      nifty1WReturn: null,
+      nifty1MReturn: null,
+      niftyDuringIpoWindow: null,
+      marketSentimentScore: ipo.sentiment_score ?? null,
+      issueSize: ipo.issue_size_cr ?? null,
+      freshIssue: ipo.fresh_issue_cr ?? ipo.fresh_issue ?? null,
+      ofs: ipo.ofs_cr ?? ipo.ofs ?? null,
+      gmpDay1: gmpSeries[0] ?? ipo.gmp ?? null,
+      gmpDay2: gmpSeries[1] ?? null,
+      gmpDay3: gmpSeries[2] ?? null,
+      gmpDay4: gmpSeries[3] ?? null,
+      gmpDay5: gmpSeries[4] ?? null,
+      gmpPrediction,
+      aiPrediction: ipo.ai_prediction ?? null,
+      predictionAccuracy: gainPct != null && ipo.ai_prediction != null
+        ? Math.round(Math.abs(gainPct - ipo.ai_prediction) * 100) / 100
+        : null,
+      slug: ipo.slug ?? null,
     }
-    
-    // Append to CSV file (mainboard or SME based on exchange)
-    try {
-      const year = listedIpoData.year ? parseInt(listedIpoData.year, 10) : new Date().getFullYear()
-      const isSme = (ipo.exchange || '').toLowerCase().includes('sme')
-      
-      const csvRow: ListedIPORow = {
-        ipoName: ipo.company_name,
-        listingDate: ipo.listing_date || '',
-        sector: ipo.sector ?? null,
-        retailQuotaPct: ipo.retail_quota_pct ?? null,
-        issuePriceUpper: issuePrice ?? null,
-        listingPrice: listPrice,
-        closingPrice: closePrice ?? null,
-        listingGainPct: gainPct ?? null,
-        listingGainClosingPct: null, // To be filled manually
-        dayChangeAfterListingPct: ipo.list_day_change_pct ?? null,
-        qibDay3Sub: ipo.subscription_qib ?? null,
-        niiDay3Sub: ipo.subscription_nii ?? null,
-        retailDay3Sub: ipo.subscription_retail ?? null,
-        day1Sub: null, // Historical data not available
-        day2Sub: null,
-        day3Sub: ipo.subscription_total ?? null,
-        gmpPctD1: null, // GMP historical data
-        gmpPctD2: null,
-        gmpPctD3: null,
-        gmpPctD4: null,
-        gmpPctD5: null,
-        peerPE: null,
-        debtEquity: null,
-        ipoPE: ipo.pe_ratio ?? null,
-        latestEbitda: null,
-        peVsSectorRatio: null,
-        nifty3DReturn: null,
-        nifty1WReturn: null,
-        nifty1MReturn: null,
-        niftyDuringIpoWindow: null,
-        marketSentimentScore: ipo.sentiment_score ?? null,
-        issueSize: ipo.issue_size_cr ?? null,
-        freshIssue: ipo.fresh_issue_cr ?? null,
-        ofs: ipo.ofs_cr ?? null,
-        gmpDay1: ipo.gmp ?? null,
-        gmpDay2: null,
-        gmpDay3: null,
-        gmpDay4: null,
-        gmpDay5: null,
-        gmpPrediction: ipo.gmp != null ? `${Math.round(ipo.gmp * 0.95)}-${Math.round(ipo.gmp * 1.05)}` : null,
-        aiPrediction: ipo.ai_prediction ?? null,
-        predictionAccuracy: gainPct != null && ipo.ai_prediction != null
-          ? Math.round(Math.abs(gainPct - ipo.ai_prediction) * 100) / 100
-          : null,
-      }
-      
-      csvAppendResult = await appendToListedCsv(year, isSme, csvRow)
-      
-      if (!csvAppendResult.success) {
-        console.warn('[migrate-listed] CSV append warning:', csvAppendResult.message)
-        // Don't fail the migration if CSV append fails — the Supabase data is what matters
-      } else {
-        console.log('[migrate-listed] CSV append success:', csvAppendResult.message)
-      }
-    } catch (csvError) {
-      console.error('[migrate-listed] CSV append error:', csvError)
-      // Not fatal — don't fail the entire migration over CSV issues
+
+    csvAppendResult = await appendToListedCsv(year, isSme, csvRow)
+    if (!csvAppendResult.success) {
+      console.warn('[migrate-listed] CSV append warning:', csvAppendResult.message)
     }
+  } catch (csvError) {
+    console.error('[migrate-listed] CSV append error:', csvError)
   }
 
   // Revalidate archive pages so the newly migrated IPO appears immediately

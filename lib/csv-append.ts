@@ -54,6 +54,7 @@ export interface ListedIPORow {
   gmpPrediction: string | null
   aiPrediction: number | null
   predictionAccuracy: number | null
+  slug?: string | null
 }
 
 /**
@@ -69,8 +70,8 @@ function formatCsvValue(value: any): string {
   
   const str = String(value)
   
-  // If contains comma, quote it
-  if (str.includes(',')) {
+  // If contains comma/newline/quote, quote it
+  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
     return `"${str.replace(/"/g, '""')}"` // Escape internal quotes
   }
   
@@ -126,7 +127,8 @@ export function rowToCSVLine(row: ListedIPORow): string {
     row.predictionAccuracy,
   ]
   
-  return values.map(formatCsvValue).join(',')
+  const base = values.map(formatCsvValue).join(',')
+  return row.slug ? `${base},${formatCsvValue(row.slug)}` : base
 }
 
 /**
@@ -172,16 +174,28 @@ export async function appendToListedCsv(
     if (existsSync(csvPath)) {
       csvContent = await readFile(csvPath, 'utf-8')
       
-      // Check if IPO already exists (by name)
-      const lines = csvContent.split('\n').filter(l => l.trim())
-      const ipoAlreadyExists = lines.some(
-        line => line.includes(row.ipoName) && !line.startsWith('IPO Name')
+      // Update existing row (by IPO Name) instead of creating duplicates.
+      const lines = csvContent.split('\n')
+      const header = lines[0] || ''
+      const rowStartA = `${row.ipoName},`
+      const rowStartB = `"${row.ipoName.replace(/"/g, '""')}",`
+      const foundIdx = lines.findIndex(
+        (line, idx) =>
+          idx > 0 &&
+          (line.startsWith(rowStartA) || line.startsWith(rowStartB))
       )
-      
-      if (ipoAlreadyExists) {
+
+      if (foundIdx !== -1) {
+        const hasSlugCol = header.toLowerCase().includes(',slug')
+        const replacement = rowToCSVLine({
+          ...row,
+          slug: hasSlugCol ? row.slug ?? null : null,
+        })
+        lines[foundIdx] = replacement
+        await writeFile(csvPath, `${lines.join('\n').replace(/\n*$/, '\n')}`, 'utf-8')
         return {
-          success: false,
-          message: `IPO "${row.ipoName}" already exists in CSV for year ${year}`,
+          success: true,
+          message: `Updated existing CSV row for "${row.ipoName}" in ${isSme ? 'SME' : 'Mainboard'} ${year}`,
           filePath: csvPath,
         }
       }
@@ -191,7 +205,11 @@ export async function appendToListedCsv(
     }
     
     // Append new row
-    const csvLine = rowToCSVLine(row)
+    const hasSlugCol = csvContent.split('\n')[0]?.toLowerCase().includes(',slug')
+    const csvLine = rowToCSVLine({
+      ...row,
+      slug: hasSlugCol ? row.slug ?? null : null,
+    })
     const newContent = csvContent.endsWith('\n')
       ? `${csvContent}${csvLine}\n`
       : `${csvContent}\n${csvLine}\n`
