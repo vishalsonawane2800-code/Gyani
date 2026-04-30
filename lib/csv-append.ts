@@ -147,11 +147,12 @@ function getCsvHeader(): string {
 }
 
 /**
- * Append an IPO row to the CSV file
+ * Prepend an IPO row to the CSV file (inserts at top after header)
+ * This ensures newly listed IPOs appear first in the recently listed section.
  * 
  * @param year - Listing year (e.g., 2026)
  * @param isSme - true for SME IPO, false for Mainboard
- * @param row - The IPO row data to append
+ * @param row - The IPO row data to prepend
  * @returns Promise<{success: boolean, message: string, filePath?: string}>
  */
 export async function appendToListedCsv(
@@ -169,6 +170,7 @@ export async function appendToListedCsv(
     }
     
     let csvContent = ''
+    let header = ''
     
     // Read existing file if it exists
     if (existsSync(csvPath)) {
@@ -176,7 +178,7 @@ export async function appendToListedCsv(
       
       // Update existing row (by IPO Name) instead of creating duplicates.
       const lines = csvContent.split('\n')
-      const header = lines[0] || ''
+      header = lines[0] || ''
       const rowStartA = `${row.ipoName},`
       const rowStartB = `"${row.ipoName.replace(/"/g, '""')}",`
       const foundIdx = lines.findIndex(
@@ -201,32 +203,37 @@ export async function appendToListedCsv(
       }
     } else {
       // Create new file with header
-      csvContent = getCsvHeader()
+      header = getCsvHeader()
+      csvContent = header
     }
     
-    // Append new row
-    const hasSlugCol = csvContent.split('\n')[0]?.toLowerCase().includes(',slug')
+    // Prepend new row (insert after header)
+    const lines = csvContent.split('\n')
+    const headerLine = lines[0] || header
+    const dataLines = lines.slice(1).filter(l => l.trim())
+    
+    const hasSlugCol = headerLine.toLowerCase().includes(',slug')
     const csvLine = rowToCSVLine({
       ...row,
       slug: hasSlugCol ? row.slug ?? null : null,
     })
-    const newContent = csvContent.endsWith('\n')
-      ? `${csvContent}${csvLine}\n`
-      : `${csvContent}\n${csvLine}\n`
+    
+    // Reconstruct with new row at the top
+    const newContent = `${headerLine}\n${csvLine}\n${dataLines.join('\n').replace(/\n*$/, '')}\n`.replace(/\n+$/, '\n')
     
     // Write back to file
     await writeFile(csvPath, newContent, 'utf-8')
     
     return {
       success: true,
-      message: `Successfully appended "${row.ipoName}" to ${isSme ? 'SME' : 'Mainboard'} CSV for ${year}`,
+      message: `Successfully added "${row.ipoName}" to the top of ${isSme ? 'SME' : 'Mainboard'} CSV for ${year}`,
       filePath: csvPath,
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error)
     return {
       success: false,
-      message: `Failed to append to CSV: ${errorMessage}`,
+      message: `Failed to add to CSV: ${errorMessage}`,
     }
   }
 }
