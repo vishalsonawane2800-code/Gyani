@@ -67,35 +67,56 @@ export default function ListingGainPage() {
   const years = getAllMergedAvailableYears();
   const allListedIPOs = years.flatMap(y => getMergedListedIposCsv(y));
   
-  // Convert CSV records to the shape we need (with exchange field set)
-  const listedIPOs = allListedIPOs.map((ipo, idx) => ({
-    id: idx + 1,
-    name: ipo.name,
-    abbr: ipo.name
-      .split(' ')
-      .map(w => w[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'IP',
-    bgColor: '#f0f9ff',
-    fgColor: '#0369a1',
-    exchange: 'NSE', // Default, will be overridden below
-    sector: ipo.sector || 'General',
-    listDate: ipo.listingDate,
-    issuePrice: ipo.issuePriceUpper ?? 0,
-    listPrice: ipo.listingPrice ?? 0,
-    gainPct: ipo.listingGainPct ?? 0,
-    subTimes: ipo.day3Sub ?? 0,
-    gmpPeak: '-',
-    gmpPredGain: null as any,
-    gmpErr: 0,
-    aiPred: ipo.aiPrediction ? `${ipo.aiPrediction.toFixed(1)}%` : '-',
-    aiErr: 0,
-    year: String(ipo.year),
-    slug: ipo.slug,
-  }));
+  // Separate 2026 mainboard and SME data
+  const year2026Mainboard = allListedIPOs.filter(ipo => {
+    const year = new Date(ipo.listingDate).getFullYear();
+    return year === 2026 && !ipo.exchange?.includes('SME');
+  });
   
-  // Calculate statistics from listed IPOs
+  const year2026SME = allListedIPOs.filter(ipo => {
+    const year = new Date(ipo.listingDate).getFullYear();
+    return year === 2026 && ipo.exchange?.includes('SME');
+  });
+  
+  // Convert CSV records to the shape we need (with exchange field set)
+  const convertIPOs = (ipos: typeof allListedIPOs, exchange: string) =>
+    ipos.map((ipo, idx) => ({
+      id: idx + 1,
+      name: ipo.name,
+      abbr: ipo.name
+        .split(' ')
+        .map(w => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase() || 'IP',
+      bgColor: '#f0f9ff',
+      fgColor: '#0369a1',
+      exchange: exchange,
+      sector: ipo.sector || 'General',
+      listDate: ipo.listingDate,
+      issuePrice: ipo.issuePriceUpper ?? 0,
+      listPrice: ipo.listingPrice ?? 0,
+      gainPct: ipo.listingGainPct ?? 0,
+      subTimes: ipo.day3Sub ?? 0,
+      gmpPeak: '-',
+      gmpPredGain: null as any,
+      gmpErr: 0,
+      aiPred: ipo.aiPrediction ? `${ipo.aiPrediction.toFixed(1)}%` : '-',
+      aiErr: 0,
+      year: String(ipo.year),
+      slug: ipo.slug,
+    }));
+  
+  // All IPOs combined
+  const listedIPOs = convertIPOs([...year2026Mainboard, ...year2026SME], 'NSE');
+  
+  // Mainboard 2026 data
+  const mainboardIPOs2026 = convertIPOs(year2026Mainboard, 'NSE');
+  
+  // SME 2026 data
+  const smeIPOs2026 = convertIPOs(year2026SME, 'NSE SME');
+  
+  // Calculate statistics from all listed IPOs (combined)
   const positiveListings = listedIPOs.filter(ipo => ipo.gainPct > 0)
   const negativeListings = listedIPOs.filter(ipo => ipo.gainPct < 0)
   const avgGain = listedIPOs.length > 0 ? listedIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / listedIPOs.length : 0
@@ -103,15 +124,35 @@ export default function ListingGainPage() {
   const maxLoss = listedIPOs.length > 0 ? Math.min(...listedIPOs.map(ipo => ipo.gainPct)) : 0
   const successRate = listedIPOs.length > 0 ? (positiveListings.length / listedIPOs.length * 100).toFixed(0) : '0'
   
-  // Top gainers and losers
+  // Top gainers and losers overall
   const topGainers = [...listedIPOs].sort((a, b) => b.gainPct - a.gainPct).slice(0, 5)
   const topLosers = [...listedIPOs].sort((a, b) => a.gainPct - b.gainPct).slice(0, 5)
   
-  // Mainboard vs SME stats
-  const mainboardIPOs = listedIPOs.filter(ipo => !ipo.exchange.includes("SME"))
-  const smeIPOs = listedIPOs.filter(ipo => ipo.exchange.includes("SME"))
-  const mainboardAvg = mainboardIPOs.length > 0 ? mainboardIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / mainboardIPOs.length : 0
-  const smeAvg = smeIPOs.length > 0 ? smeIPOs.reduce((sum, ipo) => sum + ipo.gainPct, 0) / smeIPOs.length : 0
+  // Mainboard 2026 stats
+  const mainboardPositive = mainboardIPOs2026.filter(ipo => ipo.gainPct > 0)
+  const mainboardAvg = mainboardIPOs2026.length > 0 
+    ? mainboardIPOs2026.reduce((sum, ipo) => sum + ipo.gainPct, 0) / mainboardIPOs2026.length 
+    : 0
+  const mainboardMaxGain = mainboardIPOs2026.length > 0 
+    ? Math.max(...mainboardIPOs2026.map(ipo => ipo.gainPct)) 
+    : 0
+  const mainboardSuccessRate = mainboardIPOs2026.length > 0 
+    ? (mainboardPositive.length / mainboardIPOs2026.length * 100).toFixed(0) 
+    : '0'
+  const mainboardTopGainers = [...mainboardIPOs2026].sort((a, b) => b.gainPct - a.gainPct).slice(0, 5)
+  
+  // SME 2026 stats
+  const smePositive = smeIPOs2026.filter(ipo => ipo.gainPct > 0)
+  const smeAvg = smeIPOs2026.length > 0 
+    ? smeIPOs2026.reduce((sum, ipo) => sum + ipo.gainPct, 0) / smeIPOs2026.length 
+    : 0
+  const smeMaxGain = smeIPOs2026.length > 0 
+    ? Math.max(...smeIPOs2026.map(ipo => ipo.gainPct)) 
+    : 0
+  const smeSuccessRate = smeIPOs2026.length > 0 
+    ? (smePositive.length / smeIPOs2026.length * 100).toFixed(0) 
+    : '0'
+  const smeTopGainers = [...smeIPOs2026].sort((a, b) => b.gainPct - a.gainPct).slice(0, 5)
   
   // Expected listing for current IPOs
   const upcomingWithGMP = currentIPOs.filter(ipo => (ipo.status === 'allot' || ipo.status === 'listing') && ipo.gmp !== undefined)
@@ -435,6 +476,170 @@ export default function ListingGainPage() {
               </table>
             </div>
           </div>
+        </section>
+
+        {/* Mainboard 2026 Section */}
+        <section className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-primary-bg flex items-center justify-center">
+              <BarChart3 className="w-5 h-5 text-primary" />
+            </div>
+            <h2 className="font-heading text-xl md:text-2xl font-bold text-ink">Mainboard IPOs 2026</h2>
+          </div>
+          
+          {mainboardIPOs2026.length > 0 ? (
+            <>
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Average Gain</p>
+                  <p className={`text-2xl font-bold ${mainboardAvg >= 0 ? "text-emerald" : "text-destructive"}`}>
+                    {mainboardAvg >= 0 ? "+" : ""}{mainboardAvg.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Success Rate</p>
+                  <p className="text-2xl font-bold text-primary">{mainboardSuccessRate}%</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Total IPOs</p>
+                  <p className="text-2xl font-bold text-ink">{mainboardIPOs2026.length}</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Best Performer</p>
+                  <p className="text-2xl font-bold text-emerald">+{mainboardMaxGain.toFixed(1)}%</p>
+                </div>
+              </div>
+              
+              <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-secondary">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-medium text-ink2">IPO Name</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">Issue Price</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">List Price</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">Listing Gain</th>
+                        <th className="text-center p-4 text-sm font-medium text-ink2">List Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mainboardIPOs2026.map((ipo, idx) => (
+                        <tr key={ipo.slug} className={`${idx !== mainboardIPOs2026.length - 1 ? "border-b border-border" : ""} hover:bg-secondary/30 transition-colors`}>
+                          <td className="p-4">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
+                              {ipo.name}
+                            </Link>
+                            <p className="text-xs text-ink3">{ipo.sector}</p>
+                          </td>
+                          <td className="text-right p-4 text-ink">Rs {ipo.issuePrice}</td>
+                          <td className="text-right p-4 text-ink">Rs {ipo.listPrice}</td>
+                          <td className="text-right p-4">
+                            <div className="flex items-center justify-end gap-1">
+                              {ipo.gainPct >= 0 ? (
+                                <TrendingUp className="w-4 h-4 text-emerald" />
+                              ) : (
+                                <TrendingDown className="w-4 h-4 text-destructive" />
+                              )}
+                              <span className={`font-bold ${ipo.gainPct >= 0 ? "text-emerald" : "text-destructive"}`}>
+                                {ipo.gainPct >= 0 ? "+" : ""}{ipo.gainPct.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="text-center p-4 text-ink3 text-sm">{ipo.listDate}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <p className="text-ink2">No mainboard IPOs listed in 2026 yet</p>
+            </div>
+          )}
+        </section>
+
+        {/* SME 2026 Section */}
+        <section className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-gold-bg flex items-center justify-center">
+              <Target className="w-5 h-5 text-gold" />
+            </div>
+            <h2 className="font-heading text-xl md:text-2xl font-bold text-ink">SME IPOs 2026</h2>
+          </div>
+          
+          {smeIPOs2026.length > 0 ? (
+            <>
+              <div className="grid md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Average Gain</p>
+                  <p className={`text-2xl font-bold ${smeAvg >= 0 ? "text-emerald" : "text-destructive"}`}>
+                    {smeAvg >= 0 ? "+" : ""}{smeAvg.toFixed(1)}%
+                  </p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Success Rate</p>
+                  <p className="text-2xl font-bold text-primary">{smeSuccessRate}%</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Total IPOs</p>
+                  <p className="text-2xl font-bold text-ink">{smeIPOs2026.length}</p>
+                </div>
+                <div className="bg-card rounded-xl border border-border p-4">
+                  <p className="text-sm text-ink2 mb-1">Best Performer</p>
+                  <p className="text-2xl font-bold text-emerald">+{smeMaxGain.toFixed(1)}%</p>
+                </div>
+              </div>
+              
+              <div className="bg-card rounded-2xl border border-border overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-secondary">
+                      <tr>
+                        <th className="text-left p-4 text-sm font-medium text-ink2">IPO Name</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">Issue Price</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">List Price</th>
+                        <th className="text-right p-4 text-sm font-medium text-ink2">Listing Gain</th>
+                        <th className="text-center p-4 text-sm font-medium text-ink2">List Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {smeIPOs2026.map((ipo, idx) => (
+                        <tr key={ipo.slug} className={`${idx !== smeIPOs2026.length - 1 ? "border-b border-border" : ""} hover:bg-secondary/30 transition-colors`}>
+                          <td className="p-4">
+                            <Link href={`/ipo/${ipo.slug}`} className="font-medium text-ink hover:text-primary transition-colors">
+                              {ipo.name}
+                            </Link>
+                            <p className="text-xs text-ink3">{ipo.sector}</p>
+                          </td>
+                          <td className="text-right p-4 text-ink">Rs {ipo.issuePrice}</td>
+                          <td className="text-right p-4 text-ink">Rs {ipo.listPrice}</td>
+                          <td className="text-right p-4">
+                            <div className="flex items-center justify-end gap-1">
+                              {ipo.gainPct >= 0 ? (
+                                <TrendingUp className="w-4 h-4 text-emerald" />
+                              ) : (
+                                <TrendingDown className="w-4 h-4 text-destructive" />
+                              )}
+                              <span className={`font-bold ${ipo.gainPct >= 0 ? "text-emerald" : "text-destructive"}`}>
+                                {ipo.gainPct >= 0 ? "+" : ""}{ipo.gainPct.toFixed(1)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="text-center p-4 text-ink3 text-sm">{ipo.listDate}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="bg-card rounded-2xl border border-border p-8 text-center">
+              <p className="text-ink2">No SME IPOs listed in 2026 yet</p>
+            </div>
+          )}
         </section>
 
         {/* Important Note */}
