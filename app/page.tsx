@@ -11,6 +11,7 @@ import { Sidebar } from '@/components/home/sidebar';
 import { CommunityReviews } from '@/components/home/community-reviews';
 import { getCurrentIPOs, getIPOStats, getMarketNews } from '@/lib/supabase/queries';
 import { getMergedAvailableYearsWithSme, getMergedListedIposByYearWithSme } from '@/lib/listed-ipos/loader';
+import { getListedSmeIposByYear } from '@/lib/listed-sme-ipos/loader';
 import type { ListedIPO } from '@/lib/data';
 import type { NewsSectionItem } from '@/components/home/news-section';
 import Link from 'next/link';
@@ -42,7 +43,11 @@ const allPages = [
   { href: '/disclaimer', label: 'Disclaimer' },
 ];
 
-function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYearWithSme>>[number], index: number): ListedIPO {
+function toListedIpoCard(
+  row: Awaited<ReturnType<typeof getMergedListedIposByYearWithSme>>[number],
+  index: number,
+  isSme: boolean
+): ListedIPO {
   const abbr = row.name
     .split(' ')
     .map((w) => w[0])
@@ -51,8 +56,7 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
     .toUpperCase() || 'IP';
 
   const aiPredVal = row.aiPrediction;
-  const aiPredStr = aiPredVal != null ? (aiPredVal > 0 ? '+' : '') + aiPredVal.toFixed(1) + '%' : '-';
-  
+
   return {
     id: index + 1,
     name: row.name,
@@ -60,7 +64,7 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
     abbr,
     bgColor: '#f0f9ff',
     fgColor: '#0369a1',
-    exchange: 'NSE',
+    exchange: isSme ? 'NSE SME' : 'NSE',
     sector: row.sector || 'General',
     listDate: row.listingDate,
     issuePrice: row.issuePriceUpper ?? 0,
@@ -68,7 +72,7 @@ function toListedIpoCard(row: Awaited<ReturnType<typeof getMergedListedIposByYea
     gainPct: row.listingGainPct ?? 0,
     subTimes: row.day3Sub ?? 0,
     gmpPeak: '-',
-    aiPred: aiPredStr,
+    aiPred: aiPredVal != null ? aiPredVal.toFixed(1) : '-',
     aiErr: 0,
     year: String(row.year),
   };
@@ -82,7 +86,15 @@ async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
     .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
     .slice(0, limit);
 
-  return merged.map(toListedIpoCard);
+  const smeSlugByYear = new Map<number, Set<string>>();
+  for (const y of years) {
+    smeSlugByYear.set(y, new Set(getListedSmeIposByYear(y).map((r) => r.slug)));
+  }
+
+  return merged.map((row, idx) => {
+    const isSme = smeSlugByYear.get(row.year)?.has(row.slug) ?? false;
+    return toListedIpoCard(row, idx, isSme);
+  });
 }
 
 export default async function HomePage() {
