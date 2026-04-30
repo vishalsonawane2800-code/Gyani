@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import fs from 'fs'
-import path from 'path'
+import { appendToListedCsv } from '@/lib/csv-append'
+import type { ListedIPORow } from '@/lib/csv-append'
 
 /**
  * POST /api/admin/migrate-to-listed
  * Migrates an IPO from current to listed and populates CSV with historical data
+ * Routes to correct CSV file based on exchange (SME or Mainboard)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -77,96 +78,66 @@ export async function POST(request: NextRequest) {
       predictionAccuracy = ((listingGain - ipo.ai_prediction) / Math.abs(ipo.ai_prediction)) * 100
     }
 
-    // Prepare CSV row
-    const year = new Date(listingDate).getFullYear()
-    
-    // Determine CSV file name based on exchange type
-    // SME exchanges: 'BSE SME', 'NSE SME'
-    // Mainboard: 'Mainboard', 'REIT'
+    // Determine if SME or Mainboard
     const isSME = ipo.exchange?.includes('SME') ?? false
-    const csvFileName = isSME ? 'SME.csv' : 'Mainboard.csv'
-    
-    const csvPath = path.join(process.cwd(), 'public', 'data', 'listed-ipos', String(year), csvFileName)
-    const csvDir = path.dirname(csvPath)
+    const year = new Date(listingDate).getFullYear()
 
-    // Create directory if needed
-    if (!fs.existsSync(csvDir)) {
-      fs.mkdirSync(csvDir, { recursive: true })
+    // Build the ListedIPORow for CSV append
+    const csvRow: ListedIPORow = {
+      ipoName: ipo.name,
+      listingDate: listingDate,
+      sector: ipo.sector || null,
+      retailQuotaPct: issueDetails?.retail_quota_percent ?? null,
+      issuePriceUpper: issuePrice,
+      listingPrice: listingPrice,
+      closingPrice: null,
+      listingGainPct: listingGain,
+      listingGainClosingPct: null,
+      dayChangeAfterListingPct: null,
+      qibDay3Sub: finalSub?.qib ?? null,
+      niiDay3Sub: finalSub?.nii ?? null,
+      retailDay3Sub: finalSub?.retail ?? null,
+      day1Sub: null,
+      day2Sub: null,
+      day3Sub: finalSub?.total ?? null,
+      gmpPctD1: gmpHistory?.[gmpHistory.length - 1]?.gmp_percent ?? null,
+      gmpPctD2: gmpHistory?.[gmpHistory.length - 2]?.gmp_percent ?? null,
+      gmpPctD3: gmpHistory?.[gmpHistory.length - 3]?.gmp_percent ?? null,
+      gmpPctD4: gmpHistory?.[gmpHistory.length - 4]?.gmp_percent ?? null,
+      gmpPctD5: gmpHistory?.[gmpHistory.length - 5]?.gmp_percent ?? null,
+      peerPE: financials?.roce ?? null,
+      debtEquity: financials?.debt_equity ?? null,
+      ipoPE: ipo.pe_ratio ?? null,
+      latestEbitda: financials?.ebitda_fy25 ?? null,
+      peVsSectorRatio: null,
+      nifty3DReturn: null,
+      nifty1WReturn: null,
+      nifty1MReturn: null,
+      niftyDuringIpoWindow: null,
+      marketSentimentScore: ipo.sentiment_score ?? null,
+      issueSize: ipo.issue_size_cr ?? null,
+      freshIssue: ipo.fresh_issue ?? null,
+      ofs: ipo.ofs ?? null,
+      gmpDay1: gmpHistory?.[gmpHistory.length - 1]?.gmp ?? null,
+      gmpDay2: gmpHistory?.[gmpHistory.length - 2]?.gmp ?? null,
+      gmpDay3: gmpHistory?.[gmpHistory.length - 3]?.gmp ?? null,
+      gmpDay4: gmpHistory?.[gmpHistory.length - 4]?.gmp ?? null,
+      gmpDay5: gmpHistory?.[gmpHistory.length - 5]?.gmp ?? null,
+      gmpPrediction: gmpPredictionStr,
+      aiPrediction: ipo.ai_prediction ?? null,
+      predictionAccuracy: predictionAccuracy,
+      slug: ipo.slug,
     }
 
-    // Read existing CSV or template
-    let csvContent = ''
-    const csvPublicPath = `/data/listed-ipos/${year}/${csvFileName}`
-    
-    if (fs.existsSync(csvPath)) {
-      csvContent = fs.readFileSync(csvPath, 'utf-8')
-    } else {
-      const templatePath = path.join(process.cwd(), 'public', 'data', 'listed-ipos', '_template.csv')
-      if (fs.existsSync(templatePath)) {
-        csvContent = fs.readFileSync(templatePath, 'utf-8') + '\n'
-      } else {
-        return NextResponse.json({ error: 'CSV template not found' }, { status: 500 })
-      }
+    // Append to CSV file (routes based on SME or Mainboard)
+    const csvAppendResult = await appendToListedCsv(year, isSME, csvRow)
+
+    if (!csvAppendResult.success) {
+      return NextResponse.json(
+        { error: 'CSV append failed', details: csvAppendResult.message },
+        { status: 500 }
+      )
     }
-
-    const csvRow = {
-      'IPO Name': ipo.name,
-      'Listing Date': listingDate,
-      'Sector': ipo.sector || '-',
-      'Retail Quota (%)': issueDetails?.retail_quota_percent ?? '-',
-      'Issue Price Upper': issuePrice.toFixed(2),
-      'Listing Price (Rs)': listingPrice.toFixed(2),
-      'Closing Price NSE': '-',
-      'Listing Gain (%)': listingGain.toFixed(2),
-      'Listing gains on closing Basis (%)': '-',
-      'Day Change After Listing (%)': '-',
-      'QIB Day3 Subscription': finalSub?.qib ?? '-',
-      'HNI/NII Day3 Subscription': finalSub?.nii ?? '-',
-      'Retail Day3 Subscription': finalSub?.retail ?? '-',
-      'Day1 Subscription': '-',
-      'Day2 Subscription': '-',
-      'Day3 Subscription': finalSub?.total ?? '-',
-      'GMP percentage D1': gmpHistory?.[gmpHistory.length - 1]?.gmp_percent ?? '-',
-      'GMP percentage D2': gmpHistory?.[gmpHistory.length - 2]?.gmp_percent ?? '-',
-      'GMP percentage D3': gmpHistory?.[gmpHistory.length - 3]?.gmp_percent ?? '-',
-      'GMP percentage D4': gmpHistory?.[gmpHistory.length - 4]?.gmp_percent ?? '-',
-      'GMP percentage D5': gmpHistory?.[gmpHistory.length - 5]?.gmp_percent ?? '-',
-      'Peer PE': financials?.roce ?? '-',
-      'Debt/Equity': financials?.debt_equity ?? '-',
-      'IPO PE': ipo.pe_ratio ?? '-',
-      'Latest EBIDTA': financials?.ebitda_fy25 ?? '-',
-      'PE vs Sector Ratio': '-',
-      'Nifty 3D Return (%)': '-',
-      'Nifty 1W Return (%)': '-',
-      'Nifty 1M Return (%)': '-',
-      'Nifty During IPO Window (%)': '-',
-      'Market Sentiment Score': ipo.sentiment_score ?? '-',
-      'Issue Size (Rs Cr)': ipo.issue_size_cr?.toFixed(2) ?? '-',
-      'Fresh Issue': ipo.fresh_issue ?? '-',
-      'OFS': ipo.ofs ?? '-',
-      'GMP Day-1': gmpHistory?.[gmpHistory.length - 1]?.gmp ?? '-',
-      'GMP Day-2': gmpHistory?.[gmpHistory.length - 2]?.gmp ?? '-',
-      'GMP Day-3': gmpHistory?.[gmpHistory.length - 3]?.gmp ?? '-',
-      'GMP Day-4': gmpHistory?.[gmpHistory.length - 4]?.gmp ?? '-',
-      'GMP Day-5': gmpHistory?.[gmpHistory.length - 5]?.gmp ?? '-',
-      'GMP Prediction': gmpPredictionStr,
-      'IPOGyani AI Prediction': ipo.ai_prediction?.toFixed(2) ?? '-',
-      'Prediction Accuracy (%)': predictionAccuracy ? predictionAccuracy.toFixed(2) : '-',
-    }
-
-    // Build row
-    const headers = csvContent.split('\n')[0].split(',')
-    const rowValues = headers.map(h => {
-      const val = csvRow[h as keyof typeof csvRow] ?? ''
-      if (typeof val === 'string' && (val.includes(',') || val.includes('"'))) {
-        return `"${val.replace(/"/g, '""')}"`
-      }
-      return val
-    })
-
-    // Append to CSV
-    csvContent = csvContent.trim() + '\n' + rowValues.join(',') + '\n'
-    fs.writeFileSync(csvPath, csvContent)
 
     // Update IPO status to 'listed' if it's not already
     if (ipo.status !== 'listed') {
@@ -185,9 +156,10 @@ export async function POST(request: NextRequest) {
         listingPrice,
         listingGain: listingGain.toFixed(2),
         totalSubscription: totalSub ? totalSub.toFixed(2) : 'N/A',
-        csvPath: csvPublicPath,
+        csvPath: csvAppendResult.filePath,
         exchange: ipo.exchange,
         isSME,
+        message: csvAppendResult.message,
       },
     })
   } catch (error) {
