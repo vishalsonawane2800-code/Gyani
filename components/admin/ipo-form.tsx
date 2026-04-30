@@ -326,6 +326,44 @@ export function IPOForm({ initialData, isEditing = false }: IPOFormProps) {
         throw new Error(errorData.error || 'Failed to save IPO')
       }
 
+      // Auto-migrate to listed IPOs if listing price is set and status is 'listing' or 'listed'
+      if (
+        isEditing &&
+        formData.listing_price &&
+        formData.listing_price > 0 &&
+        (formData.status === 'listing' || formData.status === 'listed') &&
+        formData.listing_date &&
+        initialData?.id
+      ) {
+        try {
+          console.log('[v0] Triggering auto-migration to listed IPOs...')
+          const migrationResponse = await authFetch('/api/admin/migrate-to-listed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ipoId: initialData.id,
+              listingDate: formData.listing_date,
+              listingPrice: formData.listing_price,
+            }),
+          })
+
+          if (migrationResponse.ok) {
+            const migrationData = await migrationResponse.json()
+            toast.success(`IPO migrated to listed: ${migrationData.data?.csvPath}`)
+          } else {
+            const errorData = await migrationResponse.json()
+            console.error('[v0] Migration failed:', errorData)
+            toast.error(`Migration warning: ${errorData.error || 'Failed to migrate to listed'}`)
+          }
+        } catch (migrationError) {
+          console.error('[v0] Migration error:', migrationError)
+          // Don't throw - the IPO was saved successfully even if migration failed
+          toast.warning('IPO saved, but migration to listed failed. You can retry from admin dashboard.')
+        }
+      }
+
       toast.success(isEditing ? 'IPO updated successfully' : 'IPO created successfully')
       router.push('/admin')
       router.refresh()
