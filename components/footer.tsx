@@ -6,8 +6,8 @@ const footerLinks = {
     { label: 'Listed IPO 2026', href: '/listed' },
     { label: 'Listed IPO 2025', href: '/listed?year=2025' },
     { label: 'Listed IPO 2024', href: '/listed?year=2024' },
-    { label: 'SME IPO List', href: '/listed?exchange=sme' },
-    { label: 'Mainboard IPO List', href: '/listed?exchange=mainboard' },
+    { label: 'SME IPO List', href: '/sme' },
+    { label: 'Mainboard IPO List', href: '/mainboard' },
   ],
   tools: [
     { label: 'GMP Tracker', href: '/#gmp' },
