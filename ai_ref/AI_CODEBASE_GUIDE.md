@@ -1,4 +1,4 @@
-# IPOGyani - AI Agent Codebase Guide
+# IPOGyani - AI Agent Codebase Guide.
 
 > **Last Updated:** 2026-04-18
 > **Purpose:** Single source of truth for AI agents (and humans) working on
