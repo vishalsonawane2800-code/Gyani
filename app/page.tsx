@@ -45,7 +45,6 @@ const allPages = [
 
 function toListedIpoCard(
   row: Awaited<ReturnType<typeof getMergedListedIposByYearWithSme>>[number],
-  index: number,
   isSme: boolean
 ): ListedIPO {
   const abbr = row.name
@@ -58,13 +57,13 @@ function toListedIpoCard(
   const aiPredVal = row.aiPrediction;
 
   return {
-    id: index + 1,
+    id: Math.abs(parseInt(row.slug.split('').map((c, i) => c.charCodeAt(0) * (i + 1)).join('').slice(0, 9), 10) || 1),
     name: row.name,
     slug: row.slug,
     abbr,
     bgColor: '#f0f9ff',
     fgColor: '#0369a1',
-    exchange: isSme ? 'NSE SME' : 'NSE',
+    exchange: isSme ? 'NSE SME' : 'Mainboard',
     sector: row.sector || 'General',
     listDate: row.listingDate,
     issuePrice: row.issuePriceUpper ?? 0,
@@ -82,26 +81,29 @@ async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
   const years = await getMergedAvailableYearsWithSme();
   const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYearWithSme(y)));
 
-  // Defensive dedupe by (year, slug). The merged loader already dedupes
-  // between CSV and DB by slug per year, but we also have multiple years
-  // flattening together here. (year, slug) is the canonical detail-page key.
-  const seen = new Set<string>();
-  const merged = rowsByYear
-    .flat()
-    .filter((row) => {
-      const key = `${row.year}::${row.slug}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort(
-      (a, b) =>
-        new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime()
-    )
-    .slice(0, limit);
+  const allRows = rowsByYear.flat();
+
+  // Sort by listing date descending
+  allRows.sort(
+    (a, b) =>
+      new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime()
+  );
+
+  // Dedupe by (year, slug) - keep first occurrence
+  const seenKeys = new Set<string>();
+  const deduped: typeof allRows = [];
+  for (const row of allRows) {
+    const key = `${row.year}::${row.slug}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      deduped.push(row);
+    }
+  }
+
+  // Take only the limit
+  const merged = deduped.slice(0, limit);
 
   // Determine SME status by checking which slugs come from the SME CSV
-  // for each year. Used so the UI tab filter shows them under "SME IPOs".
   const smeSlugByYear = new Map<number, Set<string>>();
   for (const y of years) {
     smeSlugByYear.set(
@@ -110,9 +112,9 @@ async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
     );
   }
 
-  return merged.map((row, idx) => {
+  return merged.map((row) => {
     const isSme = smeSlugByYear.get(row.year)?.has(row.slug) ?? false;
-    return toListedIpoCard(row, idx, isSme);
+    return toListedIpoCard(row, isSme);
   });
 }
 
