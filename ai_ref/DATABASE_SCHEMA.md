@@ -325,6 +325,13 @@ PK: `id SERIAL`. Unique: `(slug)`.
 > The `listed_ipos` table is the DB half of the listed-IPO archive. The
 > CSV half lives in `data/listed-ipos/<year>.csv` with ~40 enrichment
 > columns. Pages merge them via `lib/listed-ipos/loader.ts`.
+>
+> **CSV-first merging strategy:**
+> 1. CSV files are read at request/build time and cached in module scope
+> 2. `getMergedListedIposByYear(year)` unions CSV rows + DB rows
+> 3. CSV takes precedence on slug collision (CSV is the source of truth)
+> 4. Pages use ISR (`revalidate = 3600`) to pick up new DB rows within 1 hour
+> 5. Manual migrations call `revalidatePath()` so archive updates immediately
 
 ### 2.10 `expert_reviews`
 
