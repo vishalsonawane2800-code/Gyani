@@ -81,28 +81,33 @@ function toListedIpoCard(
 async function getRecentListedIpos(limit = 10): Promise<ListedIPO[]> {
   const years = await getMergedAvailableYearsWithSme();
   const rowsByYear = await Promise.all(years.map((y) => getMergedListedIposByYearWithSme(y)));
-  
-  // Also fetch SME IPOs separately to include in recent listing data
-  const smeRowsByYear = await Promise.all(
-    years.map((y) => {
-      const smeIpos = getListedSmeIposByYear(y);
-      return smeIpos.map((ipo) => ({
-        ...ipo,
-        year: y,
-      }));
-    })
-  );
 
-  const merged = [
-    ...rowsByYear.flat(),
-    ...smeRowsByYear.flat(),
-  ]
-    .sort((a, b) => new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime())
+  // Defensive dedupe by (year, slug). The merged loader already dedupes
+  // between CSV and DB by slug per year, but we also have multiple years
+  // flattening together here. (year, slug) is the canonical detail-page key.
+  const seen = new Set<string>();
+  const merged = rowsByYear
+    .flat()
+    .filter((row) => {
+      const key = `${row.year}::${row.slug}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.listingDate).getTime() - new Date(a.listingDate).getTime()
+    )
     .slice(0, limit);
 
+  // Determine SME status by checking which slugs come from the SME CSV
+  // for each year. Used so the UI tab filter shows them under "SME IPOs".
   const smeSlugByYear = new Map<number, Set<string>>();
   for (const y of years) {
-    smeSlugByYear.set(y, new Set(getListedSmeIposByYear(y).map((r) => r.slug)));
+    smeSlugByYear.set(
+      y,
+      new Set(getListedSmeIposByYear(y).map((r) => r.slug))
+    );
   }
 
   return merged.map((row, idx) => {
