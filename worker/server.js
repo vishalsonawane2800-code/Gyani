@@ -2,18 +2,21 @@ import express from "express";
 
 const app = express();
 
-// Health check (Railway test)
+// 🔥 Important: log startup
+console.log("Starting server...");
+
+// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Debug route (verify deployment)
+// Debug route
 app.get("/test", (req, res) => {
   console.log("TEST route hit");
   res.json({ working: true });
 });
 
-// Cron endpoint (no scraper for now)
+// Cron endpoint
 app.post("/api/cron/dispatch", (req, res) => {
   console.log("Cron endpoint HIT");
 
@@ -23,9 +26,14 @@ app.post("/api/cron/dispatch", (req, res) => {
   });
 });
 
-// 🔥 CRITICAL: Railway binding
-const PORT = process.env.PORT || 3000;
+// 🔥 VERY IMPORTANT FIX
+const PORT = process.env.PORT;
+
+if (!PORT) {
+  console.error("PORT not defined!");
+  process.exit(1);
+}
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Worker running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
