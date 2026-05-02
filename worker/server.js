@@ -1,13 +1,4 @@
 import express from "express";
-import { scrapeIPOWatchGMP } from "./scrapers/ipowatch.js";
-
-process.on("uncaughtException", (err) => {
-  console.error("UNCAUGHT EXCEPTION:", err);
-});
-
-process.on("unhandledRejection", (err) => {
-  console.error("UNHANDLED REJECTION:", err);
-});
 
 const app = express();
 
@@ -15,27 +6,18 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.get("/test", (req, res) => {
+  console.log("TEST route hit");
+  res.json({ working: true });
+});
+
 app.post("/api/cron/dispatch", (req, res) => {
   console.log("Cron endpoint HIT");
 
-  try {
-    res.json({ success: true, message: "Job started" });
-  } catch (e) {
-    console.error("Response error:", e);
-    return;
-  }
-
-  setTimeout(async () => {
-    try {
-      console.log("Starting scraper...");
-
-      const gmp = await scrapeIPOWatchGMP("Mehul Telecom");
-
-      console.log("GMP Result:", gmp);
-    } catch (e) {
-      console.error("SCRAPER ERROR:", e);
-    }
-  }, 0);
+  res.json({
+    success: true,
+    message: "NO SCRAPER MODE",
+  });
 });
 
 const PORT = process.env.PORT || 3000;
