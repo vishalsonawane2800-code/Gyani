@@ -1,13 +1,4 @@
-Now I understand the real problems:
-1. Table 0 (live) doesn't have Mehul/Sai — they're closed IPOs.
-2. `Sai Parenteral's` uses a **typographic apostrophe `'`** — normalization fails.
-3. `Om Power Transmission → 175` is wrong: 175 is issue price, real GMP is 2. The fallback body-text scan grabs the FIRST `₹` near the name from Table 1, which is IPO Price.
-4. Table 1 has column order `[Name, IPO Price, IPO GMP, Listing Price]` — we need to parse it too for historical/closed IPOs.
-5. Spec needs range support (`₹10-12`), `+10`, and `{ source, gmp }` return shape.
-6. Multi-source (IPOji, InvestorGain) needed.
 
-Let me build the robust fix.
-Action: file_editor create /app/worker/scrapers/_utils.js --file-text "// worker/scrapers/_utils.js
 //
 // Shared primitives for the worker's GMP scrapers. Ported and hardened from
 // lib/scraper/{base,name-match,parsers}.ts with improvements tuned for the
