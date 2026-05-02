@@ -406,7 +406,48 @@ if you see that error, you're calling admin code from a client component.
 
 ---
 
-## 10. API Endpoints (summary)
+## 10. Key Code Patterns & Conventions
+
+### 10.1 Recently Listed IPOs (Homepage)
+
+The `ListedIPOs` component in `components/home/listed-ipos.tsx` displays the **6 most recent listed IPOs**
+(all exchanges mixed: mainboard, SME, REIT, InvIT). This component:
+
+- Is a **client component** that accepts an array of `ListedIPO` objects
+- Sorts IPOs by `listDate` descending to get the most recent
+- Renders a clean table with columns: IPO Name, List Date, Issue Price, List Price, Listing Gain, AI Prediction, Subscription
+- Links each IPO to the detail page at `/listed/[year]/[slug]`
+- Uses dynamic year calculation from `ipo.year` or parsing `listDate`
+
+**Data flow:**
+1. `app/page.tsx` (RSC) calls `getRecentListedIpos(10)` → fetches from CSV + DB
+2. Transforms rows to `ListedIPO[]` via `toListedIpoCard()` helper
+3. Passes to `<ListedIPOs listedIpos={listedIpos} />` component
+4. Component renders table + links
+
+**Important:** The component previously had SME/Mainboard tabs. Those **have been removed** to show a unified "recent" view without category filtering.
+
+### 10.2 Listed IPO Archive Page (`/listed`)
+
+The `app/listed/page.tsx` page displays:
+
+1. **Archive by Year grid** — clickable cards for each year (2024, 2025, 2026, etc.) with stats (total IPOs, positive count, avg gain)
+2. **SEO content** — educational copy about the archive + popular search terms
+
+**Data flow:**
+1. Calls `getAllMergedAvailableYears()` from `lib/listed-ipos/loader.ts`
+2. For each year, computes stats via `getMergedListedIposCsv(year)`
+3. Renders year cards linking to `/listed/[year]`
+
+**Key:** The page does **NOT** directly display the IPO table. That lives at `/listed/[year]` (see DATABASE_SCHEMA.md §4.2).
+
+### 10.3 Listed IPO Detail Pages (`/listed/[year]/[slug]`)
+
+Handled by `app/listed/[year]/[slug]/page.tsx` (ISR-enabled). Fetches merged CSV + DB data via `getMergedListedIpo(year, slug)`.
+
+---
+
+## 11. API Endpoints (summary)
 
 All paths below are route handlers. Auth column = `admin` means the
 request must carry a valid JWT (enforced by `middleware.ts`); `cron`

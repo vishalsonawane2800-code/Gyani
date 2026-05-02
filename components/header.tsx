@@ -24,6 +24,8 @@ const navLinks: NavLink[] = [
   // cross-page navigation.
   { href: '/live', label: 'Live IPOs', badgeColor: 'bg-emerald-500', liveBadge: true },
   { href: '/listed', label: 'Listed' },
+  { href: '/mainboard', label: 'Mainboard' },
+  { href: '/sme', label: 'SME' },
   { href: '/upcoming', label: 'Upcoming' },
   { href: '/gmp', label: 'GMP Today' },
   { href: '/subscription', label: 'Subscription' },
