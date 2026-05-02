@@ -1,6 +1,7 @@
 {
   "name": "ipogyani-worker",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "start": "node server.js"
@@ -9,5 +10,8 @@
     "express": "^4.18.2",
     "cheerio": "^1.0.0",
     "@supabase/supabase-js": "^2.0.0"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
