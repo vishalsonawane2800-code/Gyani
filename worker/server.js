@@ -1,26 +1,35 @@
 import express from "express";
+import { scrapeIPOWatchGMP } from "./scrapers/ipowatch.js";
 
 const app = express();
 
+// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Cron endpoint
 app.post("/api/cron/dispatch", async (req, res) => {
-  // respond immediately
+  // Respond immediately (IMPORTANT)
   res.json({ success: true, message: "Job started" });
 
-  // run scraper in background
+  // Run scraper in background
   (async () => {
     try {
+      console.log("Starting scraper...");
+
       const gmp = await scrapeIPOWatchGMP("Mehul Telecom");
-      console.log("GMP:", gmp);
+
+      console.log("GMP Result:", gmp);
     } catch (e) {
       console.error("Scraper error:", e);
     }
   })();
 });
 
-app.listen(3000, () => {
-  console.log("Worker running on port 3000");
+// 🔥 Railway-compatible port
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Worker running on port ${PORT}`);
 });
