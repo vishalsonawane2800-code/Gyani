@@ -1,13 +1,13 @@
 {
   "name": "ipogyani-worker",
   "version": "1.0.0",
-  "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "cheerio": "^1.0.0"
+    "cheerio": "^1.0.0",
+    "@supabase/supabase-js": "^2.0.0"
   }
 }
