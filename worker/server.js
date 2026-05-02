@@ -1,29 +1,35 @@
-import express from "express";
+import express from 'express';
 
 const app = express();
 
-console.log("Starting server...");
+app.use(express.json());
+
+console.log('Starting server...');
 
 // Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok" });
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
-// Debug
-app.get("/test", (req, res) => {
-  console.log("TEST route hit");
+// Smoke test
+app.get('/test', (req, res) => {
+  console.log('TEST route hit');
   res.json({ working: true });
 });
 
-// Cron
-app.post("/api/cron/dispatch", (req, res) => {
-  console.log("Cron endpoint HIT");
-  res.json({ success: true, message: "NO SCRAPER MODE" });
+// Cron dispatch — called by Cloudflare Worker
+app.post('/api/cron/dispatch', (req, res) => {
+  const { job } = req.body ?? {};
+  console.log('Cron endpoint HIT, job:', job);
+  res.json({ success: true, job: job ?? null, message: 'Dispatch received' });
 });
 
-// 🚀 Correct binding
-const PORT = process.env.PORT || 3000;
+// 404 fallback
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not found', path: req.path });
+});
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ Worker running on port ${PORT}`);
 });
