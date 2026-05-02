@@ -1,5 +1,4 @@
-Now the new robust `ipowatch.js` (per spec) that scans **both** IPOWatch tables and returns `{source, gmp}`:
-Action: file_editor create /app/worker/scrapers/ipowatch.js --file-text "// worker/scrapers/ipowatch.js
+
 //
 // IPOWatch GMP scraper — multi-table aware.
 //
@@ -190,4 +189,3 @@ export async function scrapeIPOWatchGMP(ipo) {
   }
 }
 "
-Observation: Create successful: /app/worker/scrapers/ipowatch.js
