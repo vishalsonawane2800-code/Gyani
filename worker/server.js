@@ -1,21 +1,30 @@
 import express from "express";
 import { scrapeIPOWatchGMP } from "./scrapers/ipowatch.js";
 
+process.on("uncaughtException", (err) => {
+  console.error("UNCAUGHT EXCEPTION:", err);
+});
+
+process.on("unhandledRejection", (err) => {
+  console.error("UNHANDLED REJECTION:", err);
+});
+
 const app = express();
 
-// Health check
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Cron endpoint
-app.post("/api/cron/dispatch", async (req, res) => {
+app.post("/api/cron/dispatch", (req, res) => {
   console.log("Cron endpoint HIT");
 
-  // 🔥 IMPORTANT: respond immediately (avoid Cloudflare timeout)
-  res.json({ success: true, message: "Job started" });
+  try {
+    res.json({ success: true, message: "Job started" });
+  } catch (e) {
+    console.error("Response error:", e);
+    return;
+  }
 
-  // Run scraper in background
   setTimeout(async () => {
     try {
       console.log("Starting scraper...");
@@ -29,7 +38,6 @@ app.post("/api/cron/dispatch", async (req, res) => {
   }, 0);
 });
 
-// Railway-compatible port
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
