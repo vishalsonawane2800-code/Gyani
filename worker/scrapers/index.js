@@ -1,8 +1,7 @@
-// worker/scrapers/index.js
-
 import { scrapeIPOWatchGMP } from "./ipowatch.js";
 import { scrapeIpojiGMP } from "./ipoji.js";
 import { scrapeInvestorGainGMP } from "./investorgain.js";
+import { supabase } from "../lib/supabase.js";
 
 const SOURCES = ["ipowatch", "ipoji", "investorgain"];
 
@@ -45,16 +44,33 @@ export async function scrapeAllGMP(ipo) {
 
   console.log("[AGGREGATOR] FINAL GMP:", gmp);
 
-  return {
+  const result = {
     company_name,
     sources,
     gmp,
     gmp_count: valid.length,
     scraped_at: new Date().toISOString(),
   };
+
+  // 🔥 SAVE TO SUPABASE
+  try {
+    const { error } = await supabase
+      .from("ipo_gmp")
+      .upsert(result, { onConflict: "company_name" });
+
+    if (error) {
+      console.error("[SUPABASE ERROR]", error);
+    } else {
+      console.log("[SUPABASE] Saved:", company_name);
+    }
+  } catch (err) {
+    console.error("[SUPABASE EXCEPTION]", err);
+  }
+
+  return result;
 }
 
-// optional re-export (useful for testing/debug)
+// optional exports for debugging
 export {
   scrapeIPOWatchGMP,
   scrapeIpojiGMP,
