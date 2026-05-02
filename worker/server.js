@@ -6,9 +6,14 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+import { scrapeIPOWatchGMP } from "./scrapers/ipowatch.js";
+
 app.post("/api/cron/dispatch", async (req, res) => {
-  console.log("Cron triggered");
-  res.json({ success: true });
+  const gmp = await scrapeIPOWatchGMP("Mehul Telecom");
+
+  console.log("GMP:", gmp);
+
+  res.json({ success: true, gmp });
 });
 
 app.listen(3000, () => {
