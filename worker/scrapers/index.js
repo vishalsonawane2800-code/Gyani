@@ -1,12 +1,8 @@
 import { supabase } from "../lib/supabase.js";
-import { scrapeIPOWatchGMP } from "./ipowatch.js";
-import { scrapeIpojiGMP } from "./ipoji.js";
-import { scrapeInvestorGainGMP } from "./investorgain.js";
-
-function average(arr) {
-  if (!arr.length) return null;
-  return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
-}
+import { scrape as scrapeIpowatch } from "./ipowatch.js";
+import { scrape as scrapeIpoji } from "./ipoji.js";
+import { scrape as scrapeInvestorgain } from "./investorgain.js";
+import { average } from "./_utils.js";
 
 export async function scrapeAllGMP(company_name) {
   if (!company_name || typeof company_name !== "string") {
@@ -14,14 +10,15 @@ export async function scrapeAllGMP(company_name) {
   }
 
   const results = await Promise.all([
-    scrapeIPOWatchGMP({ company_name }),
-    scrapeIpojiGMP({ company_name }),
-    scrapeInvestorGainGMP({ company_name }),
+    scrapeIpowatch(company_name),
+    scrapeIpoji(company_name),
+    scrapeInvestorgain(company_name),
   ]);
 
   const sources = results.map((r) => ({
     source: r.source,
     gmp: r.gmp,
+    ...(r.error ? { error: r.error } : {}),
   }));
 
   const validGmps = sources
@@ -42,9 +39,22 @@ export async function scrapeAllGMP(company_name) {
 }
 
 export async function saveGMP(result) {
+  if (!result || !result.company_name) {
+    throw new Error("invalid result payload");
+  }
+
   const { data, error } = await supabase
     .from("ipo_gmp")
-    .upsert(result, { onConflict: "company_name" })
+    .upsert(
+      {
+        company_name: result.company_name,
+        sources: result.sources,
+        gmp: result.gmp,
+        gmp_count: result.gmp_count,
+        scraped_at: result.scraped_at,
+      },
+      { onConflict: "company_name" }
+    )
     .select()
     .single();
 
