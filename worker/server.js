@@ -6,7 +6,7 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-app.post("/cron/dispatch", async (req, res) => {
+app.post("/api/cron/dispatch", async (req, res) => {
   console.log("Cron triggered");
   res.json({ success: true });
 });
