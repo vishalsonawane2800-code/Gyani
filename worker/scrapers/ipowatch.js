@@ -1,29 +1,31 @@
-import * as cheerio from "cheerio";
+import express from "express";
 
-export async function scrapeIPOWatchGMP(companyName) {
-  try {
-    const url = "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/";
+const app = express();
 
-    const res = await fetch(url);
-    const html = await res.text();
-    const $ = cheerio.load(html);
+// 🔥 Basic health check
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
 
-    let gmp = null;
+// 🔥 Direct test route (to verify Railway is serving latest code)
+app.get("/test", (req, res) => {
+  console.log("TEST route hit");
+  res.json({ working: true });
+});
 
-    $("table tr").each((_, row) => {
-      const text = $(row).text().toLowerCase();
+// 🔥 Cron endpoint (NO scraper for now — isolate issue)
+app.post("/api/cron/dispatch", (req, res) => {
+  console.log("Cron endpoint HIT");
 
-      if (text.includes(companyName.toLowerCase())) {
-        const match = text.match(/₹\s*(\d+)/);
-        if (match) {
-          gmp = parseInt(match[1]);
-        }
-      }
-    });
+  res.json({
+    success: true,
+    message: "NO SCRAPER MODE",
+  });
+});
 
-    return gmp;
-  } catch (e) {
-    console.error("GMP scrape error:", e);
-    return null;
-  }
-}
+// 🔥 Required for Railway
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Worker running on port ${PORT}`);
+});
