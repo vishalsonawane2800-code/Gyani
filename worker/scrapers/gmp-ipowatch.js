@@ -1,299 +1,185 @@
-// scrapers/gmp-ipowatch.js
-//
-// IPOWatch GMP scraper — converted from TypeScript for Railway (Node 22 ESM).
-// All helper logic (fetchWithRetry, namesMatch, normalizeName, parseGMP)
-// is inlined here so there are zero local import dependencies.
-//
-// Contract: NEVER throws. Returns null on any failure.
+// worker/scrapers/ipowatch.js
 
-import * as cheerio from "cheerio"
+import * as cheerio from "cheerio";
+import {
+  DESKTOP_HEADERS,
+  fetchWithRetry,
+  namesMatch,
+  normalizeName,
+  parseGMP,
+} from "./_utils.js";
 
-// ─────────────────────────────────────────────────────────────
-// INLINED: lib/scraper/base  →  fetchWithRetry
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Fetch with up to `retries` attempts and exponential back-off.
- * Uses the native Node 22 fetch — no node-fetch needed.
- */
-async function fetchWithRetry(url, options = {}, retries = 3, baseDelayMs = 600) {
-  let lastError
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      const res = await fetch(url, options)
-      if (res.ok) return res
-      // Treat 429 / 5xx as retriable
-      if (res.status < 500 && res.status !== 429) return res
-      lastError = new Error(`HTTP ${res.status}`)
-    } catch (err) {
-      lastError = err
-    }
-    if (attempt < retries) {
-      const delay = baseDelayMs * 2 ** (attempt - 1)
-      await new Promise(r => setTimeout(r, delay))
-    }
-  }
-  throw lastError
-}
-
-// ─────────────────────────────────────────────────────────────
-// INLINED: lib/scraper/name-match  →  normalizeName, namesMatch
-// ─────────────────────────────────────────────────────────────
-
-const STRIP_WORDS = /\b(limited|ltd|pvt|private|the|ipo|sme|and|&)\b/gi
-const STRIP_PUNCT = /[^a-z0-9\s]/g
-
-/**
- * Lower-case, strip common suffix words and punctuation, collapse spaces.
- */
-function normalizeName(raw) {
-  if (!raw || typeof raw !== "string") return ""
-  return raw
-    .toLowerCase()
-    .replace(STRIP_WORDS, " ")
-    .replace(STRIP_PUNCT, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-/**
- * Returns true if either normalized name starts-with the other.
- * Handles "Sai Parenterals" matching "Sai Parenterals Limited IPO".
- */
-function namesMatch(a, b) {
-  if (!a || !b) return false
-  return a.startsWith(b) || b.startsWith(a)
-}
-
-// ─────────────────────────────────────────────────────────────
-// INLINED: lib/scraper/parsers  →  parseGMP
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Parse a GMP string like "₹12", "+₹5", "₹-3", "₹-", "-", "N/A", "0".
- *
- * Options:
- *   dashAsZero  — treat "₹-" / "–" / "—" / "-" / "N/A" as 0
- *                 (IPOWatch shows dash when GMP is explicitly zero today)
- *
- * Returns a number or null.
- */
-function parseGMP(raw, { dashAsZero = false } = {}) {
-  if (raw === null || raw === undefined) return null
-  const s = String(raw).replace(/\s+/g, "").trim()
-  if (!s) return null
-
-  // Explicit zero markers
-  const isDash = /^[₹]?[-–—]+$/.test(s) || /^n\/a$/i.test(s)
-  if (isDash) return dashAsZero ? 0 : null
-
-  // Strip currency symbol and parse
-  const cleaned = s.replace(/₹/g, "").replace(/,/g, "")
-  const num = parseFloat(cleaned)
-  return isNaN(num) ? null : num
-}
-
-// ─────────────────────────────────────────────────────────────
-// SCRAPER CORE  (converted from TypeScript, logic unchanged)
-// ─────────────────────────────────────────────────────────────
-
+const SOURCE = "ipowatch";
 const BASE_LIST_URL =
-  "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/"
+  "https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/";
 
-const DESKTOP_HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept:
-    "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.9",
+function log(...args) {
+  console.log(`[${SOURCE}]`, ...args);
+}
+function warn(...args) {
+  console.warn(`[${SOURCE}]`, ...args);
 }
 
-/**
- * From a list of header labels, return the index of the GMP column.
- * Actively rejects headers that contain "listing", "issue price", etc.
- */
+// ---------------- COLUMN HELPERS ----------------
+
 function findGMPColumnIndex(headers) {
   for (let i = 0; i < headers.length; i++) {
-    const h = headers[i].toLowerCase().trim()
-    if (!/\bgmp\b/.test(h)) continue
-    if (/listing|issue\s*price|ipo\s*price|lot|subscri|percent|%/.test(h)) continue
-    return i
+    const h = headers[i].toLowerCase().trim();
+
+    if (!h.includes("gmp")) continue;
+
+    if (
+      h.includes("listing") ||
+      h.includes("issue") ||
+      h.includes("price") ||
+      h.includes("lot") ||
+      h.includes("%")
+    ) {
+      continue;
+    }
+
+    return i;
   }
-  return -1
+  return -1;
 }
 
-/** Column containing the IPO/company name. Falls back to 0. */
 function findNameColumnIndex(headers) {
   for (let i = 0; i < headers.length; i++) {
-    const h = headers[i].toLowerCase()
-    if (/ipo\s*name|company|name/.test(h)) return i
-  }
-  return 0
-}
-
-/**
- * Parse the "current live GMP" first table on the IPOWatch listing page.
- */
-function parseListingTable($, targetName) {
-  const firstTable = $("table").first()
-  if (!firstTable.length) return null
-
-  const headerCells = firstTable.find("tr").first().find("th, td")
-  const headers = []
-  headerCells.each((_, el) => {
-    headers.push($(el).text().replace(/\s+/g, " ").trim())
-  })
-
-  const gmpIdx = findGMPColumnIndex(headers)
-  if (gmpIdx < 0) {
-    console.warn("[gmp-ipowatch] GMP column not found in headers:", headers)
-    return null
-  }
-
-  const nameIdx = findNameColumnIndex(headers)
-  const normalizedTarget = normalizeName(targetName)
-  let foundGMP = null
-
-  firstTable.find("tr").each((rowIdx, tr) => {
-    if (rowIdx === 0) return   // skip header row
-    if (foundGMP !== null) return
-
-    const cells = []
-    $(tr).find("td, th").each((_, el) => {
-      cells.push($(el).text().replace(/\s+/g, " ").trim())
-    })
-    if (cells.length <= Math.max(gmpIdx, nameIdx)) return
-
-    const rowName = normalizeName(cells[nameIdx])
-    if (!namesMatch(normalizedTarget, rowName)) return
-
-    // Row matched — a "₹-" here means explicitly zero today
-    const gmp = parseGMP(cells[gmpIdx], { dashAsZero: true })
-    if (gmp !== null) foundGMP = gmp
-  })
-
-  return foundGMP
-}
-
-/**
- * Fallback for when IPOWatch renders cards/lists instead of a table.
- */
-function parseListingFallback($, targetName) {
-  const targetNorm = normalizeName(targetName)
-  if (!targetNorm) return null
-
-  let found = null
-
-  // 1) Anchor text match
-  $("a").each((_, a) => {
-    if (found !== null) return
-    const anchorText = $(a).text().replace(/\s+/g, " ").trim()
-    if (!anchorText) return
-    if (!namesMatch(targetNorm, normalizeName(anchorText))) return
-
-    const container = $(a).closest("tr, li, article, p, div")
-    const raw = container.length
-      ? container.text().replace(/\s+/g, " ").trim()
-      : anchorText
-    if (!raw) return
-
-    const firstCurrency = raw.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
-    if (!firstCurrency) return
-    const parsed = parseGMP(firstCurrency, { dashAsZero: true })
-    if (parsed !== null) found = parsed
-  })
-
-  if (found !== null) return found
-
-  // 2) Last-resort text-window scan
-  const body = $("body").text().replace(/\s+/g, " ").trim()
-  if (!body) return null
-
-  const targetTokens = targetNorm.split(" ").slice(0, 2).join("\\s+")
-  if (!targetTokens) return null
-
-  const windowRe = new RegExp(`(${targetTokens}.{0,220})`, "i")
-  const windowMatch = body.match(windowRe)?.[1]
-  if (!windowMatch) return null
-
-  const firstCurrency = windowMatch.match(/₹\s*(?:[-–—]|\d+(?:\.\d+)?)/i)?.[0]
-  if (!firstCurrency) return null
-  return parseGMP(firstCurrency, { dashAsZero: true })
-}
-
-/**
- * Admin-provided per-IPO article page scraper.
- */
-function parseArticlePage($) {
-  let gmp = null
-
-  $("table").each((_, tbl) => {
-    if (gmp !== null) return
-    const $tbl = $(tbl)
-    const headers = []
-    $tbl.find("tr").first().find("th, td").each((_, el) => {
-      headers.push($(el).text().replace(/\s+/g, " ").trim())
-    })
-
-    const gmpIdx = findGMPColumnIndex(headers)
-    if (gmpIdx < 0) return
-
-    $tbl.find("tr").each((rowIdx, tr) => {
-      if (rowIdx === 0) return
-      if (gmp !== null) return
-      const cells = []
-      $(tr).find("td, th").each((_, el) => {
-        cells.push($(el).text().replace(/\s+/g, " ").trim())
-      })
-      if (cells.length <= gmpIdx) return
-      const parsed = parseGMP(cells[gmpIdx], { dashAsZero: true })
-      if (parsed !== null) gmp = parsed
-    })
-  })
-
-  return gmp
-}
-
-// ─────────────────────────────────────────────────────────────
-// PUBLIC EXPORT
-// ─────────────────────────────────────────────────────────────
-
-/**
- * Scrape GMP from IPOWatch.
- *
- * @param {object} ipo
- * @param {string} ipo.company_name
- * @param {string|null} [ipo.ipowatch_gmp_url]  — admin override article URL
- * @returns {Promise<{gmp: number}|null>}
- */
-export async function scrapeIPOWatchGMP(ipo) {
-  try {
-    const url = ipo.ipowatch_gmp_url || BASE_LIST_URL
-
-    const response = await fetchWithRetry(url, { headers: DESKTOP_HEADERS })
-    if (!response.ok) {
-      console.warn(`[gmp-ipowatch] HTTP ${response.status} for ${url}`)
-      return null
+    const h = headers[i].toLowerCase();
+    if (h.includes("name") || h.includes("company") || h.includes("ipo")) {
+      return i;
     }
+  }
+  return 0;
+}
 
-    const html = await response.text()
-    const $ = cheerio.load(html)
+function rowCells($, tr) {
+  const cells = [];
+  $(tr)
+    .find("td, th")
+    .each((_, el) => {
+      cells.push($(el).text().replace(/\s+/g, " ").trim());
+    });
+  return cells;
+}
 
-    const gmp = ipo.ipowatch_gmp_url
-      ? parseArticlePage($)
-      : parseListingTable($, ipo.company_name) ??
-        parseListingFallback($, ipo.company_name)
+// ---------------- TABLE PARSER ----------------
+
+function parseTable($, $tbl, companyName, label) {
+  if (!$tbl || !$tbl.length) return null;
+
+  const headers = rowCells($, $tbl.find("tr").first());
+  const gmpIdx = findGMPColumnIndex(headers);
+
+  if (gmpIdx < 0) {
+    warn(label, "GMP column not found", headers);
+    return null;
+  }
+
+  const nameIdx = findNameColumnIndex(headers);
+  const target = normalizeName(companyName);
+
+  let found = null;
+
+  $tbl.find("tr").each((i, tr) => {
+    if (i === 0 || found !== null) return;
+
+    const cells = rowCells($, tr);
+    if (cells.length <= Math.max(gmpIdx, nameIdx)) return;
+
+    const rowName = normalizeName(cells[nameIdx]);
+
+    if (!namesMatch(target, rowName)) return;
+
+    const gmp = parseGMP(cells[gmpIdx], { dashAsZero: true });
 
     if (gmp !== null) {
-      console.log(`[gmp-ipowatch] "${ipo.company_name}" → GMP: ${gmp}`)
-    } else {
-      console.warn(`[gmp-ipowatch] "${ipo.company_name}" → no GMP found`)
+      found = gmp;
+      log(label, "MATCH:", cells);
+      log(label, "GMP:", gmp);
+    }
+  });
+
+  return found;
+}
+
+// ---------------- ARTICLE PARSER ----------------
+
+function parseArticlePage($) {
+  let gmp = null;
+
+  $("table").each((_, tbl) => {
+    if (gmp !== null) return;
+
+    const $tbl = $(tbl);
+    const headers = rowCells($, $tbl.find("tr").first());
+    const gmpIdx = findGMPColumnIndex(headers);
+
+    if (gmpIdx < 0) return;
+
+    $tbl.find("tr").each((i, tr) => {
+      if (i === 0 || gmp !== null) return;
+
+      const cells = rowCells($, tr);
+      if (cells.length <= gmpIdx) return;
+
+      const val = parseGMP(cells[gmpIdx], { dashAsZero: true });
+
+      if (val !== null) gmp = val;
+    });
+  });
+
+  return gmp;
+}
+
+// ---------------- MAIN FUNCTION ----------------
+
+export async function scrapeIPOWatchGMP(ipo) {
+  const company = ipo?.company_name || "";
+  const url = ipo?.ipowatch_gmp_url || BASE_LIST_URL;
+
+  try {
+    const res = await fetchWithRetry(url, {
+      headers: DESKTOP_HEADERS,
+    });
+
+    if (!res.ok) {
+      warn("HTTP error", res.status);
+      return { source: SOURCE, gmp: null };
     }
 
-    return gmp !== null ? { gmp } : null
-  } catch (error) {
-    console.error("[gmp-ipowatch] scrapeIPOWatchGMP error:", error)
-    return null
+    const html = await res.text();
+    log("Fetched HTML length:", html.length);
+
+    const $ = cheerio.load(html);
+
+    let gmp = null;
+
+    if (ipo?.ipowatch_gmp_url) {
+      gmp = parseArticlePage($);
+    } else {
+      const tables = $("table").toArray();
+
+      log("Tables found:", tables.length);
+
+      // Table 0 (live)
+      gmp = parseTable($, $(tables[0]), company, "table0");
+
+      // Table 1 (listed)
+      if (gmp === null && tables[1]) {
+        gmp = parseTable($, $(tables[1]), company, "table1");
+      }
+    }
+
+    if (gmp === null) {
+      warn("No GMP found for:", company);
+    } else {
+      log("FINAL GMP:", company, gmp);
+    }
+
+    return { source: SOURCE, gmp };
+  } catch (err) {
+    console.error("[ipowatch] ERROR:", err);
+    return { source: SOURCE, gmp: null };
   }
 }
