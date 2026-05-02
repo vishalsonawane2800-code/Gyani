@@ -1,78 +1,59 @@
+import { supabase } from "../lib/supabase.js";
 import { scrapeIPOWatchGMP } from "./ipowatch.js";
 import { scrapeIpojiGMP } from "./ipoji.js";
 import { scrapeInvestorGainGMP } from "./investorgain.js";
-import { supabase } from "../lib/supabase.js";
 
-const SOURCES = ["ipowatch", "ipoji", "investorgain"];
+function average(arr) {
+  if (!arr.length) return null;
+  return Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 100) / 100;
+}
 
-export async function scrapeAllGMP(ipo) {
-  const company_name = ipo?.company_name || "";
-
-  console.log("[AGGREGATOR] Starting:", company_name);
-
-  const tasks = [
-    scrapeIPOWatchGMP(ipo),
-    scrapeIpojiGMP(ipo),
-    scrapeInvestorGainGMP(ipo),
-  ];
-
-  const results = await Promise.allSettled(tasks);
-
-  const sources = results.map((res, i) => {
-    const fallback = { source: SOURCES[i], gmp: null };
-
-    if (res.status === "fulfilled" && res.value) {
-      console.log(`[AGGREGATOR] ${res.value.source}:`, res.value.gmp);
-      return res.value;
-    }
-
-    console.warn(`[AGGREGATOR] ${SOURCES[i]} failed`);
-    return fallback;
-  });
-
-  // extract valid GMP values
-  const valid = sources
-    .map((s) => s.gmp)
-    .filter((v) => v !== null && Number.isFinite(v));
-
-  let gmp = null;
-
-  if (valid.length > 0) {
-    const avg = valid.reduce((a, b) => a + b, 0) / valid.length;
-    gmp = Math.round(avg * 100) / 100;
+export async function scrapeAllGMP(company_name) {
+  if (!company_name || typeof company_name !== "string") {
+    throw new Error("company_name is required");
   }
 
-  console.log("[AGGREGATOR] FINAL GMP:", gmp);
+  const results = await Promise.all([
+    scrapeIPOWatchGMP({ company_name }),
+    scrapeIpojiGMP({ company_name }),
+    scrapeInvestorGainGMP({ company_name }),
+  ]);
 
-  const result = {
+  const sources = results.map((r) => ({
+    source: r.source,
+    gmp: r.gmp,
+  }));
+
+  const validGmps = sources
+    .map((s) => s.gmp)
+    .filter((g) => typeof g === "number" && Number.isFinite(g));
+
+  const gmp = average(validGmps);
+  const gmp_count = validGmps.length;
+  const scraped_at = new Date().toISOString();
+
+  return {
     company_name,
     sources,
     gmp,
-    gmp_count: valid.length,
-    scraped_at: new Date().toISOString(),
+    gmp_count,
+    scraped_at,
   };
-
-  // 🔥 SAVE TO SUPABASE
-  try {
-    const { error } = await supabase
-      .from("ipo_gmp")
-      .upsert(result, { onConflict: "company_name" });
-
-    if (error) {
-      console.error("[SUPABASE ERROR]", error);
-    } else {
-      console.log("[SUPABASE] Saved:", company_name);
-    }
-  } catch (err) {
-    console.error("[SUPABASE EXCEPTION]", err);
-  }
-
-  return result;
 }
 
-// optional exports for debugging
-export {
-  scrapeIPOWatchGMP,
-  scrapeIpojiGMP,
-  scrapeInvestorGainGMP,
-};
+export async function saveGMP(result) {
+  const { data, error } = await supabase
+    .from("ipo_gmp")
+    .upsert(result, { onConflict: "company_name" })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function scrapeAndSaveGMP(company_name) {
+  const result = await scrapeAllGMP(company_name);
+  const saved = await saveGMP(result);
+  return { result, saved };
+}
