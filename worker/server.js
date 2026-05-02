@@ -10,11 +10,13 @@ app.get("/health", (req, res) => {
 
 // Cron endpoint
 app.post("/api/cron/dispatch", async (req, res) => {
-  // Respond immediately (IMPORTANT)
+  console.log("Cron endpoint HIT");
+
+  // 🔥 IMPORTANT: respond immediately (avoid Cloudflare timeout)
   res.json({ success: true, message: "Job started" });
 
   // Run scraper in background
-  (async () => {
+  setTimeout(async () => {
     try {
       console.log("Starting scraper...");
 
@@ -22,12 +24,12 @@ app.post("/api/cron/dispatch", async (req, res) => {
 
       console.log("GMP Result:", gmp);
     } catch (e) {
-      console.error("Scraper error:", e);
+      console.error("SCRAPER ERROR:", e);
     }
-  })();
+  }, 0);
 });
 
-// 🔥 Railway-compatible port
+// Railway-compatible port
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
