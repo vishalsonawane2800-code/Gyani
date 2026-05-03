@@ -14,7 +14,22 @@ const CRON_SECRET = process.env.CRON_SECRET;
 const BULK_CONCURRENCY = Number(process.env.BULK_CONCURRENCY || 3);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
+
+app.use((err, _req, res, next) => {
+  if (err && err.type === "entity.parse.failed") {
+    return res.status(400).json({ error: "invalid_json" });
+  }
+  return next(err);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason && reason.message ? reason.message : reason);
+});
+
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err && err.message ? err.message : err);
+});
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -210,6 +225,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
   const companies = body.companies;
   const startedAt = Date.now();
 
+  console.log("[cron/dispatch] job=" + String(job || "none") +
+    (company_name ? " company=" + company_name : "") +
+    (Array.isArray(companies) ? " companies=" + companies.length : ""));
+
   try {
     if (job === "gmp" && company_name) {
       const { data: ipoConfig, error } = await supabase
@@ -338,4 +357,7 @@ app.post("/api/cron/dispatch", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log("IPOgyani worker running on port " + PORT);
+  console.log("[startup] supabase=" + (supabase ? "ok" : "missing") +
+    " cron_secret=" + (CRON_SECRET ? "set" : "unset") +
+    " bulk_concurrency=" + BULK_CONCURRENCY);
 });
