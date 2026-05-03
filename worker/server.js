@@ -111,7 +111,8 @@ app.get("/api/subscription", async (_req, res) => {
   }
 });
 
-const IPO_COLS = "company_name, ipowatch_gmp_url, ipoji_gmp_url, investorgain_gmp_url";
+const IPO_COLS = "company_name, ipowatch_gmp_url, ipoji_gmp_url, investorgain_gmp_url, chittorgarh_url, investorgain_sub_url";
+
 
 async function processIPO(ipoConfig) {
   const sources = await scrapeAllSources(ipoConfig);
