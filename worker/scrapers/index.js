@@ -4,15 +4,27 @@ import { scrape as scrapeIpoji } from "./ipoji.js";
 import { scrape as scrapeInvestorgain } from "./investorgain.js";
 import { average } from "./_utils.js";
 
+async function loadSourceUrls(company_name) {
+  const { data, error } = await supabase
+    .from("ipo_sources")
+    .select("ipowatch_url, ipoji_url, investorgain_url")
+    .eq("company_name", company_name)
+    .maybeSingle();
+  if (error) throw error;
+  return data || {};
+}
+
 export async function scrapeAllGMP(company_name) {
   if (!company_name || typeof company_name !== "string") {
     throw new Error("company_name is required");
   }
 
+  const urls = await loadSourceUrls(company_name);
+
   const results = await Promise.all([
-    scrapeIpowatch(company_name),
-    scrapeIpoji(company_name),
-    scrapeInvestorgain(company_name),
+    scrapeIpowatch({ company_name, url: urls.ipowatch_url }),
+    scrapeIpoji({ company_name, url: urls.ipoji_url }),
+    scrapeInvestorgain({ company_name, url: urls.investorgain_url }),
   ]);
 
   const sources = results.map((r) => ({
