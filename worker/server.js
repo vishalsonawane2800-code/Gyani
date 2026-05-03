@@ -1,39 +1,4 @@
-const express = require("express");
-const cors = require("cors");
-const { supabase } = require("./lib/supabase");
-const { scrapeAllSources, aggregateGMP } = require("./scrapers");
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-const CRON_SECRET = process.env.CRON_SECRET;
-const BULK_CONCURRENCY = Number(process.env.BULK_CONCURRENCY || 3);
-
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-app.get("/test", (_req, res) => {
-  res.json({
-    status: "ok",
-    message: "IPOgyani worker is running",
-    env: {
-      supabase_configured: !!supabase,
-      cron_secret_configured: !!CRON_SECRET,
-      bulk_concurrency: BULK_CONCURRENCY,
-    },
-  });
-});
-
-app.get("/api/gmp/:company", async (req, res) => {
-  if (!supabase) return res.status(503).json({ error: "database_not_configured" });
-  try {
-    const { company } = req.params;
-    const { data, error } = await supabase
-      .from("ipo_gmp")
-      .select("*")
+*")
       .eq("company_name", company)
       .single();
 
@@ -44,11 +9,11 @@ app.get("/api/gmp/:company", async (req, res) => {
   }
 });
 
-app.get("/api/gmp", async (_req, res) => {
+app.get("/api/subscription", async (_req, res) => {
   if (!supabase) return res.status(503).json({ error: "database_not_configured" });
   try {
     const { data, error } = await supabase
-      .from("ipo_gmp")
+      .from("subscription_data")
       .select("*")
       .order("scraped_at", { ascending: false });
 
@@ -84,35 +49,76 @@ async function processIPO(ipoConfig) {
   return result;
 }
 
-async function processIPOsBounded(ipos, concurrency) {
-  const results = new Array(ipos.length);
+async function processSubscriptionIPO(ipoConfig) {
+  const sources = await scrapeSubscriptionAllSources(ipoConfig);
+  const agg = aggregateSubscription(sources);
+
+  const row = {
+    company_name: ipoConfig.company_name,
+    qib: agg.qib,
+    nii: agg.nii,
+    retail: agg.retail,
+    total: agg.total,
+    scraped_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase
+    .from("subscription_data")
+    .upsert(row, { onConflict: "company_name" });
+
+  if (error) {
+    console.error(`Failed to save subscription for ${ipoConfig.company_name}:`, error.message);
+    return { ...row, sources, save_error: error.message };
+  }
+  return { ...row, sources };
+}
+
+async function processItemsBounded(items, concurrency, handler, errorShapeFn) {
+  const results = new Array(items.length);
   let cursor = 0;
 
   async function worker() {
     while (true) {
       const idx = cursor++;
-      if (idx >= ipos.length) return;
+      if (idx >= items.length) return;
       try {
-        results[idx] = await processIPO(ipos[idx]);
+        results[idx] = await handler(items[idx]);
       } catch (err) {
-        results[idx] = {
-          company_name: ipos[idx].company_name,
-          sources: [],
-          gmp: null,
-          gmp_count: 0,
-          scraped_at: new Date().toISOString(),
-          error: err && err.message ? err.message : "process_error",
-        };
+        results[idx] = errorShapeFn(items[idx], err);
       }
     }
   }
 
   const workers = Array.from(
-    { length: Math.min(concurrency, ipos.length) },
+    { length: Math.min(concurrency, items.length) },
     () => worker()
   );
   await Promise.all(workers);
   return results;
+}
+
+function gmpErrorShape(ipo, err) {
+  return {
+    company_name: ipo.company_name,
+    sources: [],
+    gmp: null,
+    gmp_count: 0,
+    scraped_at: new Date().toISOString(),
+    error: err && err.message ? err.message : "process_error",
+  };
+}
+
+function subscriptionErrorShape(ipo, err) {
+  return {
+    company_name: ipo.company_name,
+    qib: null,
+    nii: null,
+    retail: null,
+    total: null,
+    scraped_at: new Date().toISOString(),
+    sources: [],
+    error: err && err.message ? err.message : "process_error",
+  };
 }
 
 function verifyCronAuth(req) {
@@ -149,7 +155,7 @@ app.post("/api/cron/dispatch", async (req, res) => {
       if (error) return res.status(500).json({ error: error.message });
 
       const list = ipos || [];
-      const results = await processIPOsBounded(list, BULK_CONCURRENCY);
+      const results = await processItemsBounded(list, BULK_CONCURRENCY, processIPO, gmpErrorShape);
       return res.json({
         job,
         duration_ms: Date.now() - startedAt,
@@ -170,7 +176,7 @@ app.post("/api/cron/dispatch", async (req, res) => {
       const foundNames = new Set(found.map((r) => r.company_name));
       const missing = companies.filter((c) => !foundNames.has(c));
 
-      const results = await processIPOsBounded(found, BULK_CONCURRENCY);
+      const results = await processItemsBounded(found, BULK_CONCURRENCY, processIPO, gmpErrorShape);
       return res.json({
         job: "gmp_bulk",
         duration_ms: Date.now() - startedAt,
@@ -181,10 +187,73 @@ app.post("/api/cron/dispatch", async (req, res) => {
       });
     }
 
+    if (job === "subscription" && company_name) {
+      const { data: ipoConfig, error } = await supabase
+        .from("ipos")
+        .select(IPO_COLS)
+        .eq("company_name", company_name)
+        .single();
+
+      if (error || !ipoConfig) {
+        return res.status(404).json({ error: "ipo_not_found", company_name });
+      }
+      const result = await processSubscriptionIPO(ipoConfig);
+      return res.json({ job: "subscription", duration_ms: Date.now() - startedAt, result });
+    }
+
+    if (job === "subscription" || (job === "subscription_bulk" && (!companies || !companies.length))) {
+      const { data: ipos, error } = await supabase.from("ipos").select(IPO_COLS);
+      if (error) return res.status(500).json({ error: error.message });
+
+      const list = ipos || [];
+      const results = await processItemsBounded(
+        list,
+        BULK_CONCURRENCY,
+        processSubscriptionIPO,
+        subscriptionErrorShape
+      );
+      return res.json({
+        job,
+        duration_ms: Date.now() - startedAt,
+        count: results.length,
+        results,
+      });
+    }
+
+    if (job === "subscription_bulk" && Array.isArray(companies) && companies.length) {
+      const { data: ipos, error } = await supabase
+        .from("ipos")
+        .select(IPO_COLS)
+        .in("company_name", companies);
+
+      if (error) return res.status(500).json({ error: error.message });
+
+      const found = ipos || [];
+      const foundNames = new Set(found.map((r) => r.company_name));
+      const missing = companies.filter((c) => !foundNames.has(c));
+
+      const results = await processItemsBounded(
+        found,
+        BULK_CONCURRENCY,
+        processSubscriptionIPO,
+        subscriptionErrorShape
+      );
+      return res.json({
+        job: "subscription_bulk",
+        duration_ms: Date.now() - startedAt,
+        requested: companies.length,
+        count: results.length,
+        missing,
+        results,
+      });
+    }
+
     return res.status(400).json({
       error: "invalid_job",
-      valid_jobs: ["gmp", "gmp_bulk"],
-      hint: "POST { job: 'gmp' } to scrape all, or { job: 'gmp_bulk', companies: [..] }",
+      valid_jobs: ["gmp", "gmp_bulk", "subscription", "subscription_bulk"],
+      hint:
+        "POST { job: 'gmp' } | { job: 'gmp_bulk', companies: [..] } | " +
+        "{ job: 'subscription' } | { job: 'subscription_bulk', companies: [..] }",
     });
   } catch (err) {
     console.error("[cron/dispatch] error:", err);
