@@ -1,87 +1,49 @@
-import { supabase } from "../lib/supabase.js";
-import { scrape as scrapeIpowatch } from "./ipowatch.js";
-import { scrape as scrapeIpoji } from "./ipoji.js";
-import { scrape as scrapeInvestorgain } from "./investorgain.js";
-import { average } from "./_utils.js";
+const { fetchPage, parseHTML, cleanGMPValue } = require("./_utils");
 
-/**
- * Load per-source GMP URLs for a company from the master `ipos` table.
- */
-async function loadSourceUrls(company_name) {
-  const { data, error } = await supabase
-    .from("ipos")
-    .select("ipowatch_gmp_url, ipoji_gmp_url, investorgain_gmp_url")
-    .eq("company_name", company_name)
-    .maybeSingle();
-
-  if (error) throw error;
-
-  return data || {};
-}
-
-export async function scrapeAllGMP(company_name) {
-  if (!company_name || typeof company_name !== "string") {
-    throw new Error("company_name is required");
+async function scrapeIPOWatch(url) {
+  if (!url) {
+    return { gmp: null, source: "ipowatch", error: "no_url" };
   }
 
-  const urls = await loadSourceUrls(company_name);
+  const { html, error } = await fetchPage(url);
 
-  const results = await Promise.all([
-    scrapeIpowatch({ company_name, url: urls.ipowatch_gmp_url }),
-    scrapeIpoji({ company_name, url: urls.ipoji_gmp_url }),
-    scrapeInvestorgain({ company_name, url: urls.investorgain_gmp_url }),
-  ]);
-
-  const sources = results.map((r) => ({
-    source: r.source,
-    gmp: r.gmp,
-    ...(r.error ? { error: r.error } : {}),
-  }));
-
-  const validGmps = sources
-    .map((s) => s.gmp)
-    .filter((g) => typeof g === "number" && Number.isFinite(g));
-
-  const gmp = average(validGmps);
-  const gmp_count = validGmps.length;
-  const scraped_at = new Date().toISOString();
-
-  return {
-    company_name,
-    sources,
-    gmp,
-    gmp_count,
-    scraped_at,
-  };
-}
-
-export async function saveGMP(result) {
-  if (!result || !result.company_name) {
-    throw new Error("invalid result payload");
+  if (error || !html) {
+    return { gmp: null, source: "ipowatch", error: error || "fetch_failed" };
   }
 
-  const { data, error } = await supabase
-    .from("ipo_gmp")
-    .upsert(
-      {
-        company_name: result.company_name,
-        sources: result.sources,
-        gmp: result.gmp,
-        gmp_count: result.gmp_count,
-        scraped_at: result.scraped_at,
-      },
-      { onConflict: "company_name" }
-    )
-    .select()
-    .single();
+  try {
+    const $ = parseHTML(html);
+    let gmpValue = null;
 
-  if (error) throw error;
+    $("table tr").each((_, row) => {
+      const cells = $(row).find("td");
+      if (cells.length >= 2) {
+        const label = $(cells[0]).text().toLowerCase();
+        if (label.includes("gmp") || label.includes("grey market premium")) {
+          const value = $(cells[1]).text();
+          gmpValue = cleanGMPValue(value);
+        }
+      }
+    });
 
-  return data;
+    if (gmpValue === null) {
+      $("*").each((_, el) => {
+        const text = $(el).text();
+        const match = text.match(/gmp[:\s]*[₹rs.]?\s*([-+]?\d+)/i);
+        if (match && gmpValue === null) {
+          gmpValue = cleanGMPValue(match[1]);
+        }
+      });
+    }
+
+    if (gmpValue !== null) {
+      return { gmp: gmpValue, source: "ipowatch", error: null };
+    }
+
+    return { gmp: null, source: "ipowatch", error: "not_found" };
+  } catch (err) {
+    return { gmp: null, source: "ipowatch", error: err.message };
+  }
 }
 
-export async function scrapeAndSaveGMP(company_name) {
-  const result = await scrapeAllGMP(company_name);
-  const saved = await saveGMP(result);
-  return { result, saved };
-}
+module.exports = { scrapeIPOWatch };
