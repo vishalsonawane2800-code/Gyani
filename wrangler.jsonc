@@ -14,6 +14,12 @@
   "vars": {
     "NEXT_PUBLIC_API_BASE_URL": "https://gyani-production.up.railway.app"
   }
+"r2_buckets": [
+  {
+    "binding": "NEXT_INC_CACHE_R2_BUCKET",
+    "bucket_name": "ipogyani-cache"
+  }
+]
   // Secrets are set via the dashboard or `wrangler secret put`:
   //   NEXT_PUBLIC_SUPABASE_URL
   //   NEXT_PUBLIC_SUPABASE_ANON_KEY
