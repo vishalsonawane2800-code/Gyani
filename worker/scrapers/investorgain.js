@@ -1,21 +1,3 @@
-This tells Railway to run from /app/worker instead of /app.
-
-Repo Structure
-/
-└── worker/
-    ├── package.json
-    ├── railway.json
-    ├── server.js
-    ├── lib/
-    │   └── supabase.js
-    └── scrapers/
-        ├── index.js
-        ├── _utils.js
-        ├── ipowatch.js
-        ├── ipoji.js
-        └── investorgain.js
-Files (all inside /worker/)
-worker/package.json
 {
   "name": "ipogyani-worker",
   "version": "1.0.0",
