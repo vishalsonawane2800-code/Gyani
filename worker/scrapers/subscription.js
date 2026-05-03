@@ -1,7 +1,7 @@
 const { fetchPage, parseHTML, normalizeName, namesMatch } = require("./_utils");
 const { supabase } = require("../lib/supabase");
 
-const SOURCE_NAMES = ["investorgain", "ipowatch", "ipoji"];
+const SOURCE_NAMES = ["chittorgarh", "investorgain"];
 
 const ZERO_PLACEHOLDER_RE =
   /^(?:--|[-\u2013\u2014\u2212]|n\/?a|nil|none|not\s*available)$/i;
@@ -11,16 +11,13 @@ function parseSubscriptionTimes(input) {
   try {
     const trimmed = String(input).trim();
     if (!trimmed) return null;
-
     const cleaned = trimmed
       .toLowerCase()
       .replace(/times|x\b/gi, "")
       .replace(/,/g, "")
       .trim();
-
     if (!cleaned) return null;
     if (ZERO_PLACEHOLDER_RE.test(cleaned)) return null;
-
     const match = cleaned.match(/-?\d+(?:\.\d+)?/);
     if (!match) return null;
     const num = parseFloat(match[0]);
@@ -173,6 +170,59 @@ function emptyResult(source, error) {
   return { source, qib: null, nii: null, retail: null, total: null, error: error || null };
 }
 
+// ---- Chittorgarh ---------------------------------------------------------
+// Ported from lib/scraper/sources/subscription-chittorgarh.ts
+// Derives the /ipo_subscription/{slug}/{id}/ sibling from a /ipo/{slug}/{id}/
+// detail URL — this is the clean, dedicated subscription page.
+
+function deriveChittorgarhSubscriptionUrl(detailUrl) {
+  try {
+    const u = new URL(detailUrl);
+    if (!/chittorgarh\.com$/i.test(u.hostname)) return null;
+    const m = u.pathname.match(/^\/ipo\/([^/]+)\/(\d+)\/?$/);
+    if (!m) return null;
+    return `https://www.chittorgarh.com/ipo_subscription/${m[1]}/${m[2]}/`;
+  } catch {
+    return null;
+  }
+}
+
+function chittorgarhCandidateUrls(chittorgarhUrl) {
+  const urls = [];
+  if (chittorgarhUrl && /^https?:\/\//i.test(chittorgarhUrl)) {
+    const sub = deriveChittorgarhSubscriptionUrl(chittorgarhUrl);
+    if (sub) urls.push(sub);
+    urls.push(chittorgarhUrl);
+  }
+  return urls;
+}
+
+async function scrapeChittorgarhSubscription(chittorgarhUrl, companyName) {
+  const urls = chittorgarhCandidateUrls(chittorgarhUrl);
+  if (!urls.length) return emptyResult("chittorgarh", "no_url");
+
+  let lastError = null;
+  for (const url of urls) {
+    const { html, error } = await fetchPage(url);
+    if (error || !html) { lastError = error || "fetch_failed"; continue; }
+    try {
+      const $ = parseHTML(html);
+      const parsed = parseSubscriptionTables($, { targetName: companyName });
+      if (parsed) return { source: "chittorgarh", ...parsed, error: null };
+      lastError = "not_found";
+    } catch (err) {
+      lastError = (err && err.message) || "parse_error";
+    }
+  }
+  return emptyResult("chittorgarh", lastError || "not_found");
+}
+
+// ---- InvestorGain --------------------------------------------------------
+// Reads from investorgain_sub_url (preferred) with fallback to
+// investorgain_gmp_url for backwards compatibility. Parses both the
+// dedicated "Total: X times" meta-title pattern and any subscription table
+// present on the page.
+
 async function scrapeInvestorGainSubscription(url, companyName) {
   if (!url) return emptyResult("investorgain", "no_url");
 
@@ -201,91 +251,29 @@ async function scrapeInvestorGainSubscription(url, companyName) {
   }
 }
 
-async function scrapeIPOWatchSubscription(url, companyName) {
-  if (!url) return emptyResult("ipowatch", "no_url");
+// ---- Legacy stubs kept for backwards compatibility ----------------------
+// ipowatch and ipoji never reliably published subscription-times data in
+// legacy pipeline. These remain exported as no-ops so any external caller
+// that imports them doesn't break.
 
-  const { html, error } = await fetchPage(url);
-  if (error || !html) return emptyResult("ipowatch", error || "fetch_failed");
-
-  try {
-    const $ = parseHTML(html);
-    const parsed = parseSubscriptionTables($, { targetName: companyName });
-    if (!parsed) return emptyResult("ipowatch", "not_found");
-    return { source: "ipowatch", ...parsed, error: null };
-  } catch (err) {
-    return emptyResult("ipowatch", (err && err.message) || "parse_error");
-  }
+async function scrapeIPOWatchSubscription(_url, _companyName) {
+  return emptyResult("ipowatch", "disabled");
 }
 
-async function scrapeIPOjiSubscription(url, companyName) {
-  if (!url) return emptyResult("ipoji", "no_url");
-
-  const { html, error } = await fetchPage(url);
-  if (error || !html) return emptyResult("ipoji", error || "fetch_failed");
-
-  try {
-    const $ = parseHTML(html);
-
-    let parsed = parseSubscriptionTables($, { targetName: companyName });
-
-    if (!parsed) {
-      const out = { qib: null, nii: null, retail: null, total: null };
-      const targetNorm = companyName ? normalizeName(companyName) : null;
-
-      $(".ipo-card").each((_, card) => {
-        const $card = $(card);
-        if (targetNorm) {
-          const titleRaw = $card
-            .find(".ipo-card-title, .ipo-card-header, h2, h3, a")
-            .first()
-            .text()
-            .replace(/\s+/g, " ")
-            .trim();
-          if (!titleRaw) return;
-          const titleNorm = normalizeName(titleRaw);
-          if (!namesMatch(targetNorm, titleNorm)) return;
-        }
-
-        $card.find(".ipo-card-body-stat").each((_i, s) => {
-          const label = $(s).find(".ipo-card-secondary-label").text().trim().toLowerCase();
-          const value = $(s).find(".ipo-card-body-value").text().trim();
-          if (!label || !value) return;
-
-          if (/\bqib\b|qualified/.test(label)) {
-            const n = parseSubscriptionTimes(value);
-            if (n !== null && out.qib === null) out.qib = n;
-          } else if (/non[\s-]*institutional|\bnii\b|\bhni\b/.test(label)) {
-            const n = parseSubscriptionTimes(value);
-            if (n !== null && out.nii === null) out.nii = n;
-          } else if (/\bretail\b|\brii\b/.test(label)) {
-            const n = parseSubscriptionTimes(value);
-            if (n !== null && out.retail === null) out.retail = n;
-          } else if (/subscri|total|overall/.test(label)) {
-            const n = parseSubscriptionTimes(value);
-            if (n !== null && out.total === null) out.total = n;
-          }
-        });
-      });
-
-      const anyFound =
-        out.qib !== null || out.nii !== null || out.retail !== null || out.total !== null;
-      parsed = anyFound ? out : null;
-    }
-
-    if (!parsed) return emptyResult("ipoji", "not_found");
-    return { source: "ipoji", ...parsed, error: null };
-  } catch (err) {
-    return emptyResult("ipoji", (err && err.message) || "parse_error");
-  }
+async function scrapeIPOjiSubscription(_url, _companyName) {
+  return emptyResult("ipoji", "disabled");
 }
+
+// ---- Orchestration -------------------------------------------------------
 
 async function scrapeSubscriptionAllSources(ipo) {
   const company = ipo.company_name || null;
 
+  const investorgainUrl = ipo.investorgain_sub_url || ipo.investorgain_gmp_url || null;
+
   const tasks = [
-    scrapeInvestorGainSubscription(ipo.investorgain_gmp_url || null, company),
-    scrapeIPOWatchSubscription(ipo.ipowatch_gmp_url || null, company),
-    scrapeIPOjiSubscription(ipo.ipoji_gmp_url || null, company),
+    scrapeChittorgarhSubscription(ipo.chittorgarh_url || null, company),
+    scrapeInvestorGainSubscription(investorgainUrl, company),
   ];
 
   const settled = await Promise.allSettled(tasks);
@@ -297,7 +285,7 @@ async function scrapeSubscriptionAllSources(ipo) {
 
 function aggregateSubscription(sources) {
   const out = { qib: null, nii: null, retail: null, total: null };
-  const order = ["investorgain", "ipowatch", "ipoji"];
+  const order = ["chittorgarh", "investorgain"];
   const byName = Object.fromEntries(sources.map((s) => [s.source, s]));
 
   for (const name of order) {
@@ -317,7 +305,7 @@ async function scrapeSubscription(companyName) {
 
   const { data: ipo, error } = await supabase
     .from("ipos")
-    .select("company_name, ipowatch_gmp_url, ipoji_gmp_url, investorgain_gmp_url")
+    .select("company_name, chittorgarh_url, investorgain_sub_url, investorgain_gmp_url")
     .eq("company_name", companyName)
     .single();
 
@@ -358,9 +346,10 @@ async function saveSubscription(result) {
 }
 
 module.exports = {
+  scrapeChittorgarhSubscription,
   scrapeInvestorGainSubscription,
-  scrapeIPOWatchSubscription,
-  scrapeIPOjiSubscription,
+  scrapeIPOWatchSubscription,   // deprecated stub
+  scrapeIPOjiSubscription,      // deprecated stub
   scrapeSubscriptionAllSources,
   aggregateSubscription,
   scrapeSubscription,
