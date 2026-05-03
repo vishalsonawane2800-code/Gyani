@@ -1,6 +1,16 @@
 const { scrapeIPOWatch } = require("./ipowatch");
 const { scrapeIPOji } = require("./ipoji");
 const { scrapeInvestorGain } = require("./investorgain");
+const {
+  scrapeInvestorGainSubscription,
+  scrapeIPOWatchSubscription,
+  scrapeIPOjiSubscription,
+  scrapeSubscriptionAllSources,
+  aggregateSubscription,
+  scrapeSubscription,
+  saveSubscription,
+  SUBSCRIPTION_SOURCE_NAMES,
+} = require("./subscription");
 
 const SOURCE_NAMES = ["ipowatch", "ipoji", "investorgain"];
 
@@ -40,4 +50,12 @@ module.exports = {
   scrapeAllSources,
   aggregateGMP,
   SOURCE_NAMES,
+  scrapeInvestorGainSubscription,
+  scrapeIPOWatchSubscription,
+  scrapeIPOjiSubscription,
+  scrapeSubscriptionAllSources,
+  aggregateSubscription,
+  scrapeSubscription,
+  saveSubscription,
+  SUBSCRIPTION_SOURCE_NAMES,
 };
