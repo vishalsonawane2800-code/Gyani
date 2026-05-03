@@ -1,10 +1,14 @@
-import { createClient } from "@supabase/supabase-js";
+const { createClient } = require("@supabase/supabase-js");
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase environment variables");
+let supabase = null;
+
+if (supabaseUrl && supabaseKey) {
+  supabase = createClient(supabaseUrl, supabaseKey);
+} else {
+  console.warn("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY - database operations will fail");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+module.exports = { supabase };
