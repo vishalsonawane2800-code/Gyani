@@ -1,5 +1,5 @@
+const { createClient } = require("@supabase/supabase-js");
 
-// or SUPABASE_SERVICE_KEY (legacy) so deployments don't break either way.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
@@ -12,7 +12,7 @@ if (supabaseUrl && supabaseKey) {
   });
 } else {
   console.warn(
-    \"Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY - database operations will fail\"
+    "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY - database operations will fail"
   );
 }
 
