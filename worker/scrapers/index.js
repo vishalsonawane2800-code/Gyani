@@ -92,4 +92,3 @@ export async function scrapeAndSaveGMP(company_name) {
   const saved = await saveGMP(result);
   return { result, saved };
 }
-"
