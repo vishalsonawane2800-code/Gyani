@@ -7,17 +7,14 @@ app.use(express.json());
 
 console.log("Starting ipogyani-worker...");
 
-// Health
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-// Test
 app.get("/test", (_req, res) => {
   res.json({ working: true });
 });
 
-// Get single GMP (no save)
 app.get("/api/gmp/:company", async (req, res) => {
   try {
     const company = decodeURIComponent(req.params.company);
@@ -28,7 +25,6 @@ app.get("/api/gmp/:company", async (req, res) => {
   }
 });
 
-// Get all GMP (from Supabase)
 app.get("/api/gmp", async (_req, res) => {
   try {
     const { data, error } = await supabase
@@ -36,7 +32,9 @@ app.get("/api/gmp", async (_req, res) => {
       .select("*")
       .order("scraped_at", { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      return res.status(500).json({ error: error.message || "db_error" });
+    }
 
     res.json(data || []);
   } catch (err) {
@@ -44,9 +42,9 @@ app.get("/api/gmp", async (_req, res) => {
   }
 });
 
-// Cron auth middleware
 function requireCronAuth(req, res, next) {
   const expected = process.env.CRON_SECRET;
+
   if (!expected) {
     return res.status(500).json({ error: "CRON_SECRET not configured" });
   }
@@ -61,7 +59,6 @@ function requireCronAuth(req, res, next) {
   next();
 }
 
-// Cron dispatch (single + bulk)
 app.post("/api/cron/dispatch", requireCronAuth, async (req, res) => {
   try {
     const { job, company_name, companies } = req.body || {};
@@ -70,17 +67,15 @@ app.post("/api/cron/dispatch", requireCronAuth, async (req, res) => {
       return res.status(400).json({ error: "job is required" });
     }
 
-    // Single
     if (job === "gmp") {
       if (!company_name) {
-        return res.status(400).json({ error: "company_name is required" });
+        return res.status(400).json({ error: "job and company_name are required" });
       }
 
       const { result, saved } = await scrapeAndSaveGMP(company_name);
       return res.json({ ok: true, job, result, saved });
     }
 
-    // Bulk
     if (job === "gmp_bulk") {
       if (!Array.isArray(companies) || companies.length === 0) {
         return res.status(400).json({ error: "companies array is required" });
@@ -115,7 +110,6 @@ app.post("/api/cron/dispatch", requireCronAuth, async (req, res) => {
   }
 });
 
-// Start server
 const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, "0.0.0.0", () => {
