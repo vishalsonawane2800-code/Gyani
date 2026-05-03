@@ -1,45 +1,58 @@
-import { fetchHtml, parseGmpNumber } from "./_utils.js";
+const { fetchPage, parseHTML, cleanGMPValue } = require("./_utils");
 
-const SOURCE = "investorgain";
+async function scrapeInvestorGain(url) {
+  if (!url) {
+    return { gmp: null, source: "investorgain", error: "no_url" };
+  }
 
-export async function scrape({ url } = {}) {
-  if (!url || typeof url !== "string") {
-    return { source: SOURCE, gmp: null, error: "no_url" };
+  const { html, error } = await fetchPage(url);
+
+  if (error || !html) {
+    return { gmp: null, source: "investorgain", error: error || "fetch_failed" };
   }
 
   try {
-    const html = await fetchHtml(url);
+    const $ = parseHTML(html);
+    let gmpValue = null;
 
-    const arrMatch =
-      html.match(/\\"gmpData\\":\s*\[(.*?)\]/s) ||
-      html.match(/"gmpData"\s*:\s*\[(.*?)\]/s);
+    $("table tr").each((_, row) => {
+      const rowText = $(row).text().toLowerCase();
+      if (rowText.includes("gmp") || rowText.includes("grey market")) {
+        const cells = $(row).find("td");
+        cells.each((_, cell) => {
+          const val = cleanGMPValue($(cell).text());
+          if (val !== null && gmpValue === null) {
+            gmpValue = val;
+          }
+        });
+      }
+    });
 
-    if (arrMatch) {
-      const block = arrMatch[1];
-      const gmpRe = /\\?"gmp\\?"\s*:\s*\\?"?([\d.,]+)\\?"?/g;
-      let m;
-      while ((m = gmpRe.exec(block)) !== null) {
-        const n = parseGmpNumber(m[1]);
-        if (n !== null) return { source: SOURCE, gmp: n };
+    if (gmpValue === null) {
+      $("[class*='gmp'], [id*='gmp']").each((_, el) => {
+        const val = cleanGMPValue($(el).text());
+        if (val !== null && gmpValue === null) {
+          gmpValue = val;
+        }
+      });
+    }
+
+    if (gmpValue === null) {
+      const bodyText = $("body").text();
+      const match = bodyText.match(/gmp[:\s]*[₹rs.]?\s*([-+]?\d+)/i);
+      if (match) {
+        gmpValue = cleanGMPValue(match[1]);
       }
     }
 
-    const patterns = [
-      /GMP\s*today\s*is\s*[₹Rs.\s]*([\d.,]+)/i,
-      /Grey\s*Market\s*Premium[^<]*?is\s*[₹Rs.\s]*([\d.,]+)/i,
-      /"current_gmp"\s*:\s*\\?"?([\d.,]+)\\?"?/i,
-    ];
-
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m) {
-        const n = parseGmpNumber(m[1]);
-        if (n !== null) return { source: SOURCE, gmp: n };
-      }
+    if (gmpValue !== null) {
+      return { gmp: gmpValue, source: "investorgain", error: null };
     }
 
-    return { source: SOURCE, gmp: null, error: "not_found" };
+    return { gmp: null, source: "investorgain", error: "not_found" };
   } catch (err) {
-    return { source: SOURCE, gmp: null, error: err.message || "scrape_failed" };
+    return { gmp: null, source: "investorgain", error: err.message };
   }
 }
+
+module.exports = { scrapeInvestorGain };
