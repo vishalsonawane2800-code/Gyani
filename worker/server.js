@@ -1,4 +1,76 @@
-*")
+const express = require("express");
+const cors = require("cors");
+const { supabase } = require("./lib/supabase");
+const {
+  scrapeAllSources,
+  aggregateGMP,
+  scrapeSubscriptionAllSources,
+  aggregateSubscription,
+} = require("./scrapers");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const CRON_SECRET = process.env.CRON_SECRET;
+const BULK_CONCURRENCY = Number(process.env.BULK_CONCURRENCY || 3);
+
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.get("/test", (_req, res) => {
+  res.json({
+    status: "ok",
+    message: "IPOgyani worker is running",
+    env: {
+      supabase_configured: !!supabase,
+      cron_secret_configured: !!CRON_SECRET,
+      bulk_concurrency: BULK_CONCURRENCY,
+    },
+  });
+});
+
+app.get("/api/gmp/:company", async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: "database_not_configured" });
+  try {
+    const { company } = req.params;
+    const { data, error } = await supabase
+      .from("ipo_gmp")
+      .select("*")
+      .eq("company_name", company)
+      .single();
+
+    if (error || !data) return res.status(404).json({ error: "not_found", company });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/gmp", async (_req, res) => {
+  if (!supabase) return res.status(503).json({ error: "database_not_configured" });
+  try {
+    const { data, error } = await supabase
+      .from("ipo_gmp")
+      .select("*")
+      .order("scraped_at", { ascending: false });
+
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/subscription/:company", async (req, res) => {
+  if (!supabase) return res.status(503).json({ error: "database_not_configured" });
+  try {
+    const { company } = req.params;
+    const { data, error } = await supabase
+      .from("subscription_data")
+      .select("*")
       .eq("company_name", company)
       .single();
 
@@ -43,8 +115,8 @@ async function processIPO(ipoConfig) {
     .upsert(result, { onConflict: "company_name" });
 
   if (error) {
-    console.error(`Failed to save GMP for ${ipoConfig.company_name}:`, error.message);
-    return { ...result, save_error: error.message };
+    console.error("Failed to save GMP for " + ipoConfig.company_name + ":", error.message);
+    return Object.assign({}, result, { save_error: error.message });
   }
   return result;
 }
@@ -67,10 +139,10 @@ async function processSubscriptionIPO(ipoConfig) {
     .upsert(row, { onConflict: "company_name" });
 
   if (error) {
-    console.error(`Failed to save subscription for ${ipoConfig.company_name}:`, error.message);
-    return { ...row, sources, save_error: error.message };
+    console.error("Failed to save subscription for " + ipoConfig.company_name + ":", error.message);
+    return Object.assign({}, row, { sources: sources, save_error: error.message });
   }
-  return { ...row, sources };
+  return Object.assign({}, row, { sources: sources });
 }
 
 async function processItemsBounded(items, concurrency, handler, errorShapeFn) {
@@ -132,7 +204,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
   if (!verifyCronAuth(req)) return res.status(401).json({ error: "unauthorized" });
   if (!supabase) return res.status(503).json({ error: "database_not_configured" });
 
-  const { job, company_name, companies } = req.body || {};
+  const body = req.body || {};
+  const job = body.job;
+  const company_name = body.company_name;
+  const companies = body.companies;
   const startedAt = Date.now();
 
   try {
@@ -144,10 +219,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
         .single();
 
       if (error || !ipoConfig) {
-        return res.status(404).json({ error: "ipo_not_found", company_name });
+        return res.status(404).json({ error: "ipo_not_found", company_name: company_name });
       }
       const result = await processIPO(ipoConfig);
-      return res.json({ job: "gmp", duration_ms: Date.now() - startedAt, result });
+      return res.json({ job: "gmp", duration_ms: Date.now() - startedAt, result: result });
     }
 
     if (job === "gmp" || (job === "gmp_bulk" && (!companies || !companies.length))) {
@@ -157,10 +232,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
       const list = ipos || [];
       const results = await processItemsBounded(list, BULK_CONCURRENCY, processIPO, gmpErrorShape);
       return res.json({
-        job,
+        job: job,
         duration_ms: Date.now() - startedAt,
         count: results.length,
-        results,
+        results: results,
       });
     }
 
@@ -182,8 +257,8 @@ app.post("/api/cron/dispatch", async (req, res) => {
         duration_ms: Date.now() - startedAt,
         requested: companies.length,
         count: results.length,
-        missing,
-        results,
+        missing: missing,
+        results: results,
       });
     }
 
@@ -195,10 +270,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
         .single();
 
       if (error || !ipoConfig) {
-        return res.status(404).json({ error: "ipo_not_found", company_name });
+        return res.status(404).json({ error: "ipo_not_found", company_name: company_name });
       }
       const result = await processSubscriptionIPO(ipoConfig);
-      return res.json({ job: "subscription", duration_ms: Date.now() - startedAt, result });
+      return res.json({ job: "subscription", duration_ms: Date.now() - startedAt, result: result });
     }
 
     if (job === "subscription" || (job === "subscription_bulk" && (!companies || !companies.length))) {
@@ -213,10 +288,10 @@ app.post("/api/cron/dispatch", async (req, res) => {
         subscriptionErrorShape
       );
       return res.json({
-        job,
+        job: job,
         duration_ms: Date.now() - startedAt,
         count: results.length,
-        results,
+        results: results,
       });
     }
 
@@ -243,8 +318,8 @@ app.post("/api/cron/dispatch", async (req, res) => {
         duration_ms: Date.now() - startedAt,
         requested: companies.length,
         count: results.length,
-        missing,
-        results,
+        missing: missing,
+        results: results,
       });
     }
 
@@ -262,5 +337,5 @@ app.post("/api/cron/dispatch", async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`IPOgyani worker running on port ${PORT}`);
+  console.log("IPOgyani worker running on port " + PORT);
 });
