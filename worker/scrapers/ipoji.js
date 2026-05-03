@@ -1,32 +1,58 @@
-import { fetchHtml, parseGmpNumber } from "./_utils.js";
+const { fetchPage, parseHTML, cleanGMPValue } = require("./_utils");
 
-const SOURCE = "ipoji";
+async function scrapeIPOji(url) {
+  if (!url) {
+    return { gmp: null, source: "ipoji", error: "no_url" };
+  }
 
-export async function scrape({ url } = {}) {
-  if (!url || typeof url !== "string") {
-    return { source: SOURCE, gmp: null, error: "no_url" };
+  const { html, error } = await fetchPage(url);
+
+  if (error || !html) {
+    return { gmp: null, source: "ipoji", error: error || "fetch_failed" };
   }
 
   try {
-    const html = await fetchHtml(url);
+    const $ = parseHTML(html);
+    let gmpValue = null;
 
-    const patterns = [
-      /GMP\s*today\s*is\s*[₹Rs.\s]*([\d.,]+)/i,
-      /Premium\s*\(GMP\)\s*for[^<]*?is\s*[₹Rs.\s]*([\d.,]+)/i,
-      /"current_gmp"\s*:\s*"?([\d.,]+)"?/i,
-      /"gmp"\s*:\s*"?([\d.,]+)"?/i,
-    ];
+    $("table tr").each((_, row) => {
+      const cells = $(row).find("td, th");
+      cells.each((i, cell) => {
+        const text = $(cell).text().toLowerCase();
+        if (text.includes("gmp") || text.includes("grey market")) {
+          const nextCell = $(cells[i + 1]);
+          if (nextCell.length) {
+            gmpValue = cleanGMPValue(nextCell.text());
+          }
+        }
+      });
+    });
 
-    for (const re of patterns) {
-      const m = html.match(re);
-      if (m) {
-        const n = parseGmpNumber(m[1]);
-        if (n !== null) return { source: SOURCE, gmp: n };
+    if (gmpValue === null) {
+      $(".gmp-value, .premium-value, [class*='gmp']").each((_, el) => {
+        const val = cleanGMPValue($(el).text());
+        if (val !== null && gmpValue === null) {
+          gmpValue = val;
+        }
+      });
+    }
+
+    if (gmpValue === null) {
+      const bodyText = $("body").text();
+      const match = bodyText.match(/gmp[:\s]*[₹rs.]?\s*([-+]?\d+)/i);
+      if (match) {
+        gmpValue = cleanGMPValue(match[1]);
       }
     }
 
-    return { source: SOURCE, gmp: null, error: "not_found" };
+    if (gmpValue !== null) {
+      return { gmp: gmpValue, source: "ipoji", error: null };
+    }
+
+    return { gmp: null, source: "ipoji", error: "not_found" };
   } catch (err) {
-    return { source: SOURCE, gmp: null, error: err.message || "scrape_failed" };
+    return { gmp: null, source: "ipoji", error: err.message };
   }
 }
+
+module.exports = { scrapeIPOji };
