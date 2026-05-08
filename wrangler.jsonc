@@ -11,6 +11,7 @@
   "observability": {
     "enabled": true
   },
+  "pages_build_output_dir": ".open-next",
   "vars": {
     "NEXT_PUBLIC_API_BASE_URL": "https://gyani-production.up.railway.app"
   }
