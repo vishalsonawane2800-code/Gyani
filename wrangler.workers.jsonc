@@ -1,0 +1,20 @@
+{
+  // Use this config for local Workers deployment ONLY:
+  //   npx wrangler deploy --config wrangler.workers.jsonc
+  // NOT used by Cloudflare Pages CI/CD (wrangler.jsonc is used there).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ipogyani",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2025-03-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "NEXT_PUBLIC_API_BASE_URL": "https://gyani-production.up.railway.app"
+  }
+}

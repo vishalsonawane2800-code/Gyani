@@ -1,23 +1,17 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
+  // Used by Cloudflare Pages CI/CD.
+  // Workers-specific fields (main, assets, observability) are intentionally
+  // absent — Pages provides the ASSETS binding automatically and reads
+  // _worker.js from pages_build_output_dir.
+  // For local `wrangler deploy` (Workers), use wrangler.workers.jsonc instead.
   "name": "ipogyani",
-  "main": ".open-next/worker.js",
   "compatibility_date": "2025-03-01",
   "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "directory": ".open-next/assets",
-    "binding": "ASSETS"
-  },
-  "observability": {
-    "enabled": true
-  },
   "pages_build_output_dir": ".open-next",
   "vars": {
     "NEXT_PUBLIC_API_BASE_URL": "https://gyani-production.up.railway.app"
   }
-  // autodeploy test — 2026-05-08
-  // No R2 bucket — using default in-memory incremental cache (no card needed).
-  // Secrets are set via the dashboard or `wrangler secret put`:
+  // Secrets set via Cloudflare Pages dashboard → Settings → Environment Variables:
   //   NEXT_PUBLIC_SUPABASE_URL
   //   NEXT_PUBLIC_SUPABASE_ANON_KEY
   //   SUPABASE_SERVICE_ROLE_KEY
