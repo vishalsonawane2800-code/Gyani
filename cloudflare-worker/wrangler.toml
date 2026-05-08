@@ -16,7 +16,7 @@ crons = [
 # Public (non-secret) environment variables.
 # Change API_BASE_URL to your deployed Next.js app URL (no trailing slash).
 [vars]
-API_BASE_URL = "https://your-domain.com"
+API_BASE_URL = "https://guidifyindia.com"
 
 # Required secret (NOT in this file, set via wrangler):
 #   wrangler secret put CRON_SECRET

@@ -1,5 +1,6 @@
 // Simple Supabase queries for IPOGyani
 import { createClient } from './server'
+import { createAdminClient } from './admin'
 import type {
   IPO,
   ListedIPO,
@@ -254,7 +255,8 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
   // Batch-fetch GMP history, live subscription and day-wise subscription
   // history for every current IPO in parallel. This keeps /gmp and
   // /subscription lit up with the exact same rows the detail page shows.
-  const [gmpHistoryResult, subLiveResult, subHistoryResult] = await Promise.all([
+  // Also fetches Railway ipo_gmp as a real-time GMP fallback.
+  const [gmpHistoryResult, subLiveResult, subHistoryResult, railwayGmpRows] = await Promise.all([
     supabase
       .from('gmp_history')
       .select('ipo_id, gmp, gmp_percent, recorded_at, source, date, time_slot')
@@ -271,11 +273,33 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
       .in('ipo_id', ipoIds)
       .order('date', { ascending: true })
       .order('day_number', { ascending: true }),
+    (async () => {
+      try {
+        const admin = createAdminClient()
+        const { data } = await admin
+          .from('ipo_gmp')
+          .select('company_name, gmp, scraped_at')
+          .order('scraped_at', { ascending: false })
+        return data ?? []
+      } catch {
+        return [] as { company_name: string; gmp: unknown; scraped_at: string }[]
+      }
+    })(),
   ])
 
   const gmpRows = gmpHistoryResult.data ?? []
   const subLiveRows = subLiveResult.data ?? []
   const subHistoryRows = subHistoryResult.data ?? []
+
+  // Build a name-keyed map from Railway ipo_gmp (latest per company).
+  const railwayGmpByName = new Map<string, { gmp: number; scraped_at: string }>()
+  for (const row of railwayGmpRows) {
+    const nameKey = (row.company_name ?? '').toLowerCase().trim()
+    const gmpVal = typeof row.gmp === 'number' ? row.gmp : parseFloat(String(row.gmp ?? '0'))
+    if (nameKey && Number.isFinite(gmpVal) && !railwayGmpByName.has(nameKey)) {
+      railwayGmpByName.set(nameKey, { gmp: gmpVal, scraped_at: row.scraped_at as string })
+    }
+  }
 
   // Group by ipo_id (string-keyed since Supabase returns whatever the
   // column type is — we normalise via String()).
@@ -307,13 +331,18 @@ export async function getCurrentIPOs(): Promise<IPO[]> {
     const key = String(ipo.id)
     const priceMax = ipo.price_max || 0
 
-    // GMP — latest value + chronological full history.
+    // GMP — latest value, with Railway ipo_gmp as real-time fallback.
     const ipoGmp = gmpByIpo.get(key) ?? []
     const latestGmp = ipoGmp.length > 0 ? ipoGmp[0] : null
+    const nameKey = (ipo.company_name ?? '').toLowerCase().trim()
+    const railwayGmp = railwayGmpByName.get(nameKey)
+    const effectiveGmp = latestGmp?.gmp ?? (ipo.gmp !== 0 ? ipo.gmp : undefined) ?? railwayGmp?.gmp
+    const effectiveGmpTs = latestGmp?.recorded_at ?? railwayGmp?.scraped_at
+    const effectiveSlug = ipo.slug || (ipo.company_name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const transformed = transformIPO(
-      ipo as IPOSimple,
-      latestGmp?.gmp,
-      latestGmp?.recorded_at,
+      { ...ipo, slug: effectiveSlug } as IPOSimple,
+      effectiveGmp,
+      effectiveGmpTs,
     )
 
     const gmpHistory = ipoGmp.map((g) => ({
