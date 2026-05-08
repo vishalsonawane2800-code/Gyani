@@ -1,0 +1,8 @@
+# Cloudflare Pages configuration
+# wrangler.jsonc is used for Workers deployment (wrangler deploy)
+# This file is used by Cloudflare Pages CI/CD
+
+name = "gyani"
+compatibility_date = "2025-03-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".open-next"
